@@ -21,21 +21,19 @@ public class PressNew {
             for (int i = 0; i < tolLyrics.size() && isPlaying; i++) {
                 press(i);
             }
-
+            press('A',0.5);
+            press('S',0.5);
+            press('D',0.5);
             System.out.println("线程" + Thread.currentThread().getName() + "结束");
             isPlaying = false;
             startFrame.startPlay.setEnabled(true);
 
-           /* press('A',0.5);
-            press('S',0.5);
-            press('D',0.5);
-            press('S',1);
-            press('A',1);*/
 
             startFrame.textField.setText("弹奏完成");
             System.out.println("弹奏完成");
         }
-        void press(char a,double i){
+
+        void press(char a, double i) {
             Robot key = null;
             try {
                 key = new Robot();
@@ -46,7 +44,7 @@ public class PressNew {
             key.keyPress(a);
             key.keyRelease(a);
             try {
-                Thread.sleep((long) (i* 1000L));
+                Thread.sleep((long) (i * 1000L));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -80,8 +78,8 @@ public class PressNew {
             //节拍延时
             try {
                 if (i < tolTime.size()) {
-                    Thread.sleep((long) (tolTime.get(i) * startFrame.t[0]-20));
-                }else {
+                    Thread.sleep((long) (tolTime.get(i) * startFrame.t[0] - 20));
+                } else {
                     System.out.println("弹奏节拍数目不对;genshin_piano.PressNew:56");
                 }
             } catch (InterruptedException e) {
