@@ -29,7 +29,7 @@ public class startFrame {
     JDialog setTimeFrame = new JDialog(startFrame, "设置一拍时长 100~2000", true);
     static JTextField textField = new JTextField();
     JTextField time = new JTextField();
-    JDialog exitLog = new JDialog(startFrame, "是否直接退出", true);
+    JDialog exitLog = new JDialog(startFrame, "是否直接退出", false);
     FileDialog imageOpening = new FileDialog(startFrame, "选择背景图片路径", 0);
     FileDialog pianoOpening = new FileDialog(startFrame, "选择弹奏文件", 0);
     Toolkit kit = getDefaultToolkit();
@@ -410,7 +410,12 @@ public class startFrame {
                 if (canExit[0]) {
                     System.exit(0);
                 } else {
-                    dialogCenter(exitLog, 200, 60);
+                    if (exitLog.isVisible()) {
+                        System.exit(0);
+                    } else {
+                        dialogCenter(exitLog, 200, 60);
+                        exitLog.setAlwaysOnTop(true);
+                    }
                 }
 
             }
