@@ -234,7 +234,6 @@ public class startFrame {
         });
         menu.add(new MenuItem("-"));
         menu.add(componentframe);
-        menu.add(new MenuItem("-"));
         menu.add(top);
         menufile.add(open);
         color.add(image);
