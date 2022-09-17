@@ -18,12 +18,12 @@ public class PressNew {
 
         @Override
         public void run() {
+            press('A', 0.5);
+            press('S', 0.5);
+            press('D', 0.5);
             for (int i = 0; i < tolLyrics.size() && isPlaying; i++) {
                 press(i);
             }
-            press('A',0.5);
-            press('S',0.5);
-            press('D',0.5);
             System.out.println("线程" + Thread.currentThread().getName() + "结束");
             isPlaying = false;
             startFrame.startPlay.setEnabled(true);
