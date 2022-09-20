@@ -6,3 +6,4 @@
 *.iml
 out
 gen
+!/Start GenshinPiano.exe
