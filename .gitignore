@@ -6,4 +6,6 @@
 *.iml
 out
 gen
-!/Start GenshinPiano.exe
+/song.zip
+/Start GenshinPiano.exe
+/META-INF/
