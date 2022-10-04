@@ -16,11 +16,19 @@ public class PressNew {
             this.tolTime = tolTime;
         }
 
+        /*
+        *弹奏函数
+         */
         @Override
-        public void run() {
+        public void run(){
             press('A', 0.5);
             press('S', 0.5);
             press('D', 0.5);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+            }
+            
             for (int i = 0; i < tolLyrics.size() && isPlaying; i++) {
                 press(i);
             }
@@ -80,7 +88,7 @@ public class PressNew {
                 if (i < tolTime.size()) {
                     Thread.sleep((long) (tolTime.get(i) * startFrame.t[0] - 20));
                 } else {
-                    System.out.println("弹奏节拍数目不对;genshin_piano.PressNew:56");
+                    System.out.println("弹奏节拍数目不对;genshin_piano.PressNew");
                 }
             } catch (InterruptedException e) {
                 System.out.println("节拍延时错误");
