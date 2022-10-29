@@ -17,7 +17,7 @@ public class PressNew {
         }
 
         /*
-        *弹奏函数
+         *弹奏函数
          */
         @Override
         public void run(){
@@ -28,7 +28,6 @@ public class PressNew {
                 Thread.sleep(1000);
             } catch (InterruptedException ignored) {
             }
-            
             for (int i = 0; i < tolLyrics.size() && isPlaying; i++) {
                 press(i);
             }
