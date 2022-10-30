@@ -425,6 +425,8 @@ public class startFrame {
                 writeFile.writeProperty("startComponentHeight", String.valueOf(startFrame.getHeight()));
                 componentFrame componentFrame = new componentFrame();
                 componentFrame.componentInitialize();
+                readList.clear();
+                tolLyrics.clear();
                 startFrame.dispose();
             }
         });
