@@ -30,3 +30,19 @@ GenshinPiano.Application ──> GenshinPiano.Core
 ## UI 结构
 
 WPF 界面采用 MVVM。钢琴卷帘和 21 键预览将作为独立自定义控件实现，不让领域模型依赖任何 WPF 类型。
+
+### 主题
+
+主题由 `GenshinPiano.App/Resources/Themes` 下的资源字典组成：
+
+- `Theme.Base.xaml` 定义控件的共享尺寸和语义样式。
+- `Theme.Dark.xaml` 与 `Theme.Light.xaml` 分别定义 Fluent 主题和语义颜色。
+- 界面通过 `DynamicResource` 引用颜色，`ThemeService` 在运行时替换颜色字典。
+
+新增主题时应沿用现有语义画刷键，避免在页面中直接写颜色值。
+
+### 本地化
+
+界面文案位于 `GenshinPiano.App/Resources/Localization`。XAML 使用 `DynamicResource`，ViewModel 和文件对话框通过 `ILocalizationService` 获取文案。切换语言时替换字符串字典并刷新动态状态文本。
+
+曲谱标题、作者、轨道名称等属于用户数据，不随界面语言切换而改写。新增语言文件时必须与 `Strings.zh-CN.xaml` 保持相同的资源键集合。

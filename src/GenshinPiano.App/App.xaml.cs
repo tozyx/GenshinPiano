@@ -1,5 +1,6 @@
 using System.Windows;
 using GenshinPiano.Application.Workspace;
+using GenshinPiano.App.Services;
 using GenshinPiano.App.ViewModels;
 using GenshinPiano.Infrastructure.Serialization;
 
@@ -13,7 +14,9 @@ public partial class App : System.Windows.Application
 
         var serializer = new JsonScoreDocumentSerializer();
         var workspace = new ScoreWorkspace(serializer);
-        var viewModel = new MainWindowViewModel(workspace);
+        var themeService = new ThemeService();
+        var localizationService = new LocalizationService();
+        var viewModel = new MainWindowViewModel(workspace, themeService, localizationService);
 
         var mainWindow = new MainWindow
         {

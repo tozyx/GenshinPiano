@@ -10,72 +10,99 @@
         WindowStartupLocation="CenterScreen">
     <DockPanel>
         <Menu DockPanel.Dock="Top"
-              Background="{StaticResource PanelBackgroundBrush}"
-              Foreground="{StaticResource PrimaryTextBrush}"
-              BorderBrush="{StaticResource BorderBrush}"
+              Background="{DynamicResource PanelBackgroundBrush}"
+              Foreground="{DynamicResource PrimaryTextBrush}"
+              BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="0,0,0,1">
-            <MenuItem Header="文件(_F)"
+            <MenuItem Header="{DynamicResource Menu_File}"
+                      SubmenuOpened="MenuItem_OnSubmenuOpened"
                       Style="{StaticResource TopLevelMenuItemStyle}">
-                <MenuItem Header="新建(_N)" Command="{Binding NewCommand}" InputGestureText="Ctrl+N" />
-                <MenuItem Header="打开(_O)…" Command="{Binding OpenCommand}" InputGestureText="Ctrl+O" />
+                <MenuItem Header="{DynamicResource Menu_New}" Command="{Binding NewCommand}" InputGestureText="Ctrl+N" />
+                <MenuItem Header="{DynamicResource Menu_Open}" Command="{Binding OpenCommand}" InputGestureText="Ctrl+O" />
                 <Separator />
-                <MenuItem Header="另存为(_A)…" Command="{Binding SaveAsCommand}" InputGestureText="Ctrl+Shift+S" />
+                <MenuItem Header="{DynamicResource Menu_SaveAs}" Command="{Binding SaveAsCommand}" InputGestureText="Ctrl+Shift+S" />
                 <Separator />
-                <MenuItem Header="退出(_X)" Click="ExitMenuItem_OnClick" />
+                <MenuItem Header="{DynamicResource Menu_Exit}" Click="ExitMenuItem_OnClick" />
             </MenuItem>
-            <MenuItem Header="编辑(_E)"
+            <MenuItem Header="{DynamicResource Menu_Edit}"
                       Style="{StaticResource TopLevelMenuItemStyle}"
                       IsEnabled="False" />
-            <MenuItem Header="播放(_P)"
+            <MenuItem Header="{DynamicResource Menu_Play}"
                       Style="{StaticResource TopLevelMenuItemStyle}"
                       IsEnabled="False" />
-            <MenuItem Header="导入(_I)"
+            <MenuItem Header="{DynamicResource Menu_Import}"
                       Style="{StaticResource TopLevelMenuItemStyle}"
                       IsEnabled="False" />
+            <MenuItem Header="{DynamicResource Menu_Settings}"
+                      SubmenuOpened="MenuItem_OnSubmenuOpened"
+                      Style="{StaticResource TopLevelMenuItemStyle}">
+                <MenuItem Header="{DynamicResource Menu_Theme}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem Header="{DynamicResource Menu_ThemeDark}"
+                              Command="{Binding UseDarkThemeCommand}"
+                              IsCheckable="True"
+                              IsChecked="{Binding IsDarkTheme, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_ThemeLight}"
+                              Command="{Binding UseLightThemeCommand}"
+                              IsCheckable="True"
+                              IsChecked="{Binding IsLightTheme, Mode=OneWay}" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Menu_Language}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem Header="{DynamicResource Menu_LanguageChinese}"
+                              Command="{Binding UseChineseCommand}"
+                              IsCheckable="True"
+                              IsChecked="{Binding IsChinese, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_LanguageEnglish}"
+                              Command="{Binding UseEnglishCommand}"
+                              IsCheckable="True"
+                              IsChecked="{Binding IsEnglish, Mode=OneWay}" />
+                </MenuItem>
+            </MenuItem>
         </Menu>
 
         <StatusBar DockPanel.Dock="Bottom"
                    Padding="8,4"
-                   Background="{StaticResource PanelBackgroundBrush}"
-                   BorderBrush="{StaticResource BorderBrush}"
+                   Background="{DynamicResource PanelBackgroundBrush}"
+                   BorderBrush="{DynamicResource BorderBrush}"
                    BorderThickness="0,1,0,0">
             <StatusBarItem>
-                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource SecondaryTextBrush}" />
             </StatusBarItem>
         </StatusBar>
 
-        <Grid Background="{StaticResource AppBackgroundBrush}">
+        <Grid Background="{DynamicResource AppBackgroundBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
-                    Background="{StaticResource SidebarBackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrush}"
+                    Background="{DynamicResource SidebarBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0"
                     Padding="24">
                 <StackPanel>
                     <TextBlock Text="GenshinPiano"
                                FontSize="22"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="v3 开发预览"
+                    <TextBlock Text="{DynamicResource App_DevelopmentPreview}"
                                Margin="0,4,0,28"
-                               Foreground="{StaticResource AccentBrush}" />
+                               Foreground="{DynamicResource AccentBrush}" />
 
-                    <TextBlock Text="当前曲谱"
+                    <TextBlock Text="{DynamicResource Sidebar_CurrentScore}"
                                FontSize="12"
-                               Foreground="{StaticResource SecondaryTextBrush}" />
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
                     <TextBlock Text="{Binding ScoreTitle}"
                                Margin="0,6,0,20"
                                FontSize="16"
                                TextWrapping="Wrap" />
 
-                    <Button Content="新建曲谱"
+                    <Button Content="{DynamicResource Action_NewScore}"
                             Command="{Binding NewCommand}"
                             HorizontalAlignment="Left"
                             Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="打开 .gpiano"
+                    <Button Content="{DynamicResource Action_OpenGpiano}"
                             Command="{Binding OpenCommand}"
                             HorizontalAlignment="Left"
                             Margin="0,8,0,0"
@@ -84,36 +111,36 @@
             </Border>
 
             <Grid Grid.Column="1" Margin="32">
-                <Border Background="{StaticResource SurfaceBrush}"
-                        BorderBrush="{StaticResource BorderBrush}"
+                <Border Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
                         Padding="36">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
-                        <TextBlock Text="GENSHINPIANO · V3"
+                        <TextBlock Text="{DynamicResource Hero_Eyebrow}"
                                    Margin="0,0,0,12"
-                                   Foreground="{StaticResource AccentBrush}"
+                                   Foreground="{DynamicResource AccentBrush}"
                                    FontSize="12"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center" />
-                        <TextBlock Text="WPF 项目框架已建立"
+                        <TextBlock Text="{DynamicResource Hero_Title}"
                                    FontSize="26"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center" />
                         <TextBlock Margin="0,14,0,28"
-                                   Text="当前版本已经具备统一曲谱模型和 .gpiano JSON 的打开、校验与保存能力。下一阶段将在这里实现钢琴卷帘和 21 键预览。"
-                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   Text="{DynamicResource Hero_Description}"
+                                   Foreground="{DynamicResource SecondaryTextBrush}"
                                    FontSize="15"
                                    TextAlignment="Center"
                                    TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="新建曲谱"
+                            <Button Content="{DynamicResource Action_NewScore}"
                                     Command="{Binding NewCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" />
-                            <Button Content="打开文件"
+                            <Button Content="{DynamicResource Action_OpenFile}"
                                     Command="{Binding OpenCommand}"
                                     Style="{StaticResource AppButtonStyle}" />
-                            <Button Content="另存为"
+                            <Button Content="{DynamicResource Action_SaveAs}"
                                     Command="{Binding SaveAsCommand}"
                                     Style="{StaticResource AppButtonStyle}" />
                         </StackPanel>

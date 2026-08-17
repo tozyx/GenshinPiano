@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
+
+    <system:String x:Key="Menu_File">_File</system:String>
+    <system:String x:Key="Menu_New">_New</system:String>
+    <system:String x:Key="Menu_Open">_Open…</system:String>
+    <system:String x:Key="Menu_SaveAs">Save _As…</system:String>
+    <system:String x:Key="Menu_Exit">E_xit</system:String>
+    <system:String x:Key="Menu_Edit">_Edit</system:String>
+    <system:String x:Key="Menu_Play">_Play</system:String>
+    <system:String x:Key="Menu_Import">_Import</system:String>
+    <system:String x:Key="Menu_Settings">_Settings</system:String>
+    <system:String x:Key="Menu_Theme">Theme</system:String>
+    <system:String x:Key="Menu_ThemeDark">Dark</system:String>
+    <system:String x:Key="Menu_ThemeLight">Light</system:String>
+    <system:String x:Key="Menu_Language">Language</system:String>
+    <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
+    <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+
+    <system:String x:Key="App_DevelopmentPreview">v3 development preview</system:String>
+    <system:String x:Key="Sidebar_CurrentScore">Current score</system:String>
+    <system:String x:Key="Action_NewScore">New score</system:String>
+    <system:String x:Key="Action_OpenGpiano">Open .gpiano</system:String>
+    <system:String x:Key="Action_OpenFile">Open file</system:String>
+    <system:String x:Key="Action_SaveAs">Save as</system:String>
+    <system:String x:Key="Hero_Eyebrow">GENSHINPIANO · V3</system:String>
+    <system:String x:Key="Hero_Title">WPF application shell is ready</system:String>
+    <system:String x:Key="Hero_Description">This version provides a unified score model and can open, validate, and save .gpiano JSON files. The piano roll and 21-key preview will be implemented here next.</system:String>
+
+    <system:String x:Key="Score_Untitled">Untitled score</system:String>
+    <system:String x:Key="Status_Ready">Ready</system:String>
+    <system:String x:Key="Status_NewScoreCreated">New score created</system:String>
+    <system:String x:Key="Status_Opening">Opening score…</system:String>
+    <system:String x:Key="Status_Opened">Opened {0}</system:String>
+    <system:String x:Key="Status_OpenFailed">Open failed: {0}</system:String>
+    <system:String x:Key="Status_Saving">Saving score…</system:String>
+    <system:String x:Key="Status_Saved">Saved to {0}</system:String>
+    <system:String x:Key="Status_SaveFailed">Save failed: {0}</system:String>
+    <system:String x:Key="Status_ThemeChanged">Switched to the {0} theme</system:String>
+    <system:String x:Key="Status_LanguageChanged">Display language changed</system:String>
+
+    <system:String x:Key="Dialog_OpenTitle">Open a GenshinPiano score</system:String>
+    <system:String x:Key="Dialog_OpenFilter">GenshinPiano v3 score (*.gpiano)|*.gpiano|JSON file (*.json)|*.json|All files (*.*)|*.*</system:String>
+    <system:String x:Key="Dialog_SaveTitle">Save a GenshinPiano score</system:String>
+    <system:String x:Key="Dialog_SaveFilter">GenshinPiano v3 score (*.gpiano)|*.gpiano</system:String>
+</ResourceDictionary>

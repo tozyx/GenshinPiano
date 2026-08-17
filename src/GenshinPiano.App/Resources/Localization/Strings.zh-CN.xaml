@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <FontFamily x:Key="AppFontFamily">Microsoft YaHei UI</FontFamily>
+
+    <system:String x:Key="Menu_File">文件(_F)</system:String>
+    <system:String x:Key="Menu_New">新建(_N)</system:String>
+    <system:String x:Key="Menu_Open">打开(_O)…</system:String>
+    <system:String x:Key="Menu_SaveAs">另存为(_A)…</system:String>
+    <system:String x:Key="Menu_Exit">退出(_X)</system:String>
+    <system:String x:Key="Menu_Edit">编辑(_E)</system:String>
+    <system:String x:Key="Menu_Play">播放(_P)</system:String>
+    <system:String x:Key="Menu_Import">导入(_I)</system:String>
+    <system:String x:Key="Menu_Settings">设置(_S)</system:String>
+    <system:String x:Key="Menu_Theme">主题</system:String>
+    <system:String x:Key="Menu_ThemeDark">深色</system:String>
+    <system:String x:Key="Menu_ThemeLight">浅色</system:String>
+    <system:String x:Key="Menu_Language">语言</system:String>
+    <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
+    <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+
+    <system:String x:Key="App_DevelopmentPreview">v3 开发预览</system:String>
+    <system:String x:Key="Sidebar_CurrentScore">当前曲谱</system:String>
+    <system:String x:Key="Action_NewScore">新建曲谱</system:String>
+    <system:String x:Key="Action_OpenGpiano">打开 .gpiano</system:String>
+    <system:String x:Key="Action_OpenFile">打开文件</system:String>
+    <system:String x:Key="Action_SaveAs">另存为</system:String>
+    <system:String x:Key="Hero_Eyebrow">GENSHINPIANO · V3</system:String>
+    <system:String x:Key="Hero_Title">WPF 项目框架已建立</system:String>
+    <system:String x:Key="Hero_Description">当前版本已经具备统一曲谱模型和 .gpiano JSON 的打开、校验与保存能力。下一阶段将在这里实现钢琴卷帘和 21 键预览。</system:String>
+
+    <system:String x:Key="Score_Untitled">未命名曲谱</system:String>
+    <system:String x:Key="Status_Ready">就绪</system:String>
+    <system:String x:Key="Status_NewScoreCreated">已新建曲谱</system:String>
+    <system:String x:Key="Status_Opening">正在打开曲谱…</system:String>
+    <system:String x:Key="Status_Opened">已打开 {0}</system:String>
+    <system:String x:Key="Status_OpenFailed">打开失败：{0}</system:String>
+    <system:String x:Key="Status_Saving">正在保存曲谱…</system:String>
+    <system:String x:Key="Status_Saved">已保存到 {0}</system:String>
+    <system:String x:Key="Status_SaveFailed">保存失败：{0}</system:String>
+    <system:String x:Key="Status_ThemeChanged">已切换为{0}主题</system:String>
+    <system:String x:Key="Status_LanguageChanged">界面语言已切换</system:String>
+
+    <system:String x:Key="Dialog_OpenTitle">打开 GenshinPiano 曲谱</system:String>
+    <system:String x:Key="Dialog_OpenFilter">GenshinPiano v3 曲谱 (*.gpiano)|*.gpiano|JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*</system:String>
+    <system:String x:Key="Dialog_SaveTitle">保存 GenshinPiano 曲谱</system:String>
+    <system:String x:Key="Dialog_SaveFilter">GenshinPiano v3 曲谱 (*.gpiano)|*.gpiano</system:String>
+</ResourceDictionary>

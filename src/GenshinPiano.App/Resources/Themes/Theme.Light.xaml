@@ -1,0 +1,17 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.Light.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#2563A9" />
+    <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#DCEBFA" />
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F4F6F8" />
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#E9EDF2" />
+    <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#C7CFD9" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#171A1F" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#4F5B69" />
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#737E8C" />
+</ResourceDictionary>
