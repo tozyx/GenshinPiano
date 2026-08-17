@@ -1,3 +1,4 @@
+using System.IO;
 using GenshinPiano.App.Commands;
 using GenshinPiano.Application.Workspace;
 using Microsoft.Win32;

@@ -6,10 +6,16 @@
         Height="720"
         MinWidth="900"
         MinHeight="560"
+        Style="{StaticResource AppWindowStyle}"
         WindowStartupLocation="CenterScreen">
     <DockPanel>
-        <Menu DockPanel.Dock="Top" Background="{StaticResource PanelBackgroundBrush}">
-            <MenuItem Header="文件(_F)">
+        <Menu DockPanel.Dock="Top"
+              Background="{StaticResource PanelBackgroundBrush}"
+              Foreground="{StaticResource PrimaryTextBrush}"
+              BorderBrush="{StaticResource BorderBrush}"
+              BorderThickness="0,0,0,1">
+            <MenuItem Header="文件(_F)"
+                      Style="{StaticResource TopLevelMenuItemStyle}">
                 <MenuItem Header="新建(_N)" Command="{Binding NewCommand}" InputGestureText="Ctrl+N" />
                 <MenuItem Header="打开(_O)…" Command="{Binding OpenCommand}" InputGestureText="Ctrl+O" />
                 <Separator />
@@ -17,35 +23,45 @@
                 <Separator />
                 <MenuItem Header="退出(_X)" Click="ExitMenuItem_OnClick" />
             </MenuItem>
-            <MenuItem Header="编辑(_E)" IsEnabled="False" />
-            <MenuItem Header="播放(_P)" IsEnabled="False" />
-            <MenuItem Header="导入(_I)" IsEnabled="False" />
+            <MenuItem Header="编辑(_E)"
+                      Style="{StaticResource TopLevelMenuItemStyle}"
+                      IsEnabled="False" />
+            <MenuItem Header="播放(_P)"
+                      Style="{StaticResource TopLevelMenuItemStyle}"
+                      IsEnabled="False" />
+            <MenuItem Header="导入(_I)"
+                      Style="{StaticResource TopLevelMenuItemStyle}"
+                      IsEnabled="False" />
         </Menu>
 
-        <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PanelBackgroundBrush}">
+        <StatusBar DockPanel.Dock="Bottom"
+                   Padding="8,4"
+                   Background="{StaticResource PanelBackgroundBrush}"
+                   BorderBrush="{StaticResource BorderBrush}"
+                   BorderThickness="0,1,0,0">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource SecondaryTextBrush}" />
             </StatusBarItem>
         </StatusBar>
 
-        <Grid>
+        <Grid Background="{StaticResource AppBackgroundBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
-                    Background="{StaticResource PanelBackgroundBrush}"
-                    BorderBrush="#2B3038"
+                    Background="{StaticResource SidebarBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="0,0,1,0"
-                    Padding="20">
+                    Padding="24">
                 <StackPanel>
                     <TextBlock Text="GenshinPiano"
                                FontSize="22"
                                FontWeight="SemiBold" />
                     <TextBlock Text="v3 开发预览"
                                Margin="0,4,0,28"
-                               Foreground="{StaticResource SecondaryTextBrush}" />
+                               Foreground="{StaticResource AccentBrush}" />
 
                     <TextBlock Text="当前曲谱"
                                FontSize="12"
@@ -55,16 +71,33 @@
                                FontSize="16"
                                TextWrapping="Wrap" />
 
-                    <Button Content="新建曲谱" Command="{Binding NewCommand}" HorizontalAlignment="Left" />
-                    <Button Content="打开 .gpiano" Command="{Binding OpenCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                    <Button Content="新建曲谱"
+                            Command="{Binding NewCommand}"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource PrimaryButtonStyle}" />
+                    <Button Content="打开 .gpiano"
+                            Command="{Binding OpenCommand}"
+                            HorizontalAlignment="Left"
+                            Margin="0,8,0,0"
+                            Style="{StaticResource AppButtonStyle}" />
                 </StackPanel>
             </Border>
 
             <Grid Grid.Column="1" Margin="32">
-                <Border BorderBrush="#2B3038" BorderThickness="1" CornerRadius="8" Padding="36">
+                <Border Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="36">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                        <TextBlock Text="GENSHINPIANO · V3"
+                                   Margin="0,0,0,12"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
                         <TextBlock Text="WPF 项目框架已建立"
-                                   FontSize="28"
+                                   FontSize="26"
                                    FontWeight="SemiBold"
                                    HorizontalAlignment="Center" />
                         <TextBlock Margin="0,14,0,28"
@@ -74,9 +107,15 @@
                                    TextAlignment="Center"
                                    TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="新建曲谱" Command="{Binding NewCommand}" />
-                            <Button Content="打开文件" Command="{Binding OpenCommand}" />
-                            <Button Content="另存为" Command="{Binding SaveAsCommand}" />
+                            <Button Content="新建曲谱"
+                                    Command="{Binding NewCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" />
+                            <Button Content="打开文件"
+                                    Command="{Binding OpenCommand}"
+                                    Style="{StaticResource AppButtonStyle}" />
+                            <Button Content="另存为"
+                                    Command="{Binding SaveAsCommand}"
+                                    Style="{StaticResource AppButtonStyle}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

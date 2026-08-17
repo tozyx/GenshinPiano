@@ -2,21 +2,54 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        <SolidColorBrush x:Key="AccentBrush" Color="#6EA8FE" />
-        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#111318" />
-        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#191C22" />
-        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F2F3F5" />
-        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A7ADB7" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- .NET 10 内置的 Windows 11 Fluent 深色主题。 -->
+                <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.Dark.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style TargetType="Window">
-            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
-            <Setter Property="FontFamily" Value="Segoe UI" />
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="14,7" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="Cursor" Value="Hand" />
-        </Style>
+            <SolidColorBrush x:Key="AccentBrush" Color="#7EB6FF" />
+            <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#253D59" />
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#20252D" />
+            <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#181C23" />
+            <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#1C2129" />
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#282E38" />
+            <SolidColorBrush x:Key="BorderBrush" Color="#414B59" />
+            <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F4F6F9" />
+            <SolidColorBrush x:Key="SecondaryTextBrush" Color="#BAC3CF" />
+            <SolidColorBrush x:Key="MutedTextBrush" Color="#8993A1" />
+
+            <Style x:Key="AppWindowStyle" TargetType="{x:Type Window}">
+                <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                <Setter Property="FontFamily" Value="Segoe UI" />
+            </Style>
+
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            </Style>
+
+            <Style x:Key="AppButtonStyle"
+                   TargetType="Button"
+                   BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="Padding" Value="14,7" />
+                <Setter Property="Margin" Value="0,0,8,0" />
+                <Setter Property="MinHeight" Value="36" />
+                <Setter Property="Cursor" Value="Hand" />
+            </Style>
+
+            <Style x:Key="PrimaryButtonStyle"
+                   TargetType="Button"
+                   BasedOn="{StaticResource AppButtonStyle}">
+                <Setter Property="Background" Value="{StaticResource AccentSurfaceBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            </Style>
+
+            <Style x:Key="TopLevelMenuItemStyle"
+                   TargetType="MenuItem"
+                   BasedOn="{StaticResource {x:Type MenuItem}}">
+                <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
