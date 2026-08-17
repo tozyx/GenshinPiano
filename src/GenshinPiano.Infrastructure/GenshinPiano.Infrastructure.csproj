@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GenshinPiano.Core\GenshinPiano.Core.csproj" />
+    <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
+  </ItemGroup>
+</Project>

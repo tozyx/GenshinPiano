@@ -1,11 +1,33 @@
-### Example user template template
-### Example user template
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
 
-# IntelliJ project files
-.idea
-*.iml
-out
-gen
-/song.zip
-/Start GenshinPiano.exe
-/META-INF/
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Test and coverage output
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Packages and publish output
+packages/
+publish/
+*.nupkg
+
+# OS-generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local application data
+*.gpiano.autosave
+appsettings.local.json

@@ -1,0 +1,86 @@
+<Window x:Class="GenshinPiano.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding WindowTitle}"
+        Width="1180"
+        Height="720"
+        MinWidth="900"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Background="{StaticResource PanelBackgroundBrush}">
+            <MenuItem Header="文件(_F)">
+                <MenuItem Header="新建(_N)" Command="{Binding NewCommand}" InputGestureText="Ctrl+N" />
+                <MenuItem Header="打开(_O)…" Command="{Binding OpenCommand}" InputGestureText="Ctrl+O" />
+                <Separator />
+                <MenuItem Header="另存为(_A)…" Command="{Binding SaveAsCommand}" InputGestureText="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="退出(_X)" Click="ExitMenuItem_OnClick" />
+            </MenuItem>
+            <MenuItem Header="编辑(_E)" IsEnabled="False" />
+            <MenuItem Header="播放(_P)" IsEnabled="False" />
+            <MenuItem Header="导入(_I)" IsEnabled="False" />
+        </Menu>
+
+        <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PanelBackgroundBrush}">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="#2B3038"
+                    BorderThickness="0,0,1,0"
+                    Padding="20">
+                <StackPanel>
+                    <TextBlock Text="GenshinPiano"
+                               FontSize="22"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="v3 开发预览"
+                               Margin="0,4,0,28"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+
+                    <TextBlock Text="当前曲谱"
+                               FontSize="12"
+                               Foreground="{StaticResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding ScoreTitle}"
+                               Margin="0,6,0,20"
+                               FontSize="16"
+                               TextWrapping="Wrap" />
+
+                    <Button Content="新建曲谱" Command="{Binding NewCommand}" HorizontalAlignment="Left" />
+                    <Button Content="打开 .gpiano" Command="{Binding OpenCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Column="1" Margin="32">
+                <Border BorderBrush="#2B3038" BorderThickness="1" CornerRadius="8" Padding="36">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                        <TextBlock Text="WPF 项目框架已建立"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Margin="0,14,0,28"
+                                   Text="当前版本已经具备统一曲谱模型和 .gpiano JSON 的打开、校验与保存能力。下一阶段将在这里实现钢琴卷帘和 21 键预览。"
+                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                   FontSize="15"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="新建曲谱" Command="{Binding NewCommand}" />
+                            <Button Content="打开文件" Command="{Binding OpenCommand}" />
+                            <Button Content="另存为" Command="{Binding SaveAsCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</Window>

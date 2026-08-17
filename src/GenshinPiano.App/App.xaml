@@ -1,0 +1,22 @@
+<Application x:Class="GenshinPiano.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#6EA8FE" />
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#111318" />
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#191C22" />
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F2F3F5" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A7ADB7" />
+
+        <Style TargetType="Window">
+            <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Application.Resources>
+</Application>
