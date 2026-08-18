@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "title": "\u5929\u6C14\u4E4B\u5B50\u7B80",
+    "author": "",
+    "arranger": "",
+    "description": "Converted from the legacy .GenshinPiano format."
+  },
+  "timing": {
+    "ppq": 480,
+    "tempoMap": [
+      {
+        "tick": 0,
+        "bpm": 120
+      }
+    ],
+    "timeSignatures": [
+      {
+        "tick": 0,
+        "numerator": 4,
+        "denominator": 4
+      }
+    ]
+  },
+  "tracks": [
+    {
+      "id": "legacy-main",
+      "name": "Legacy score",
+      "instrument": "windsong-lyre",
+      "isMuted": false,
+      "notes": [
+        {
+          "id": "5d91cc2b-4398-46c2-b499-4ff0b3d7fb22",
+          "pitch": 69,
+          "startTick": 240,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "092988d1-5baa-42fd-9334-49641d83e3ff",
+          "pitch": 67,
+          "startTick": 360,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "2185c126-7192-4d79-a051-34842c41dd44",
+          "pitch": 60,
+          "startTick": 600,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "00d52f82-3d77-4650-a0d0-a4e292400a7c",
+          "pitch": 60,
+          "startTick": 720,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "6519cf06-1219-410d-8eee-a0b810db5aa3",
+          "pitch": 62,
+          "startTick": 960,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "3db4a869-6412-48ea-a003-bc3f98dc53d6",
+          "pitch": 60,
+          "startTick": 1080,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "2f8c297c-082e-441a-bcaa-4bdf6eebc1fe",
+          "pitch": 55,
+          "startTick": 1320,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "dcb7bd98-f9b4-4682-b156-629923a9e392",
+          "pitch": 55,
+          "startTick": 1440,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "baaadac8-a849-443b-a461-f4ebaa5626f9",
+          "pitch": 55,
+          "startTick": 1680,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "e38b8304-53ae-4db5-984f-17bb4113a648",
+          "pitch": 64,
+          "startTick": 1800,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "bb3ab403-d6fa-4745-adac-6b5f19906e49",
+          "pitch": 62,
+          "startTick": 1920,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "d9bff308-fc4a-46b4-a316-6e6314d43053",
+          "pitch": 62,
+          "startTick": 2040,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "7b7dc58e-755c-4a6c-abe6-d5acd3b2aa08",
+          "pitch": 62,
+          "startTick": 2160,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "5bc2acce-96a3-4184-835a-7ccc3e9c9f59",
+          "pitch": 60,
+          "startTick": 2280,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "d6c9acb8-9ef8-400c-a57e-e0ddf54b3f1b",
+          "pitch": 60,
+          "startTick": 2400,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "c824295d-d93a-4e47-94e0-b35c0fbebbe6",
+          "pitch": 60,
+          "startTick": 2520,
+          "durationTick": 288,
+          "rhythmTick": 360,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "61879271-042a-4e30-82bc-f77b6095d7fd",
+          "pitch": 67,
+          "startTick": 3240,
+          "durationTick": 384,
+          "rhythmTick": 480,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "5a1a9ff3-335d-4d1f-a136-483c26718d0a",
+          "pitch": 60,
+          "startTick": 5160,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "ce0592f0-1c24-43c5-8a92-d928879bce78",
+          "pitch": 59,
+          "startTick": 5280,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "d01e2b71-a9b3-42c0-9507-aa3e7a0462d3",
+          "pitch": 60,
+          "startTick": 5400,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "68cdfcab-557a-4725-acb1-b7c0dd44cb31",
+          "pitch": 59,
+          "startTick": 5520,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "ba4842bb-49d4-4b28-9d3e-fc8600114b93",
+          "pitch": 60,
+          "startTick": 5640,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "15bbddeb-e447-4e6e-94a8-6caf67f5923c",
+          "pitch": 59,
+          "startTick": 5880,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "1ecac6a8-8401-40bd-a571-072588d29559",
+          "pitch": 55,
+          "startTick": 6000,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "0eb648a7-b468-4e96-bc74-52b386344798",
+          "pitch": 55,
+          "startTick": 6960,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "f3b4af77-8941-4a57-9a06-6a1e1d3c8bb5",
+          "pitch": 60,
+          "startTick": 7080,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "e4d851a0-b3bd-488c-b608-216e3108d3f6",
+          "pitch": 59,
+          "startTick": 7200,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "4d8e8d82-5e47-494d-9caa-292c9c354206",
+          "pitch": 60,
+          "startTick": 7320,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "0088ea21-74cd-49ee-816e-b01fe6978322",
+          "pitch": 59,
+          "startTick": 7440,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "a3a64477-70b6-432c-9e3e-1d4304106dac",
+          "pitch": 60,
+          "startTick": 7560,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "899b6fee-2b9a-49e7-b0e6-7650502a4560",
+          "pitch": 62,
+          "startTick": 7800,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "cfddd5a7-3da8-48b8-9073-bb75d5858b8d",
+          "pitch": 60,
+          "startTick": 7920,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "a348d95a-5f00-434d-a700-039aa0bbdef9",
+          "pitch": 60,
+          "startTick": 9000,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "2d7c6fee-bdac-4ec8-9377-6a2a5e219972",
+          "pitch": 59,
+          "startTick": 9120,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "2152ab6d-f861-416e-9757-c02f00b50f4e",
+          "pitch": 60,
+          "startTick": 9240,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "01852065-eb64-4186-a27f-9e1644323df5",
+          "pitch": 59,
+          "startTick": 9360,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "948c8db3-0fba-4e59-be4f-f6ca61b54584",
+          "pitch": 60,
+          "startTick": 9480,
+          "durationTick": 192,
+          "rhythmTick": 240,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "01410f31-2139-45e5-af24-412fbf43559a",
+          "pitch": 59,
+          "startTick": 9720,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "9589dcd1-5a59-4194-9357-7f06fa6d604f",
+          "pitch": 55,
+          "startTick": 9840,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        },
+        {
+          "id": "4a918834-2997-4b49-ba77-ac09dd9103c6",
+          "pitch": 55,
+          "startTick": 10800,
+          "durationTick": 96,
+          "rhythmTick": 120,
+          "durationMode": "auto",
+          "articulation": "natural",
+          "gateRatio": 0.8,
+          "velocity": 80
+        }
+      ]
+    }
+  ],
+  "playback": {
+    "transpose": 0,
+    "mapping": "genshin-21-key",
+    "outOfRangePolicy": "reject"
+  }
+}
