@@ -4,6 +4,7 @@
         xmlns:controls="clr-namespace:GenshinPiano.App.Controls"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{Binding WindowTitle}"
+        Icon="Assets/Icons/GenshinPiano.ico"
         Width="1180"
         Height="720"
         MinWidth="900"
@@ -80,9 +81,11 @@
                 <StackPanel Margin="12,0,0,0"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
-                    <TextBlock Text="♪"
-                               Margin="0,0,8,0"
-                               Foreground="{DynamicResource AccentBrush}" />
+                    <Image Width="18"
+                           Height="18"
+                           Margin="0,0,8,0"
+                           Source="Assets/Icons/GenshinPiano.ico"
+                           Stretch="Uniform" />
                     <TextBlock Text="{Binding WindowTitle}"
                                VerticalAlignment="Center"
                                FontSize="12"
@@ -91,10 +94,17 @@
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <Button Content="—"
-                            ToolTip="{DynamicResource Window_Minimize}"
+                    <Button ToolTip="{DynamicResource Window_Minimize}"
                             Style="{StaticResource WindowCaptionButtonStyle}"
-                            Click="MinimizeButton_OnClick" />
+                            Click="MinimizeButton_OnClick">
+                        <Grid Width="14" Height="14">
+                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"
+                                  Data="M 2.5,7.5 H 11.5" />
+                        </Grid>
+                    </Button>
                     <Button x:Name="MaximizeRestoreButton"
                             ToolTip="{DynamicResource Window_Maximize}"
                             Style="{StaticResource WindowCaptionButtonStyle}"
@@ -111,10 +121,17 @@
                                   Data="M 4.5,2.5 H 11.5 V 9.5 M 2.5,4.5 H 9.5 V 11.5 H 2.5 Z" />
                         </Grid>
                     </Button>
-                    <Button Content="✕"
-                            ToolTip="{DynamicResource Window_Close}"
+                    <Button ToolTip="{DynamicResource Window_Close}"
                             Style="{StaticResource WindowCloseButtonStyle}"
-                            Click="CloseButton_OnClick" />
+                            Click="CloseButton_OnClick">
+                        <Grid Width="14" Height="14">
+                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"
+                                  Data="M 3,3 L 11,11 M 11,3 L 3,11" />
+                        </Grid>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>

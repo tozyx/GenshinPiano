@@ -386,7 +386,8 @@
                               Width="94"
                               Height="28"
                               Margin="8,0,0,0"
-                              SelectedIndex="0">
+                              SelectedIndex="0"
+                              SelectionChanged="AuditionInstrumentComboBox_OnSelectionChanged">
                         <ComboBoxItem Content="{DynamicResource Audition_Piano}" Tag="0" />
                         <ComboBoxItem Content="{DynamicResource Audition_Harp}" Tag="46" />
                         <ComboBoxItem Content="{DynamicResource Audition_Organ}" Tag="19" />

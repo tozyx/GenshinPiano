@@ -76,8 +76,29 @@ public sealed class PianoRollKeyboard : Control
                 new Point(RenderSize.Width, y + RowHeight));
 
             var entry = Rows[row];
-            var label = PitchLabelFormatter.FormatKeyboardLabel(entry.Pitch, entry.Key, LabelMode);
-            var text = new FormattedText(
+            var pitchText = CreateLabelText(
+                PitchLabelFormatter.FormatPitchLabel(entry.Pitch, LabelMode),
+                pixelsPerDip);
+            var textY = y + Math.Max(2, (RowHeight - pitchText.Height) / 2);
+            if (PitchLabelFormatter.IncludesKey(LabelMode))
+            {
+                const double pitchColumnLeft = 9;
+                const double keyColumnLeft = 40;
+                drawingContext.DrawText(
+                    pitchText,
+                    new Point(pitchColumnLeft, textY));
+                drawingContext.DrawText(
+                    CreateLabelText(entry.Key.ToString(), pixelsPerDip),
+                    new Point(keyColumnLeft, textY));
+            }
+            else
+            {
+                drawingContext.DrawText(pitchText, new Point(9, textY));
+            }
+        }
+    }
+
+    private FormattedText CreateLabelText(string label, double pixelsPerDip) => new(
                 label,
                 System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
@@ -85,9 +106,6 @@ public sealed class PianoRollKeyboard : Control
                 10.5,
                 Foreground,
                 pixelsPerDip);
-            drawingContext.DrawText(text, new Point(9, y + Math.Max(2, (RowHeight - text.Height) / 2)));
-        }
-    }
 
     private static Brush WithOpacity(Brush? source, double opacity)
     {
@@ -100,12 +118,18 @@ public sealed class PianoRollKeyboard : Control
 
 public static class PitchLabelFormatter
 {
-    public static string FormatKeyboardLabel(int pitch, GenshinKey key, PitchLabelMode mode)
-    {
-        var pitchLabel = mode is PitchLabelMode.LetterWithKey or PitchLabelMode.LetterOnly
+    public static bool IncludesKey(PitchLabelMode mode) =>
+        mode is PitchLabelMode.LetterWithKey or PitchLabelMode.NumberedWithKey;
+
+    public static string FormatPitchLabel(int pitch, PitchLabelMode mode) =>
+        mode is PitchLabelMode.LetterWithKey or PitchLabelMode.LetterOnly
             ? GetLetterPitch(pitch)
             : GetNumberedPitch(pitch);
-        return mode is PitchLabelMode.LetterWithKey or PitchLabelMode.NumberedWithKey
+
+    public static string FormatKeyboardLabel(int pitch, GenshinKey key, PitchLabelMode mode)
+    {
+        var pitchLabel = FormatPitchLabel(pitch, mode);
+        return IncludesKey(mode)
             ? $"{pitchLabel}  {key}"
             : pitchLabel;
     }

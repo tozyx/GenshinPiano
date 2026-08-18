@@ -194,6 +194,9 @@ public partial class PianoRollEditor : UserControl
             }
 
             NaturalSustainCheckBox.IsChecked = editor.NaturalSustain;
+            SelectComboItem(AuditionInstrumentComboBox, editor.AuditionInstrument.ToString());
+            AuditionVolumeSlider.Value = editor.AuditionVolume / 100d;
+            SetAuditionVolume(editor.AuditionVolume);
         }
         finally
         {
@@ -354,6 +357,18 @@ public partial class PianoRollEditor : UserControl
         }
     }
 
+    private void AuditionInstrumentComboBox_OnSelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e)
+    {
+        if (!_loadingSettings &&
+            AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
+            int.TryParse(tag, out var instrument))
+        {
+            _settingsService?.SetAuditionInstrument(instrument);
+        }
+    }
+
     private void AuditionVolumeButton_OnClick(object sender, RoutedEventArgs e)
     {
         AuditionVolumePopup.IsOpen = !AuditionVolumePopup.IsOpen;
@@ -452,6 +467,7 @@ public partial class PianoRollEditor : UserControl
     private void EndAuditionVolumeDrag()
     {
         _isDraggingAuditionVolume = false;
+        _settingsService?.SetAuditionVolume((int)Math.Round(AuditionVolumeSlider.Value * 100));
         if (AuditionVolumeSlider.IsMouseCaptured)
         {
             AuditionVolumeSlider.ReleaseMouseCapture();

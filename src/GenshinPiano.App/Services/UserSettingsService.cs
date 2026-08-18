@@ -6,11 +6,20 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public int Version { get; init; } = CurrentVersion;
 
     public EditorUserSettings Editor { get; init; } = new();
+
+    public AppearanceUserSettings Appearance { get; init; } = new();
+}
+
+public sealed record AppearanceUserSettings
+{
+    public string Theme { get; init; } = nameof(AppTheme.Dark);
+
+    public string Language { get; init; } = nameof(AppLanguage.SimplifiedChinese);
 }
 
 public sealed record EditorUserSettings
@@ -22,6 +31,10 @@ public sealed record EditorUserSettings
     public string PitchLabelMode { get; init; } = "LetterWithKey";
 
     public bool NaturalSustain { get; init; } = true;
+
+    public int AuditionInstrument { get; init; }
+
+    public int AuditionVolume { get; init; } = 80;
 }
 
 public interface IUserSettingsService
@@ -35,6 +48,14 @@ public interface IUserSettingsService
     void SetPitchLabelMode(string value);
 
     void SetNaturalSustain(bool value);
+
+    void SetTheme(AppTheme value);
+
+    void SetLanguage(AppLanguage value);
+
+    void SetAuditionInstrument(int value);
+
+    void SetAuditionVolume(int value);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -66,7 +87,7 @@ public sealed class UserSettingsService : IUserSettingsService
             return;
         }
 
-        Update(Current.Editor with { SnapDivision = value });
+        Update(Current with { Editor = Current.Editor with { SnapDivision = value } });
     }
 
     public void SetDefaultArticulation(string value)
@@ -76,7 +97,7 @@ public sealed class UserSettingsService : IUserSettingsService
             return;
         }
 
-        Update(Current.Editor with { DefaultArticulation = value });
+        Update(Current with { Editor = Current.Editor with { DefaultArticulation = value } });
     }
 
     public void SetPitchLabelMode(string value)
@@ -86,14 +107,50 @@ public sealed class UserSettingsService : IUserSettingsService
             return;
         }
 
-        Update(Current.Editor with { PitchLabelMode = value });
+        Update(Current with { Editor = Current.Editor with { PitchLabelMode = value } });
     }
 
     public void SetNaturalSustain(bool value)
     {
         if (Current.Editor.NaturalSustain != value)
         {
-            Update(Current.Editor with { NaturalSustain = value });
+            Update(Current with { Editor = Current.Editor with { NaturalSustain = value } });
+        }
+    }
+
+    public void SetTheme(AppTheme value)
+    {
+        var name = value.ToString();
+        if (Current.Appearance.Theme != name)
+        {
+            Update(Current with { Appearance = Current.Appearance with { Theme = name } });
+        }
+    }
+
+    public void SetLanguage(AppLanguage value)
+    {
+        var name = value.ToString();
+        if (Current.Appearance.Language != name)
+        {
+            Update(Current with { Appearance = Current.Appearance with { Language = name } });
+        }
+    }
+
+    public void SetAuditionInstrument(int value)
+    {
+        value = Math.Clamp(value, 0, 127);
+        if (Current.Editor.AuditionInstrument != value)
+        {
+            Update(Current with { Editor = Current.Editor with { AuditionInstrument = value } });
+        }
+    }
+
+    public void SetAuditionVolume(int value)
+    {
+        value = Math.Clamp(value, 0, 100);
+        if (Current.Editor.AuditionVolume != value)
+        {
+            Update(Current with { Editor = Current.Editor with { AuditionVolume = value } });
         }
     }
 
@@ -123,9 +180,9 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
-    private void Update(EditorUserSettings editor)
+    private void Update(UserSettings settings)
     {
-        Current = Current with { Editor = editor };
+        Current = settings;
         Save();
     }
 
@@ -158,8 +215,11 @@ public sealed class UserSettingsService : IUserSettingsService
     {
         var defaults = new EditorUserSettings();
         var editor = settings?.Editor ?? defaults;
+        var appearanceDefaults = new AppearanceUserSettings();
+        var appearance = settings?.Appearance ?? appearanceDefaults;
         return new UserSettings
         {
+            Version = UserSettings.CurrentVersion,
             Editor = editor with
             {
                 SnapDivision = editor.SnapDivision is 1 or 2 or 4 or 8
@@ -171,6 +231,17 @@ public sealed class UserSettingsService : IUserSettingsService
                 PitchLabelMode = IsValidPitchLabelMode(editor.PitchLabelMode)
                     ? editor.PitchLabelMode
                     : defaults.PitchLabelMode,
+                AuditionInstrument = Math.Clamp(editor.AuditionInstrument, 0, 127),
+                AuditionVolume = Math.Clamp(editor.AuditionVolume, 0, 100),
+            },
+            Appearance = appearance with
+            {
+                Theme = Enum.TryParse<AppTheme>(appearance.Theme, out var theme)
+                    ? theme.ToString()
+                    : appearanceDefaults.Theme,
+                Language = Enum.TryParse<AppLanguage>(appearance.Language, out var language)
+                    ? language.ToString()
+                    : appearanceDefaults.Language,
             },
         };
     }

@@ -45,9 +45,18 @@ public partial class App : System.Windows.Application
 
         var serializer = new JsonScoreDocumentSerializer();
         var workspace = new ScoreWorkspace(serializer);
+        UserSettingsService = new UserSettingsService();
         var themeService = new ThemeService();
         var localizationService = new LocalizationService();
-        UserSettingsService = new UserSettingsService();
+        var appearance = UserSettingsService.Current.Appearance;
+        if (Enum.TryParse<AppTheme>(appearance.Theme, out var configuredTheme))
+        {
+            themeService.Apply(configuredTheme);
+        }
+        if (Enum.TryParse<AppLanguage>(appearance.Language, out var configuredLanguage))
+        {
+            localizationService.Apply(configuredLanguage);
+        }
         try
         {
             _midiOutput = new WindowsMidiOutput();
@@ -70,6 +79,7 @@ public partial class App : System.Windows.Application
             workspace,
             themeService,
             localizationService,
+            UserSettingsService,
             playbackService,
             legacyConversionService,
             midiScoreImporter);

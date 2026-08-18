@@ -6,9 +6,13 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>GenshinPiano</AssemblyName>
     <RootNamespace>GenshinPiano.App</RootNamespace>
+    <ApplicationIcon>Assets\Icons\GenshinPiano.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Icons\GenshinPiano.ico" />
   </ItemGroup>
 </Project>

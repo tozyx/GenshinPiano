@@ -15,6 +15,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly ScoreWorkspace _workspace;
     private readonly IThemeService _themeService;
     private readonly ILocalizationService _localizationService;
+    private readonly IUserSettingsService _userSettingsService;
     private readonly ScorePlaybackService _playbackService;
     private readonly LegacyBatchConversionService _legacyConversionService;
     private readonly IMidiScoreImporter _midiScoreImporter;
@@ -32,6 +33,7 @@ public sealed class MainWindowViewModel : ObservableObject
         ScoreWorkspace workspace,
         IThemeService themeService,
         ILocalizationService localizationService,
+        IUserSettingsService userSettingsService,
         ScorePlaybackService playbackService,
         LegacyBatchConversionService legacyConversionService,
         IMidiScoreImporter midiScoreImporter)
@@ -39,6 +41,7 @@ public sealed class MainWindowViewModel : ObservableObject
         _workspace = workspace;
         _themeService = themeService;
         _localizationService = localizationService;
+        _userSettingsService = userSettingsService;
         _playbackService = playbackService;
         _legacyConversionService = legacyConversionService;
         _midiScoreImporter = midiScoreImporter;
@@ -485,6 +488,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
 
         _themeService.Apply(theme);
+        _userSettingsService.SetTheme(theme);
         var themeNameKey = theme == AppTheme.Dark ? "Menu_ThemeDark" : "Menu_ThemeLight";
         SetStatus("Status_ThemeChanged", _localizationService.GetString(themeNameKey));
     }
@@ -497,6 +501,7 @@ public sealed class MainWindowViewModel : ObservableObject
         }
 
         _localizationService.Apply(language);
+        _userSettingsService.SetLanguage(language);
         SetStatus("Status_LanguageChanged");
     }
 
