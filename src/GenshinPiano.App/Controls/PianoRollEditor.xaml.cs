@@ -1,0 +1,702 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Threading;
+using GenshinPiano.App.Services;
+using GenshinPiano.Application.Playback;
+using GenshinPiano.Core.Scores;
+
+namespace GenshinPiano.App.Controls;
+
+public partial class PianoRollEditor : UserControl
+{
+    private static readonly double[] RhythmFactors = [4, 2, 1, 0.5, 0.25, 0.125];
+
+    private bool _updatingArticulation;
+    private bool _updatingNoteEditor;
+    private bool _loadingSettings;
+    private IUserSettingsService? _settingsService;
+    private ScoreAuditionService? _auditionService;
+    private CancellationTokenSource? _auditionCancellation;
+    private bool _auditionIsPlaying;
+    private bool _auditionPauseRequested;
+    private Window? _ownerWindow;
+    private long _auditionTick;
+
+    public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
+        nameof(Score),
+        typeof(ScoreDocument),
+        typeof(PianoRollEditor),
+        new FrameworkPropertyMetadata(
+            null,
+            FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
+            OnScoreChanged));
+
+    public PianoRollEditor()
+    {
+        InitializeComponent();
+        Surface.SelectedNoteChanged += Surface_OnSelectedNoteChanged;
+        Surface.NoteEditRequested += Surface_OnNoteEditRequested;
+        Surface.PlaybackSeekRequested += Surface_OnPlaybackSeekRequested;
+        Loaded += PianoRollEditor_OnLoaded;
+        Unloaded += PianoRollEditor_OnUnloaded;
+    }
+
+    public ScoreDocument? Score
+    {
+        get => (ScoreDocument?)GetValue(ScoreProperty);
+        set => SetValue(ScoreProperty, value);
+    }
+
+    private void ZoomIn_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomIn();
+
+    private void ZoomOut_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomOut();
+
+    private void VerticalZoomIn_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomRowsIn();
+
+    private void VerticalZoomOut_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomRowsOut();
+
+    private void Undo_OnClick(object sender, RoutedEventArgs e) => Surface.UndoEdit();
+
+    private void Redo_OnClick(object sender, RoutedEventArgs e) => Surface.RedoEdit();
+
+    private void SnapComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (Surface is null || SnapComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !int.TryParse(tag, out var division))
+        {
+            return;
+        }
+
+        Surface.SnapDivision = division;
+        if (!_loadingSettings)
+        {
+            _settingsService?.SetSnapDivision(division);
+        }
+    }
+
+    private void EditorScrollViewer_OnScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.VerticalChange != 0)
+        {
+            KeyboardScrollViewer.ScrollToVerticalOffset(e.VerticalOffset);
+        }
+    }
+
+    private void ArticulationComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingArticulation || _loadingSettings || Surface is null ||
+            ArticulationComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !Enum.TryParse<NoteArticulation>(tag, out var articulation))
+        {
+            return;
+        }
+
+        Surface.DefaultArticulation = articulation;
+        _settingsService?.SetDefaultArticulation(articulation.ToString());
+        Surface.SetSelectedArticulation(articulation);
+    }
+
+    private void Surface_OnSelectedNoteChanged(object? sender, EventArgs e)
+    {
+        var articulation = Surface.SelectedArticulation;
+        if (articulation is null)
+        {
+            return;
+        }
+
+        _updatingArticulation = true;
+        var matchingItem = ArticulationComboBox.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(
+                item.Tag as string,
+                articulation.Value.ToString(),
+                StringComparison.Ordinal));
+        if (matchingItem is not null)
+        {
+            ArticulationComboBox.SelectedItem = matchingItem;
+        }
+        _updatingArticulation = false;
+
+        if (NoteEditorPopup.IsOpen && Surface.SelectedNote is { } note && Score is { } score)
+        {
+            SelectRhythmOption(note.RhythmTick ?? note.DurationTick, score.Timing.Ppq);
+        }
+    }
+
+    private void PitchLabelComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (KeyboardLabels is null ||
+            PitchLabelComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !Enum.TryParse<PitchLabelMode>(tag, out var mode))
+        {
+            return;
+        }
+
+        KeyboardLabels.LabelMode = mode;
+        if (!_loadingSettings)
+        {
+            _settingsService?.SetPitchLabelMode(mode.ToString());
+        }
+    }
+
+    private void PianoRollEditor_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_ownerWindow is null && Window.GetWindow(this) is { } ownerWindow)
+        {
+            _ownerWindow = ownerWindow;
+            _ownerWindow.PreviewMouseDown += OwnerWindow_OnPreviewMouseDown;
+            _ownerWindow.Deactivated += OwnerWindow_OnDeactivated;
+        }
+
+        if (_settingsService is not null ||
+            System.Windows.Application.Current is not GenshinPiano.App.App app)
+        {
+            return;
+        }
+
+        _settingsService = app.UserSettingsService;
+        _auditionService = app.AuditionService;
+        AuditionPlayButton.IsEnabled = _auditionService is not null;
+        AuditionStopButton.IsEnabled = _auditionService is not null;
+        AuditionVolumeButton.IsEnabled = _auditionService is not null;
+        SetAuditionVolume(AuditionVolumeSlider.Value * 100);
+        var editor = _settingsService.Current.Editor;
+        _loadingSettings = true;
+        try
+        {
+            SelectComboItem(SnapComboBox, editor.SnapDivision.ToString());
+            Surface.SnapDivision = editor.SnapDivision;
+
+            SelectComboItem(ArticulationComboBox, editor.DefaultArticulation);
+            if (Enum.TryParse<NoteArticulation>(editor.DefaultArticulation, out var articulation))
+            {
+                Surface.DefaultArticulation = articulation;
+            }
+
+            SelectComboItem(PitchLabelComboBox, editor.PitchLabelMode);
+            if (Enum.TryParse<PitchLabelMode>(editor.PitchLabelMode, out var pitchLabelMode))
+            {
+                KeyboardLabels.LabelMode = pitchLabelMode;
+            }
+        }
+        finally
+        {
+            _loadingSettings = false;
+        }
+    }
+
+    private void PianoRollEditor_OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _auditionPauseRequested = false;
+        _auditionCancellation?.Cancel();
+        AuditionVolumePopup.IsOpen = false;
+        if (_ownerWindow is not null)
+        {
+            _ownerWindow.PreviewMouseDown -= OwnerWindow_OnPreviewMouseDown;
+            _ownerWindow.Deactivated -= OwnerWindow_OnDeactivated;
+            _ownerWindow = null;
+        }
+    }
+
+    private static void OnScoreChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+    {
+        var editor = (PianoRollEditor)dependencyObject;
+        if (e.NewValue is ScoreDocument score && editor.BpmTextBox is not null)
+        {
+            var bpm = score.Timing.TempoMap.OrderBy(change => change.Tick).FirstOrDefault()?.Bpm ?? 120;
+            editor.BpmTextBox.Text = bpm.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+        }
+    }
+
+    private void Surface_OnPlaybackSeekRequested(object? sender, PlaybackSeekRequestedEventArgs e)
+    {
+        if (_auditionIsPlaying)
+        {
+            PauseAudition();
+        }
+
+        _auditionTick = e.Tick;
+        UpdatePlaybackCursor(e.Tick);
+        UpdateAuditionPosition(e.Tick, TimeSpan.Zero);
+    }
+
+    private async void AuditionPlayButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_auditionIsPlaying)
+        {
+            PauseAudition();
+            return;
+        }
+
+        if (_auditionService is null || Score is null)
+        {
+            return;
+        }
+
+        var plan = GenshinPiano.Core.Playback.ScoreAuditionPlanner.Create(Score);
+        if (plan.DurationTick <= 0)
+        {
+            return;
+        }
+
+        if (_auditionTick >= plan.DurationTick)
+        {
+            _auditionTick = 0;
+        }
+
+        var instrument = AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
+                         int.TryParse(tag, out var program)
+            ? program
+            : 0;
+        var cancellation = new CancellationTokenSource();
+        _auditionCancellation = cancellation;
+        _auditionPauseRequested = false;
+        _auditionIsPlaying = true;
+        BpmTextBox.IsEnabled = false;
+        Surface.IsEditingEnabled = false;
+        NoteEditorPopup.IsOpen = false;
+        AuditionPlayButton.Content = CreatePauseIcon();
+        var progress = new Progress<AuditionProgress>(item =>
+        {
+            _auditionTick = item.Tick;
+            Surface.PlaybackTick = item.Tick;
+            UpdatePlaybackCursor(item.Tick);
+            UpdateAuditionPosition(item.Tick, item.Position);
+            FollowPlaybackHead(item.Tick);
+        });
+
+        try
+        {
+            await _auditionService.PlayAsync(Score, _auditionTick, instrument, progress, cancellation.Token);
+            _auditionTick = plan.DurationTick;
+        }
+        catch (OperationCanceledException)
+        {
+            // Pause and stop both cancel the active local-audition pass.
+        }
+        finally
+        {
+            if (ReferenceEquals(_auditionCancellation, cancellation))
+            {
+                _auditionCancellation = null;
+                _auditionIsPlaying = false;
+                BpmTextBox.IsEnabled = true;
+                Surface.IsEditingEnabled = true;
+                AuditionPlayButton.Content = "▶";
+                if (!_auditionPauseRequested)
+                {
+                    _auditionTick = 0;
+                    Surface.PlaybackTick = 0;
+                    UpdatePlaybackCursor(0);
+                    UpdateAuditionPosition(0, TimeSpan.Zero);
+                }
+            }
+
+            cancellation.Dispose();
+        }
+    }
+
+    private void AuditionStopButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _auditionPauseRequested = false;
+        _auditionCancellation?.Cancel();
+        _auditionTick = 0;
+        Surface.PlaybackTick = 0;
+        UpdatePlaybackCursor(0);
+        UpdateAuditionPosition(0, TimeSpan.Zero);
+    }
+
+    private void PauseAudition()
+    {
+        _auditionPauseRequested = true;
+        _auditionCancellation?.Cancel();
+    }
+
+    private void AuditionVolumeButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        AuditionVolumePopup.IsOpen = !AuditionVolumePopup.IsOpen;
+    }
+
+    private void OwnerWindow_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (AuditionVolumePopup.IsOpen && !AuditionVolumeButton.IsMouseOver)
+        {
+            AuditionVolumePopup.IsOpen = false;
+        }
+    }
+
+    private void OwnerWindow_OnDeactivated(object? sender, EventArgs e) =>
+        AuditionVolumePopup.IsOpen = false;
+
+    private void AuditionVolumeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        SetAuditionVolume(e.NewValue * 100);
+    }
+
+    private void SetAuditionVolume(double percentage)
+    {
+        _auditionService?.SetVolume((int)Math.Round(Math.Clamp(percentage, 0, 100) * 1.27));
+    }
+
+    private static FrameworkElement CreatePauseIcon()
+    {
+        var panel = new Grid
+        {
+            Width = 11,
+            Height = 13,
+        };
+        panel.ColumnDefinitions.Add(new ColumnDefinition());
+        panel.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+        panel.ColumnDefinitions.Add(new ColumnDefinition());
+
+        var leftBar = new Border
+        {
+            Width = 3,
+            Height = 13,
+            CornerRadius = new CornerRadius(0.7),
+        };
+        var rightBar = new Border
+        {
+            Width = 3,
+            Height = 13,
+            CornerRadius = new CornerRadius(0.7),
+        };
+        leftBar.SetResourceReference(Border.BackgroundProperty, "PrimaryTextBrush");
+        rightBar.SetResourceReference(Border.BackgroundProperty, "PrimaryTextBrush");
+        Grid.SetColumn(leftBar, 0);
+        Grid.SetColumn(rightBar, 2);
+        panel.Children.Add(leftBar);
+        panel.Children.Add(rightBar);
+        return panel;
+    }
+
+    private void BpmTextBox_OnLostFocus(object sender, RoutedEventArgs e) => ApplyBpm();
+
+    private void BpmClearButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        BpmTextBox.Clear();
+        BpmTextBox.Focus();
+        e.Handled = true;
+    }
+
+    private void BpmTextBox_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            ApplyBpm();
+            Surface.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void ApplyBpm()
+    {
+        if (Score is null || !double.TryParse(
+                BpmTextBox.Text,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.CurrentCulture,
+                out var bpm))
+        {
+            return;
+        }
+
+        bpm = Math.Clamp(bpm, 20, 300);
+        BpmTextBox.Text = bpm.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+        var tempoMap = Score.Timing.TempoMap
+            .Where(change => change.Tick != 0)
+            .Prepend(new TempoChange { Tick = 0, Bpm = bpm })
+            .OrderBy(change => change.Tick)
+            .ToList();
+        SetCurrentValue(ScoreProperty, Score with
+        {
+            Timing = Score.Timing with { TempoMap = tempoMap },
+        });
+    }
+
+    private void UpdateAuditionPosition(long tick, TimeSpan position)
+    {
+        var ppq = Score?.Timing.Ppq ?? 480;
+        var bar = tick / (ppq * 4L) + 1;
+        var beat = tick % (ppq * 4L) / ppq + 1;
+        AuditionPositionText.Text = $"{bar}.{beat}  {position:mm\\:ss}";
+    }
+
+    private void UpdatePlaybackCursor(long tick)
+    {
+        if (Score is null || PlaybackCursor.RenderTransform is not System.Windows.Media.TranslateTransform transform)
+        {
+            return;
+        }
+
+        transform.X = tick * Surface.PixelsPerBeat / Score.Timing.Ppq;
+        PlaybackCursor.Visibility = Visibility.Visible;
+    }
+
+    private void FollowPlaybackHead(long tick)
+    {
+        if (Score is null)
+        {
+            return;
+        }
+
+        var x = tick * Surface.PixelsPerBeat / Score.Timing.Ppq;
+        var followPosition = EditorScrollViewer.ViewportWidth * 0.72;
+        var followEdge = EditorScrollViewer.HorizontalOffset + followPosition;
+        if (x > followEdge)
+        {
+            EditorScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - followPosition));
+        }
+    }
+
+    private static void SelectComboItem(ComboBox comboBox, string tag)
+    {
+        var item = comboBox.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(candidate => string.Equals(
+                candidate.Tag as string,
+                tag,
+                StringComparison.Ordinal));
+        if (item is not null)
+        {
+            comboBox.SelectedItem = item;
+        }
+    }
+
+    private void Root_OnPreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (!EditorScrollViewer.IsMouseOver && !KeyboardScrollViewer.IsMouseOver)
+        {
+            return;
+        }
+
+        var modifiers = System.Windows.Input.Keyboard.Modifiers;
+        if ((modifiers & (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift)) ==
+            (System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift))
+        {
+            if (e.Delta > 0)
+            {
+                Surface.ZoomRowsIn();
+            }
+            else
+            {
+                Surface.ZoomRowsOut();
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if ((modifiers & System.Windows.Input.ModifierKeys.Shift) != 0 &&
+            (modifiers & System.Windows.Input.ModifierKeys.Control) == 0)
+        {
+            EditorScrollViewer.ScrollToHorizontalOffset(
+                Math.Max(0, EditorScrollViewer.HorizontalOffset - e.Delta));
+            e.Handled = true;
+        }
+    }
+
+    private void Surface_OnNoteEditRequested(object? sender, NoteEditRequestedEventArgs e)
+    {
+        var score = Score;
+        if (score is null)
+        {
+            return;
+        }
+
+        _updatingNoteEditor = true;
+        try
+        {
+            var ppq = score.Timing.Ppq;
+            var rhythmTick = e.Note.RhythmTick ?? e.Note.DurationTick;
+            SelectRhythmOption(rhythmTick, ppq);
+
+            var gateRatio = e.Note.GateRatio ?? (e.Note.DurationMode == DurationMode.Auto
+                ? NoteDurationCalculator.GetGateRatio(e.Note.Articulation)
+                : e.Note.DurationTick / (double)Math.Max(1, rhythmTick));
+            GateRatioSlider.Value = Math.Clamp(
+                gateRatio * 100,
+                NoteDurationCalculator.MinimumGateRatio * 100,
+                NoteDurationCalculator.MaximumGateRatio * 100);
+        }
+        finally
+        {
+            _updatingNoteEditor = false;
+        }
+
+        NoteEditorPopup.HorizontalOffset = e.Anchor.X;
+        NoteEditorPopup.VerticalOffset = e.Anchor.Y;
+        NoteEditorPopup.IsOpen = true;
+        UpdateGateRatioDescription(GateRatioSlider.Value);
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => GateRatioSlider.Focus());
+    }
+
+    private void GateRatioSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (GateRatioText is null || GateRatioDescription is null)
+        {
+            return;
+        }
+
+        UpdateGateRatioDescription(e.NewValue);
+        ApplyNoteEditorValue();
+    }
+
+    private void UpdateGateRatioDescription(double value)
+    {
+        var percentage = (int)Math.Round(value);
+        GateRatioText.Text = $"{percentage}%";
+        var descriptionKey = percentage switch
+        {
+            <= 35 => "Editor_GateHintStaccato",
+            <= 60 => "Editor_GateHintDetached",
+            <= 87 => "Editor_GateHintNatural",
+            _ => "Editor_GateHintLegato",
+        };
+        GateRatioDescription.Text = System.Windows.Application.Current.TryFindResource(descriptionKey) as string
+            ?? string.Empty;
+    }
+
+    private void GatePreset_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag } &&
+            double.TryParse(tag, System.Globalization.NumberStyles.Number,
+                System.Globalization.CultureInfo.InvariantCulture, out var percentage))
+        {
+            GateRatioSlider.Value = percentage;
+        }
+    }
+
+    private void RhythmLengthListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        ApplyNoteEditorValue();
+
+    private void ApplyNoteEditorValue()
+    {
+        if (_updatingNoteEditor || !NoteEditorPopup.IsOpen ||
+            Score is null || RhythmLengthListBox.SelectedItem is not ListBoxItem item)
+        {
+            return;
+        }
+
+        var rhythmTick = GetRhythmTick(item, Score.Timing.Ppq);
+        var gateRatio = GateRatioSlider.Value / 100d;
+        Surface.UpdateSelectedDuration(rhythmTick, gateRatio);
+    }
+
+    private void NoteEditorPopup_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (ShortcutKeyResolver.Resolve(e) == Key.Escape)
+        {
+            NoteEditorPopup.IsOpen = false;
+            e.Handled = true;
+        }
+    }
+
+    private void Root_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_auditionIsPlaying)
+        {
+            return;
+        }
+
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
+        {
+            return;
+        }
+
+        var step = ShortcutKeyResolver.Resolve(e) switch
+        {
+            Key.OemOpenBrackets => 1,
+            Key.OemCloseBrackets => -1,
+            _ => 0,
+        };
+        if (step == 0)
+        {
+            return;
+        }
+
+        ApplyRhythmShortcut(step);
+        e.Handled = true;
+    }
+
+    private void Root_OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (_auditionIsPlaying)
+        {
+            return;
+        }
+
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
+        {
+            return;
+        }
+
+        var step = e.Text switch
+        {
+            "[" or "［" or "【" => 1,
+            "]" or "］" or "】" => -1,
+            _ => 0,
+        };
+        if (step == 0)
+        {
+            return;
+        }
+
+        ApplyRhythmShortcut(step);
+        e.Handled = true;
+    }
+
+    private void ApplyRhythmShortcut(int step)
+    {
+        if (Surface.SelectedNote is { } note && Score is { } score)
+        {
+            var currentTick = note.RhythmTick ?? note.DurationTick;
+            var currentIndex = FindClosestRhythmIndex(currentTick, score.Timing.Ppq);
+            var nextIndex = Math.Clamp(currentIndex + step, 0, RhythmFactors.Length - 1);
+            var gateRatio = note.GateRatio ?? (note.DurationMode == DurationMode.Auto
+                ? NoteDurationCalculator.GetGateRatio(note.Articulation)
+                : note.DurationTick / (double)Math.Max(1, currentTick));
+            gateRatio = Math.Clamp(
+                gateRatio,
+                NoteDurationCalculator.MinimumGateRatio,
+                NoteDurationCalculator.MaximumGateRatio);
+
+            if (nextIndex != currentIndex)
+            {
+                Surface.UpdateSelectedDuration(
+                    FactorToTick(RhythmFactors[nextIndex], score.Timing.Ppq),
+                    gateRatio);
+                SelectRhythmOption(nextIndex);
+            }
+        }
+        else
+        {
+            var currentIndex = SnapComboBox.SelectedIndex;
+            var nextIndex = Math.Clamp(currentIndex + step, 0, SnapComboBox.Items.Count - 1);
+            SnapComboBox.SelectedIndex = nextIndex;
+        }
+    }
+
+    private void SelectRhythmOption(long rhythmTick, int ppq) =>
+        SelectRhythmOption(FindClosestRhythmIndex(rhythmTick, ppq));
+
+    private void SelectRhythmOption(int index)
+    {
+        _updatingNoteEditor = true;
+        RhythmLengthListBox.SelectedIndex = index;
+        _updatingNoteEditor = false;
+    }
+
+    private static int FindClosestRhythmIndex(long rhythmTick, int ppq) =>
+        Enumerable.Range(0, RhythmFactors.Length)
+            .MinBy(index => Math.Abs(FactorToTick(RhythmFactors[index], ppq) - rhythmTick));
+
+    private static long GetRhythmTick(FrameworkElement item, int ppq)
+    {
+        var factorText = item.Tag as string ?? "1";
+        var factor = double.Parse(factorText, System.Globalization.CultureInfo.InvariantCulture);
+        return FactorToTick(factor, ppq);
+    }
+
+    private static long FactorToTick(double factor, int ppq) =>
+        Math.Max(1, checked((long)Math.Round(ppq * factor)));
+}

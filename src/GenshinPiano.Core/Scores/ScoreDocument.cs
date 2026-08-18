@@ -88,7 +88,30 @@ public sealed record NoteEvent
 
     public long DurationTick { get; init; }
 
+    public long? RhythmTick { get; init; }
+
+    public DurationMode DurationMode { get; init; } = DurationMode.Explicit;
+
+    public NoteArticulation Articulation { get; init; } = NoteArticulation.Natural;
+
+    public double? GateRatio { get; init; }
+
     public int Velocity { get; init; } = 80;
+}
+
+public enum DurationMode
+{
+    Explicit,
+    Auto,
+}
+
+public enum NoteArticulation
+{
+    Natural,
+    Legato,
+    Detached,
+    Staccato,
+    Custom,
 }
 
 public sealed record PlaybackSettings

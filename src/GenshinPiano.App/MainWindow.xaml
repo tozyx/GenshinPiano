@@ -1,20 +1,129 @@
 <Window x:Class="GenshinPiano.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:GenshinPiano.App.Controls"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{Binding WindowTitle}"
         Width="1180"
         Height="720"
         MinWidth="900"
         MinHeight="560"
         Style="{StaticResource AppWindowStyle}"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Closing="MainWindow_OnClosing"
+        PreviewKeyDown="MainWindow_OnPreviewKeyDown"
+        StateChanged="MainWindow_OnStateChanged"
         WindowStartupLocation="CenterScreen">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="36"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style x:Key="WindowCaptionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="CaptionBackground" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CaptionBackground" Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CaptionBackground" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="WindowCloseButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource WindowCaptionButtonStyle}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C42B1C" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Window.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding TogglePlaybackCommand}" />
+        <KeyBinding Key="F5" Modifiers="Shift" Command="{Binding StopCommand}" />
+    </Window.InputBindings>
     <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Height="36"
+                Background="{DynamicResource PanelBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="12,0,0,0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="♪"
+                               Margin="0,0,8,0"
+                               Foreground="{DynamicResource AccentBrush}" />
+                    <TextBlock Text="{Binding WindowTitle}"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Content="—"
+                            ToolTip="{DynamicResource Window_Minimize}"
+                            Style="{StaticResource WindowCaptionButtonStyle}"
+                            Click="MinimizeButton_OnClick" />
+                    <Button x:Name="MaximizeRestoreButton"
+                            ToolTip="{DynamicResource Window_Maximize}"
+                            Style="{StaticResource WindowCaptionButtonStyle}"
+                            Click="MaximizeRestoreButton_OnClick">
+                        <Grid Width="14" Height="14">
+                            <Path x:Name="MaximizeIcon"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.2"
+                                  Data="M 2.5,2.5 H 11.5 V 11.5 H 2.5 Z" />
+                            <Path x:Name="RestoreIcon"
+                                  Visibility="Collapsed"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.2"
+                                  Data="M 4.5,2.5 H 11.5 V 9.5 M 2.5,4.5 H 9.5 V 11.5 H 2.5 Z" />
+                        </Grid>
+                    </Button>
+                    <Button Content="✕"
+                            ToolTip="{DynamicResource Window_Close}"
+                            Style="{StaticResource WindowCloseButtonStyle}"
+                            Click="CloseButton_OnClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <Menu DockPanel.Dock="Top"
               Background="{DynamicResource PanelBackgroundBrush}"
               Foreground="{DynamicResource PrimaryTextBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
               BorderThickness="0,0,0,1">
-            <MenuItem Header="{DynamicResource Menu_File}"
+            <MenuItem x:Name="FileMenuItem"
+                      Header="{DynamicResource Menu_File}"
                       SubmenuOpened="MenuItem_OnSubmenuOpened"
                       Style="{StaticResource TopLevelMenuItemStyle}">
                 <MenuItem Header="{DynamicResource Menu_New}" Command="{Binding NewCommand}" InputGestureText="Ctrl+N" />
@@ -27,12 +136,12 @@
             <MenuItem Header="{DynamicResource Menu_Edit}"
                       Style="{StaticResource TopLevelMenuItemStyle}"
                       IsEnabled="False" />
-            <MenuItem Header="{DynamicResource Menu_Play}"
-                      Style="{StaticResource TopLevelMenuItemStyle}"
-                      IsEnabled="False" />
             <MenuItem Header="{DynamicResource Menu_Import}"
-                      Style="{StaticResource TopLevelMenuItemStyle}"
-                      IsEnabled="False" />
+                      SubmenuOpened="MenuItem_OnSubmenuOpened"
+                      Style="{StaticResource TopLevelMenuItemStyle}">
+                <MenuItem Header="{DynamicResource Menu_ImportLegacyBatch}"
+                          Command="{Binding ConvertLegacyScoresCommand}" />
+            </MenuItem>
             <MenuItem Header="{DynamicResource Menu_Settings}"
                       SubmenuOpened="MenuItem_OnSubmenuOpened"
                       Style="{StaticResource TopLevelMenuItemStyle}">
@@ -82,69 +191,171 @@
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="0,0,1,0"
                     Padding="24">
-                <StackPanel>
-                    <TextBlock Text="GenshinPiano"
-                               FontSize="22"
-                               FontWeight="SemiBold" />
-                    <TextBlock Text="{DynamicResource App_DevelopmentPreview}"
-                               Margin="0,4,0,28"
-                               Foreground="{DynamicResource AccentBrush}" />
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Text="{DynamicResource Sidebar_CurrentScore}"
-                               FontSize="12"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
-                    <TextBlock Text="{Binding ScoreTitle}"
-                               Margin="0,6,0,20"
-                               FontSize="16"
-                               TextWrapping="Wrap" />
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="GenshinPiano"
+                                   FontSize="22"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{DynamicResource App_DevelopmentPreview}"
+                                   Margin="0,4,0,28"
+                                   Foreground="{DynamicResource AccentBrush}" />
 
-                    <Button Content="{DynamicResource Action_NewScore}"
-                            Command="{Binding NewCommand}"
-                            HorizontalAlignment="Left"
-                            Style="{StaticResource PrimaryButtonStyle}" />
-                    <Button Content="{DynamicResource Action_OpenGpiano}"
-                            Command="{Binding OpenCommand}"
-                            HorizontalAlignment="Left"
-                            Margin="0,8,0,0"
-                            Style="{StaticResource AppButtonStyle}" />
-                </StackPanel>
+                        <TextBlock Text="{DynamicResource Sidebar_CurrentScore}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+                        <TextBlock Text="{Binding ScoreTitle}"
+                                   Margin="0,6,0,20"
+                                   FontSize="16"
+                                   TextWrapping="Wrap" />
+
+                        <Button Content="{DynamicResource Action_NewScore}"
+                                Command="{Binding NewCommand}"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource PrimaryButtonStyle}" />
+                        <Button Content="{DynamicResource Action_OpenGpiano}"
+                                Command="{Binding OpenCommand}"
+                                HorizontalAlignment="Left"
+                                Margin="0,8,0,0"
+                                Style="{StaticResource AppButtonStyle}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <Button Panel.ZIndex="1"
+                                Command="{Binding TogglePlaybackCommand}"
+                                Style="{StaticResource PlaybackIconButtonStyle}">
+                            <Button.ToolTip>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{DynamicResource Action_Play}" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsPlaying}" Value="True" />
+                                                        <Condition Binding="{Binding IsPlaybackPaused}" Value="False" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Text" Value="{DynamicResource Action_Pause}" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Button.ToolTip>
+                            <Grid Width="20" Height="20">
+                                <Path Fill="{DynamicResource PrimaryTextBrush}"
+                                      Stretch="Uniform"
+                                      Data="M 3,1 L 18,10 L 3,19 Z">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsPlaying}" Value="True" />
+                                                        <Condition Binding="{Binding IsPlaybackPaused}" Value="False" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Fill="{DynamicResource PrimaryTextBrush}"
+                                      Stretch="Uniform"
+                                      Data="M 2,1 H 7 V 19 H 2 Z M 13,1 H 18 V 19 H 13 Z">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsPlaying}" Value="True" />
+                                                        <Condition Binding="{Binding IsPlaybackPaused}" Value="False" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Grid>
+                        </Button>
+
+                        <Border Margin="8,0,0,0" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TranslateTransform X="-44" />
+                            </Border.RenderTransform>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Opacity" Value="0" />
+                                    <Setter Property="IsHitTestVisible" Value="False" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                            <Setter Property="Opacity" Value="1" />
+                                            <Setter Property="IsHitTestVisible" Value="True" />
+                                            <Setter Property="RenderTransform">
+                                                <Setter.Value>
+                                                    <TranslateTransform X="0" />
+                                                </Setter.Value>
+                                            </Setter>
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="0" To="1"
+                                                                         Duration="0:0:0.18" />
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                         From="-44" To="0"
+                                                                         Duration="0:0:0.22">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                         From="1" To="0"
+                                                                         Duration="0:0:0.14" />
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
+                                                                         From="0" To="-44"
+                                                                         Duration="0:0:0.16" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Button Command="{Binding StopCommand}"
+                                    ToolTip="{DynamicResource Action_Stop}"
+                                    Style="{StaticResource SecondaryPlaybackIconButtonStyle}">
+                                <Path Width="16" Height="16"
+                                      Fill="{DynamicResource PrimaryTextBrush}"
+                                      Stretch="Uniform"
+                                      Data="M 2,2 H 18 V 18 H 2 Z" />
+                            </Button>
+                        </Border>
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <Grid Grid.Column="1" Margin="32">
+            <Grid Grid.Column="1" Margin="16">
                 <Border Background="{DynamicResource SurfaceBrush}"
                         BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
-                        Padding="36">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
-                        <TextBlock Text="{DynamicResource Hero_Eyebrow}"
-                                   Margin="0,0,0,12"
-                                   Foreground="{DynamicResource AccentBrush}"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" />
-                        <TextBlock Text="{DynamicResource Hero_Title}"
-                                   FontSize="26"
-                                   FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" />
-                        <TextBlock Margin="0,14,0,28"
-                                   Text="{DynamicResource Hero_Description}"
-                                   Foreground="{DynamicResource SecondaryTextBrush}"
-                                   FontSize="15"
-                                   TextAlignment="Center"
-                                   TextWrapping="Wrap" />
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Button Content="{DynamicResource Action_NewScore}"
-                                    Command="{Binding NewCommand}"
-                                    Style="{StaticResource PrimaryButtonStyle}" />
-                            <Button Content="{DynamicResource Action_OpenFile}"
-                                    Command="{Binding OpenCommand}"
-                                    Style="{StaticResource AppButtonStyle}" />
-                            <Button Content="{DynamicResource Action_SaveAs}"
-                                    Command="{Binding SaveAsCommand}"
-                                    Style="{StaticResource AppButtonStyle}" />
-                        </StackPanel>
-                    </StackPanel>
+                        ClipToBounds="True">
+                    <controls:PianoRollEditor Score="{Binding CurrentScore, Mode=TwoWay}" />
                 </Border>
             </Grid>
         </Grid>

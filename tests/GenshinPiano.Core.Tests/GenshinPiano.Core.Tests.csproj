@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -14,5 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\GenshinPiano.Core\GenshinPiano.Core.csproj" />
+    <ProjectReference Include="..\..\src\GenshinPiano.Application\GenshinPiano.Application.csproj" />
+    <ProjectReference Include="..\..\src\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

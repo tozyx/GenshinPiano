@@ -62,6 +62,24 @@ public static class ScoreValidator
                 errors.Add($"音符 {note.Id} 的起始位置或时长无效。" );
             }
 
+            if (note.RhythmTick is <= 0)
+            {
+                errors.Add($"音符 {note.Id} 的节奏时值必须大于零。" );
+            }
+
+            if (note.GateRatio is < NoteDurationCalculator.MinimumGateRatio or
+                > NoteDurationCalculator.MaximumGateRatio)
+            {
+                errors.Add($"音符 {note.Id} 的持续比例必须在 10% 到 95% 之间。" );
+            }
+
+            if (note.DurationMode == DurationMode.Auto &&
+                note.Articulation == NoteArticulation.Custom &&
+                note.GateRatio is null)
+            {
+                errors.Add($"音符 {note.Id} 使用自定义演奏法时必须指定持续比例。" );
+            }
+
             if (note.Velocity is < 1 or > 127)
             {
                 errors.Add($"音符 {note.Id} 的力度超出 1 到 127。" );

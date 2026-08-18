@@ -32,7 +32,7 @@ public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
         }
 
         EnsureValid(score);
-        return score;
+        return NoteDurationCalculator.ApplyAutoDurations(score);
     }
 
     public async Task SaveAsync(
@@ -41,7 +41,8 @@ public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(score);
-        EnsureValid(score);
+        var materializedScore = NoteDurationCalculator.ApplyAutoDurations(score);
+        EnsureValid(materializedScore);
 
         var fullPath = Path.GetFullPath(path);
         var directory = Path.GetDirectoryName(fullPath);
@@ -50,7 +51,7 @@ public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
             Directory.CreateDirectory(directory);
         }
 
-        var json = JsonSerializer.Serialize(score, SerializerOptions);
+        var json = JsonSerializer.Serialize(materializedScore, SerializerOptions);
         await File.WriteAllTextAsync(
             fullPath,
             json + Environment.NewLine,
