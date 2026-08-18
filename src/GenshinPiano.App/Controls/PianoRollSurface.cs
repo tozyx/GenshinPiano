@@ -174,6 +174,42 @@ public sealed class PianoRollSurface : Control
 
     public bool CanRedo => _redo.Count > 0;
 
+    public int OptimizeAllNoteDurations()
+    {
+        if (!IsEditingEnabled || Score is null)
+        {
+            return 0;
+        }
+
+        var noteCount = Score.Tracks.Sum(track => track.Notes.Count);
+        if (noteCount == 0)
+        {
+            return 0;
+        }
+
+        Commit(NoteDurationCalculator.OptimizeAllDurations(Score));
+        SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
+        return noteCount;
+    }
+
+    public int GenerateShortPressDurations()
+    {
+        if (!IsEditingEnabled || Score is null)
+        {
+            return 0;
+        }
+
+        var noteCount = Score.Tracks.Sum(track => track.Notes.Count);
+        if (noteCount == 0)
+        {
+            return 0;
+        }
+
+        Commit(NoteDurationCalculator.GenerateShortPressDurations(Score));
+        SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
+        return noteCount;
+    }
+
     public void UndoEdit()
     {
         if (IsEditingEnabled)

@@ -44,4 +44,12 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer)
         CurrentScore = score;
         IsDirty = true;
     }
+
+    public void ImportScore(ScoreDocument score)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        CurrentScore = score;
+        CurrentPath = null;
+        IsDirty = true;
+    }
 }

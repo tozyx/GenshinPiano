@@ -41,7 +41,7 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="22"
+                            CornerRadius="10"
                             RenderTransformOrigin="0.5,0.5">
                         <Border.RenderTransform>
                             <ScaleTransform ScaleX="1" ScaleY="1" />

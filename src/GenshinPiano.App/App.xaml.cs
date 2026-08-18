@@ -6,6 +6,7 @@ using GenshinPiano.App.Services;
 using GenshinPiano.App.ViewModels;
 using GenshinPiano.Infrastructure.Input;
 using GenshinPiano.Infrastructure.Legacy;
+using GenshinPiano.Infrastructure.Midi;
 using GenshinPiano.Infrastructure.Serialization;
 
 namespace GenshinPiano.App;
@@ -18,6 +19,8 @@ public partial class App : System.Windows.Application
     public IUserSettingsService UserSettingsService { get; private set; } = null!;
 
     public ScoreAuditionService? AuditionService { get; private set; }
+
+    public MidiBatchConversionService MidiBatchConversionService { get; private set; } = null!;
 
     public App()
     {
@@ -61,12 +64,15 @@ public partial class App : System.Windows.Application
         var legacyConversionService = new LegacyBatchConversionService(
             new LegacyGenshinPianoImporter(),
             serializer);
+        var midiScoreImporter = new DryWetMidiScoreImporter();
+        MidiBatchConversionService = new MidiBatchConversionService(midiScoreImporter, serializer);
         var viewModel = new MainWindowViewModel(
             workspace,
             themeService,
             localizationService,
             playbackService,
-            legacyConversionService);
+            legacyConversionService,
+            midiScoreImporter);
 
         var mainWindow = new MainWindow
         {

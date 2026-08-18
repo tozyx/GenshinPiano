@@ -17,7 +17,7 @@ public sealed record ScoreAuditionPlan(
 
 public static class ScoreAuditionPlanner
 {
-    public static ScoreAuditionPlan Create(ScoreDocument score)
+    public static ScoreAuditionPlan Create(ScoreDocument score, bool naturalSustain = false)
     {
         ArgumentNullException.ThrowIfNull(score);
         var changes = new Dictionary<long, ChangeBuilder>();
@@ -30,12 +30,52 @@ public static class ScoreAuditionPlanner
                 Next = index + 1 < starts.Length ? (long?)starts[index + 1] : null,
             }).ToDictionary(item => item.Tick, item => item.Next);
 
+            var nextSamePitchStarts = track.Notes
+                .GroupBy(note => note.Pitch)
+                .SelectMany(group =>
+                {
+                    var pitchStarts = group.Select(note => note.StartTick)
+                        .Distinct()
+                        .Order()
+                        .ToArray();
+                    var nextByStart = pitchStarts.Select((tick, index) => new
+                    {
+                        Tick = tick,
+                        Next = index + 1 < pitchStarts.Length
+                            ? (long?)pitchStarts[index + 1]
+                            : null,
+                    }).ToDictionary(item => item.Tick, item => item.Next);
+                    return group.Select(note => new
+                    {
+                        note.Id,
+                        Next = nextByStart[note.StartTick],
+                    });
+                })
+                .ToDictionary(item => item.Id, item => item.Next);
+
             foreach (var note in track.Notes)
             {
                 var duration = NoteDurationCalculator.ResolveDuration(
                     note,
                     nextStarts[note.StartTick],
                     score.Timing.Ppq);
+                if (naturalSustain)
+                {
+                    var rhythmTick = nextStarts[note.StartTick] is { } nextStart
+                        ? nextStart - note.StartTick
+                        : score.Timing.Ppq;
+                    var naturalDuration = Math.Max(
+                        1,
+                        (long)Math.Round(
+                            rhythmTick * NoteDurationCalculator.GetGateRatio(NoteArticulation.Natural),
+                            MidpointRounding.AwayFromZero));
+                    duration = Math.Max(duration, naturalDuration);
+
+                    if (nextSamePitchStarts[note.Id] is { } nextSamePitch)
+                    {
+                        duration = Math.Min(duration, Math.Max(1, nextSamePitch - note.StartTick));
+                    }
+                }
                 GetChange(changes, note.StartTick).NotesOn.Add(new MidiNoteValue(note.Pitch, note.Velocity));
                 GetChange(changes, checked(note.StartTick + duration)).NotesOff.Add(note.Pitch);
             }

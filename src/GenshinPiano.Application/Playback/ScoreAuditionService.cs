@@ -22,10 +22,11 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         ScoreDocument score,
         long startTick,
         int instrument,
+        bool naturalSustain,
         IProgress<AuditionProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var plan = ScoreAuditionPlanner.Create(score);
+        var plan = ScoreAuditionPlanner.Create(score, naturalSustain);
         startTick = Math.Clamp(startTick, 0, plan.DurationTick);
         var startTime = ScorePlaybackPlanner.TickToTime(startTick, score.Timing);
         var events = plan.Events.Where(item => item.Tick >= startTick).ToArray();

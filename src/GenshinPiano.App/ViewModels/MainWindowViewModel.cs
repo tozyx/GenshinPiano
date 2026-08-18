@@ -1,6 +1,7 @@
 using System.IO;
 using GenshinPiano.App.Commands;
 using GenshinPiano.App.Services;
+using GenshinPiano.Application.Abstractions;
 using GenshinPiano.Application.Conversion;
 using GenshinPiano.Application.Playback;
 using GenshinPiano.Application.Workspace;
@@ -16,25 +17,31 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly ILocalizationService _localizationService;
     private readonly ScorePlaybackService _playbackService;
     private readonly LegacyBatchConversionService _legacyConversionService;
+    private readonly IMidiScoreImporter _midiScoreImporter;
     private string _scoreTitle;
     private string _statusKey = "Status_Ready";
     private object?[] _statusArguments = [];
     private CancellationTokenSource? _playbackCancellation;
     private bool _isPlaying;
     private bool _isPlaybackPaused;
+    private int _playbackChordIndex;
+    private int _playbackChordCount;
+    private string _playbackCurrentKeys = "—";
 
     public MainWindowViewModel(
         ScoreWorkspace workspace,
         IThemeService themeService,
         ILocalizationService localizationService,
         ScorePlaybackService playbackService,
-        LegacyBatchConversionService legacyConversionService)
+        LegacyBatchConversionService legacyConversionService,
+        IMidiScoreImporter midiScoreImporter)
     {
         _workspace = workspace;
         _themeService = themeService;
         _localizationService = localizationService;
         _playbackService = playbackService;
         _legacyConversionService = legacyConversionService;
+        _midiScoreImporter = midiScoreImporter;
         _scoreTitle = workspace.CurrentScore.Metadata.Title;
 
         _themeService.ThemeChanged += OnThemeChanged;
@@ -115,6 +122,40 @@ public sealed class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _isPlaybackPaused, value);
     }
 
+    public int PlaybackChordIndex
+    {
+        get => _playbackChordIndex;
+        private set
+        {
+            if (SetProperty(ref _playbackChordIndex, value))
+            {
+                OnPropertyChanged(nameof(PlaybackProgressPercent));
+            }
+        }
+    }
+
+    public int PlaybackChordCount
+    {
+        get => _playbackChordCount;
+        private set
+        {
+            if (SetProperty(ref _playbackChordCount, value))
+            {
+                OnPropertyChanged(nameof(PlaybackProgressPercent));
+            }
+        }
+    }
+
+    public double PlaybackProgressPercent => PlaybackChordCount <= 0
+        ? 0
+        : Math.Clamp(PlaybackChordIndex * 100d / PlaybackChordCount, 0, 100);
+
+    public string PlaybackCurrentKeys
+    {
+        get => _playbackCurrentKeys;
+        private set => SetProperty(ref _playbackCurrentKeys, value);
+    }
+
     public RelayCommand NewCommand { get; }
 
     public AsyncRelayCommand OpenCommand { get; }
@@ -134,6 +175,12 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand StopCommand { get; }
 
     public AsyncRelayCommand ConvertLegacyScoresCommand { get; }
+
+    public void NotifyDurationsOptimized(int noteCount) =>
+        SetStatus("Status_DurationsOptimized", noteCount);
+
+    public void NotifyShortPressDurationsGenerated(int noteCount) =>
+        SetStatus("Status_ShortPressDurationsGenerated", noteCount);
 
     private void CreateNew()
     {
@@ -159,6 +206,23 @@ public sealed class MainWindowViewModel : ObservableObject
         try
         {
             SetStatus("Status_Opening");
+            var extension = Path.GetExtension(dialog.FileName);
+            if (extension.Equals(".mid", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".midi", StringComparison.OrdinalIgnoreCase))
+            {
+                SetStatus("Status_ImportingMidi");
+                var result = await _midiScoreImporter.ImportAsync(dialog.FileName);
+                _workspace.ImportScore(result.Score);
+                RefreshFromWorkspace();
+                SetStatus(
+                    "Status_MidiImported",
+                    result.Report.ImportedNoteCount,
+                    result.Report.FoldedNoteCount,
+                    result.Report.DroppedNoteCount,
+                    result.Report.IgnoredPercussionNoteCount);
+                return;
+            }
+
             await _workspace.LoadAsync(dialog.FileName);
             RefreshFromWorkspace();
             SetStatus("Status_Opened", Path.GetFileName(dialog.FileName));
@@ -231,23 +295,42 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private async Task PlayAsync()
     {
+        // Capture exactly what is currently visible in the editor. Later edits or
+        // saves must not switch the score underneath an active game playback.
+        var scoreToPlay = CurrentScore;
         using var cancellation = new CancellationTokenSource();
         _playbackCancellation = cancellation;
+        PlaybackChordIndex = 0;
+        PlaybackChordCount = 0;
+        PlaybackCurrentKeys = "—";
         IsPlaying = true;
 
         var progress = new Progress<PlaybackProgress>(playbackProgress =>
         {
+            if (playbackProgress.ChordCount > 0)
+            {
+                PlaybackChordCount = playbackProgress.ChordCount;
+            }
+
+            if (playbackProgress.Phase is PlaybackPhase.Playing or PlaybackPhase.Completed)
+            {
+                PlaybackChordIndex = playbackProgress.ChordIndex;
+            }
+
             switch (playbackProgress.Phase)
             {
                 case PlaybackPhase.WaitingForTarget:
+                    PlaybackCurrentKeys = "—";
                     IsPlaybackPaused = true;
                     SetStatus("Status_PlayWaitingForTarget");
                     break;
                 case PlaybackPhase.Countdown:
+                    PlaybackCurrentKeys = "—";
                     IsPlaybackPaused = false;
                     SetStatus("Status_PlayCountdown", playbackProgress.CountdownSeconds);
                     break;
                 case PlaybackPhase.Paused:
+                    PlaybackCurrentKeys = "—";
                     IsPlaybackPaused = true;
                     SetStatus(
                         playbackProgress.PauseReason == PlaybackPauseReason.Manual
@@ -255,6 +338,7 @@ public sealed class MainWindowViewModel : ObservableObject
                             : "Status_PlayPaused");
                     break;
                 case PlaybackPhase.Resumed:
+                    PlaybackCurrentKeys = "—";
                     IsPlaybackPaused = false;
                     SetStatus("Status_PlayResumed");
                     break;
@@ -263,6 +347,7 @@ public sealed class MainWindowViewModel : ObservableObject
                     var keys = playbackProgress.CurrentKeys is null
                         ? string.Empty
                         : string.Concat(playbackProgress.CurrentKeys);
+                    PlaybackCurrentKeys = keys;
                     SetStatus(
                         "Status_Playing",
                         playbackProgress.ChordIndex,
@@ -270,6 +355,7 @@ public sealed class MainWindowViewModel : ObservableObject
                         keys);
                     break;
                 case PlaybackPhase.Completed:
+                    PlaybackCurrentKeys = "—";
                     SetStatus("Status_PlayCompleted", playbackProgress.SkippedNoteCount);
                     break;
             }
@@ -278,7 +364,7 @@ public sealed class MainWindowViewModel : ObservableObject
         try
         {
             await _playbackService.PlayAsync(
-                _workspace.CurrentScore,
+                scoreToPlay,
                 countdownSeconds: 3,
                 progress,
                 cancellation.Token);

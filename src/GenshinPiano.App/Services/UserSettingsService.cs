@@ -20,6 +20,8 @@ public sealed record EditorUserSettings
     public string DefaultArticulation { get; init; } = "Natural";
 
     public string PitchLabelMode { get; init; } = "LetterWithKey";
+
+    public bool NaturalSustain { get; init; } = true;
 }
 
 public interface IUserSettingsService
@@ -31,6 +33,8 @@ public interface IUserSettingsService
     void SetDefaultArticulation(string value);
 
     void SetPitchLabelMode(string value);
+
+    void SetNaturalSustain(bool value);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -83,6 +87,14 @@ public sealed class UserSettingsService : IUserSettingsService
         }
 
         Update(Current.Editor with { PitchLabelMode = value });
+    }
+
+    public void SetNaturalSustain(bool value)
+    {
+        if (Current.Editor.NaturalSustain != value)
+        {
+            Update(Current.Editor with { NaturalSustain = value });
+        }
     }
 
     private UserSettings Load()

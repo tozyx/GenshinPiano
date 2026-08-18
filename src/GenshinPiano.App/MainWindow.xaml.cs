@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Interop;
 using GenshinPiano.App.Dialogs;
+using GenshinPiano.App.Controls;
 using GenshinPiano.App.ViewModels;
 
 namespace GenshinPiano.App;
@@ -27,10 +28,14 @@ public partial class MainWindow : Window
     private const uint FrameChanged = 0x0020;
     private bool _allowClose;
     private bool _closePromptActive;
+    private bool _isLocalAuditionPlaying;
+    private MainWindowViewModel? _subscribedViewModel;
+    private PlaybackMonitorWindow? _playbackMonitorWindow;
 
     public MainWindow()
     {
         InitializeComponent();
+        InputManager.Current.PreProcessInput += InputManager_OnPreProcessInput;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -83,9 +88,62 @@ public partial class MainWindow : Window
 
     private void ExitMenuItem_OnClick(object sender, RoutedEventArgs e) => Close();
 
+    private void OptimizeDurationsMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        var optimizedCount = PianoRollEditor.OptimizeAllNoteDurations();
+        if (optimizedCount > 0 && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.NotifyDurationsOptimized(optimizedCount);
+        }
+    }
+
+    private void GenerateShortPressDurationsMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        var optimizedCount = PianoRollEditor.GenerateShortPressDurations();
+        if (optimizedCount > 0 && DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.NotifyShortPressDurationsGenerated(optimizedCount);
+        }
+    }
+
+    private void ImportMidiBatchMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (System.Windows.Application.Current is not App app)
+        {
+            return;
+        }
+
+        new MidiBatchConversionDialog(app.MidiBatchConversionService)
+        {
+            Owner = this,
+        }.ShowDialog();
+    }
+
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.IsRepeat || DataContext is not MainWindowViewModel viewModel)
+        TryHandleFileShortcut(e);
+    }
+
+    private void InputManager_OnPreProcessInput(object sender, PreProcessInputEventArgs e)
+    {
+        if (!IsActive ||
+            e.StagingItem.Input is not KeyEventArgs { RoutedEvent: var routedEvent } keyEventArgs ||
+            routedEvent != Keyboard.PreviewKeyDownEvent)
+        {
+            return;
+        }
+
+        TryHandleFileShortcut(keyEventArgs);
+    }
+
+    private void TryHandleFileShortcut(KeyEventArgs e)
+    {
+        if (e.Handled)
+        {
+            return;
+        }
+
+        if (_isLocalAuditionPlaying || e.IsRepeat || DataContext is not MainWindowViewModel viewModel)
         {
             return;
         }
@@ -111,6 +169,100 @@ public partial class MainWindow : Window
         FileMenuItem.IsSubmenuOpen = false;
         command.Execute(null);
         e.Handled = true;
+    }
+
+    private void PianoRollEditor_OnAuditionStateChanged(
+        object? sender,
+        AuditionStateChangedEventArgs e)
+    {
+        _isLocalAuditionPlaying = e.IsPlaying;
+        FileMenuItem.IsEnabled = !e.IsPlaying;
+        EditMenuItem.IsEnabled = !e.IsPlaying;
+        ImportMenuItem.IsEnabled = !e.IsPlaying;
+        NewScoreButton.IsEnabled = !e.IsPlaying;
+        OpenScoreButton.IsEnabled = !e.IsPlaying;
+        GamePlaybackControls.IsEnabled = !e.IsPlaying;
+    }
+
+    private void MainWindow_OnDataContextChanged(
+        object sender,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
+        }
+
+        _subscribedViewModel = e.NewValue as MainWindowViewModel;
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged += ViewModel_OnPropertyChanged;
+        }
+    }
+
+    private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.IsPlaying) ||
+            sender is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        PianoRollEditor.SetGamePlaybackActive(viewModel.IsPlaying);
+        if (viewModel.IsPlaying)
+        {
+            ShowPlaybackMonitor(viewModel);
+        }
+    }
+
+    private void ShowPlaybackMonitor(MainWindowViewModel viewModel)
+    {
+        if (_playbackMonitorWindow is not null)
+        {
+            return;
+        }
+
+        var monitor = new PlaybackMonitorWindow
+        {
+            DataContext = viewModel,
+        };
+        monitor.ReturnToEditorRequested += PlaybackMonitor_OnReturnToEditorRequested;
+        monitor.Closed += PlaybackMonitor_OnClosed;
+        _playbackMonitorWindow = monitor;
+        monitor.Show();
+        WindowState = WindowState.Minimized;
+    }
+
+    private void PlaybackMonitor_OnReturnToEditorRequested(object? sender, EventArgs e)
+    {
+        WindowState = WindowState.Normal;
+        Show();
+        Activate();
+    }
+
+    private void PlaybackMonitor_OnClosed(object? sender, EventArgs e)
+    {
+        if (sender is PlaybackMonitorWindow monitor)
+        {
+            monitor.ReturnToEditorRequested -= PlaybackMonitor_OnReturnToEditorRequested;
+            monitor.Closed -= PlaybackMonitor_OnClosed;
+        }
+
+        _playbackMonitorWindow = null;
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        InputManager.Current.PreProcessInput -= InputManager_OnPreProcessInput;
+
+        if (_subscribedViewModel is not null)
+        {
+            _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
+        _playbackMonitorWindow?.CloseWithoutRestoringEditor();
+        _playbackMonitorWindow = null;
     }
 
     private void MinimizeButton_OnClick(object sender, RoutedEventArgs e) =>

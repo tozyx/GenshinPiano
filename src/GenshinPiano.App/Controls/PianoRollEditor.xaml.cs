@@ -20,6 +20,7 @@ public partial class PianoRollEditor : UserControl
     private CancellationTokenSource? _auditionCancellation;
     private bool _auditionIsPlaying;
     private bool _auditionPauseRequested;
+    private bool _isDraggingAuditionVolume;
     private Window? _ownerWindow;
     private long _auditionTick;
 
@@ -46,6 +47,18 @@ public partial class PianoRollEditor : UserControl
     {
         get => (ScoreDocument?)GetValue(ScoreProperty);
         set => SetValue(ScoreProperty, value);
+    }
+
+    public event EventHandler<AuditionStateChangedEventArgs>? AuditionStateChanged;
+
+    public int OptimizeAllNoteDurations() => Surface.OptimizeAllNoteDurations();
+
+    public int GenerateShortPressDurations() => Surface.GenerateShortPressDurations();
+
+    public void SetGamePlaybackActive(bool isActive)
+    {
+        Surface.IsEditingEnabled = !isActive;
+        PlaybackCursor.Visibility = Visibility.Collapsed;
     }
 
     private void ZoomIn_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomIn();
@@ -179,6 +192,8 @@ public partial class PianoRollEditor : UserControl
             {
                 KeyboardLabels.LabelMode = pitchLabelMode;
             }
+
+            NaturalSustainCheckBox.IsChecked = editor.NaturalSustain;
         }
         finally
         {
@@ -252,9 +267,7 @@ public partial class PianoRollEditor : UserControl
         var cancellation = new CancellationTokenSource();
         _auditionCancellation = cancellation;
         _auditionPauseRequested = false;
-        _auditionIsPlaying = true;
-        BpmTextBox.IsEnabled = false;
-        Surface.IsEditingEnabled = false;
+        SetAuditionPlayingState(true);
         NoteEditorPopup.IsOpen = false;
         AuditionPlayButton.Content = CreatePauseIcon();
         var progress = new Progress<AuditionProgress>(item =>
@@ -268,7 +281,13 @@ public partial class PianoRollEditor : UserControl
 
         try
         {
-            await _auditionService.PlayAsync(Score, _auditionTick, instrument, progress, cancellation.Token);
+            await _auditionService.PlayAsync(
+                Score,
+                _auditionTick,
+                instrument,
+                NaturalSustainCheckBox.IsChecked == true,
+                progress,
+                cancellation.Token);
             _auditionTick = plan.DurationTick;
         }
         catch (OperationCanceledException)
@@ -280,9 +299,7 @@ public partial class PianoRollEditor : UserControl
             if (ReferenceEquals(_auditionCancellation, cancellation))
             {
                 _auditionCancellation = null;
-                _auditionIsPlaying = false;
-                BpmTextBox.IsEnabled = true;
-                Surface.IsEditingEnabled = true;
+                SetAuditionPlayingState(false);
                 AuditionPlayButton.Content = "▶";
                 if (!_auditionPauseRequested)
                 {
@@ -313,6 +330,30 @@ public partial class PianoRollEditor : UserControl
         _auditionCancellation?.Cancel();
     }
 
+    private void SetAuditionPlayingState(bool isPlaying)
+    {
+        if (_auditionIsPlaying == isPlaying)
+        {
+            return;
+        }
+
+        _auditionIsPlaying = isPlaying;
+        BpmTextBox.IsEnabled = !isPlaying;
+        AuditionInstrumentComboBox.IsEnabled = !isPlaying;
+        NaturalSustainCheckBox.IsEnabled = !isPlaying;
+        EditingToolbar.IsEnabled = !isPlaying;
+        Surface.IsEditingEnabled = !isPlaying;
+        AuditionStateChanged?.Invoke(this, new AuditionStateChangedEventArgs(isPlaying));
+    }
+
+    private void NaturalSustainCheckBox_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_loadingSettings)
+        {
+            _settingsService?.SetNaturalSustain(NaturalSustainCheckBox.IsChecked == true);
+        }
+    }
+
     private void AuditionVolumeButton_OnClick(object sender, RoutedEventArgs e)
     {
         AuditionVolumePopup.IsOpen = !AuditionVolumePopup.IsOpen;
@@ -320,14 +361,102 @@ public partial class PianoRollEditor : UserControl
 
     private void OwnerWindow_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (AuditionVolumePopup.IsOpen && !AuditionVolumeButton.IsMouseOver)
+        if (AuditionVolumePopup.IsOpen &&
+            !AuditionVolumeButton.IsMouseOver &&
+            !IsPointerOverAuditionVolumePopup())
         {
             AuditionVolumePopup.IsOpen = false;
         }
     }
 
-    private void OwnerWindow_OnDeactivated(object? sender, EventArgs e) =>
-        AuditionVolumePopup.IsOpen = false;
+    private void OwnerWindow_OnDeactivated(object? sender, EventArgs e)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!IsPointerOverAuditionVolumePopup() &&
+                !AuditionVolumeSlider.IsMouseCaptureWithin &&
+                !_isDraggingAuditionVolume)
+            {
+                AuditionVolumePopup.IsOpen = false;
+            }
+        });
+    }
+
+    private bool IsPointerOverAuditionVolumePopup()
+    {
+        if (AuditionVolumePopup.Child is not FrameworkElement
+            {
+                IsVisible: true,
+                ActualWidth: > 0,
+                ActualHeight: > 0,
+            } popupContent)
+        {
+            return false;
+        }
+
+        var pointer = Mouse.GetPosition(popupContent);
+        return pointer.X >= 0 && pointer.X <= popupContent.ActualWidth &&
+               pointer.Y >= 0 && pointer.Y <= popupContent.ActualHeight;
+    }
+
+    private void AuditionVolumeSlider_OnPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        _isDraggingAuditionVolume = true;
+        AuditionVolumeSlider.CaptureMouse();
+        UpdateAuditionVolumeFromPointer(e);
+        e.Handled = true;
+    }
+
+    private void AuditionVolumeSlider_OnPreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingAuditionVolume)
+        {
+            return;
+        }
+
+        if (e.LeftButton != MouseButtonState.Pressed)
+        {
+            EndAuditionVolumeDrag();
+            return;
+        }
+
+        UpdateAuditionVolumeFromPointer(e);
+        e.Handled = true;
+    }
+
+    private void AuditionVolumeSlider_OnPreviewMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (!_isDraggingAuditionVolume)
+        {
+            return;
+        }
+
+        UpdateAuditionVolumeFromPointer(e);
+        EndAuditionVolumeDrag();
+        e.Handled = true;
+    }
+
+    private void UpdateAuditionVolumeFromPointer(MouseEventArgs e)
+    {
+        const double trackMargin = 9;
+        var usableHeight = Math.Max(1, AuditionVolumeSlider.ActualHeight - trackMargin * 2);
+        var y = e.GetPosition(AuditionVolumeSlider).Y;
+        var normalized = 1 - (y - trackMargin) / usableHeight;
+        AuditionVolumeSlider.Value = Math.Clamp(normalized, 0, 1);
+    }
+
+    private void EndAuditionVolumeDrag()
+    {
+        _isDraggingAuditionVolume = false;
+        if (AuditionVolumeSlider.IsMouseCaptured)
+        {
+            AuditionVolumeSlider.ReleaseMouseCapture();
+        }
+    }
 
     private void AuditionVolumeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -699,4 +828,9 @@ public partial class PianoRollEditor : UserControl
 
     private static long FactorToTick(double factor, int ppq) =>
         Math.Max(1, checked((long)Math.Round(ppq * factor)));
+}
+
+public sealed class AuditionStateChangedEventArgs(bool isPlaying) : EventArgs
+{
+    public bool IsPlaying { get; } = isPlaying;
 }

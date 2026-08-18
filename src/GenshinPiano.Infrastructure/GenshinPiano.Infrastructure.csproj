@@ -7,4 +7,7 @@
     <ProjectReference Include="..\GenshinPiano.Core\GenshinPiano.Core.csproj" />
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
+  </ItemGroup>
 </Project>

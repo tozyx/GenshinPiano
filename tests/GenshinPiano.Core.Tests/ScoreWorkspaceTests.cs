@@ -45,6 +45,19 @@ public sealed class ScoreWorkspaceTests
         Assert.True(workspace.IsDirty);
     }
 
+    [Fact]
+    public async Task ImportedScore_IsDirtyAndDoesNotReuseSourcePath()
+    {
+        var workspace = new ScoreWorkspace(new MemorySerializer());
+        await workspace.LoadAsync("source.gpiano");
+
+        workspace.ImportScore(ScoreDocument.CreateEmpty("Imported MIDI"));
+
+        Assert.True(workspace.IsDirty);
+        Assert.Null(workspace.CurrentPath);
+        Assert.Equal("Imported MIDI", workspace.CurrentScore.Metadata.Title);
+    }
+
     private sealed class MemorySerializer : IScoreDocumentSerializer
     {
         public ScoreDocument ScoreToLoad { get; init; } = ScoreDocument.CreateEmpty();

@@ -64,4 +64,54 @@ public sealed class ScoreAuditionPlannerTests
 
         Assert.Equal(TimeSpan.FromSeconds(1), plan.Duration);
     }
+
+    [Fact]
+    public void Create_NaturalSustainExtendsShortNotesWithoutChangingScore()
+    {
+        var shortNote = new NoteEvent { Pitch = 60, StartTick = 0, DurationTick = 24 };
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Notes =
+                    [
+                        shortNote,
+                        new NoteEvent { Pitch = 62, StartTick = 240, DurationTick = 24 },
+                    ],
+                },
+            ],
+        };
+
+        var plan = ScoreAuditionPlanner.Create(score, naturalSustain: true);
+
+        Assert.Contains(plan.Events, item => item.Tick == 192 && item.NotesOff.Contains(60));
+        Assert.Equal(24, shortNote.DurationTick);
+    }
+
+    [Fact]
+    public void Create_NaturalSustainStopsBeforeRepeatedPitch()
+    {
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Notes =
+                    [
+                        new NoteEvent { Pitch = 60, StartTick = 0, DurationTick = 960 },
+                        new NoteEvent { Pitch = 60, StartTick = 120, DurationTick = 24 },
+                    ],
+                },
+            ],
+        };
+
+        var plan = ScoreAuditionPlanner.Create(score, naturalSustain: true);
+
+        var repeatedStart = Assert.Single(plan.Events, item => item.Tick == 120);
+        Assert.Contains(60, repeatedStart.NotesOff);
+        Assert.Contains(repeatedStart.NotesOn, note => note.Pitch == 60);
+    }
 }

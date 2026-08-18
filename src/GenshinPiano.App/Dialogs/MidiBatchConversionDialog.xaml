@@ -1,0 +1,143 @@
+<Window x:Class="GenshinPiano.App.Dialogs.MidiBatchConversionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource MidiBatch_Title}"
+        Width="520"
+        Height="350"
+        MinWidth="480"
+        MinHeight="330"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}">
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0"
+                    Padding="14,0,6,0"
+                    Background="{DynamicResource PanelBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    CornerRadius="10,10,0,0"
+                    MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right"
+                            Width="32"
+                            Height="28"
+                            Padding="0"
+                            Content="✕"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="CloseButton_OnClick" />
+                    <TextBlock VerticalAlignment="Center"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Text="{DynamicResource MidiBatch_Title}" />
+                </DockPanel>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="22,18,22,18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="{DynamicResource MidiBatch_Hint}"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                <Grid Grid.Row="1" Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Text="{DynamicResource MidiBatch_Source}" />
+                    <Border Grid.Column="1"
+                            Height="34"
+                            Padding="10,0"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="5">
+                        <TextBlock x:Name="SourceFolderText"
+                                   VerticalAlignment="Center"
+                                   Text="{DynamicResource MidiBatch_NotSelected}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+                    </Border>
+                    <Button Grid.Column="2"
+                            Margin="8,0,0,0"
+                            Content="{DynamicResource MidiBatch_Browse}"
+                            Style="{StaticResource AppButtonStyle}"
+                            Click="BrowseSource_OnClick" />
+                </Grid>
+
+                <Grid Grid.Row="2" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Text="{DynamicResource MidiBatch_Output}" />
+                    <Border Grid.Column="1"
+                            Height="34"
+                            Padding="10,0"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="5">
+                        <TextBlock x:Name="OutputFolderText"
+                                   VerticalAlignment="Center"
+                                   Text="{DynamicResource MidiBatch_NotSelected}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" />
+                    </Border>
+                    <Button Grid.Column="2"
+                            Margin="8,0,0,0"
+                            Content="{DynamicResource MidiBatch_Browse}"
+                            Style="{StaticResource AppButtonStyle}"
+                            Click="BrowseOutput_OnClick" />
+                </Grid>
+
+                <ProgressBar x:Name="ConversionProgress"
+                             Grid.Row="3"
+                             Height="5"
+                             Margin="0,18,0,0"
+                             Minimum="0"
+                             Maximum="1"
+                             Value="0"
+                             Foreground="{DynamicResource AccentBrush}" />
+
+                <TextBlock x:Name="ResultText"
+                           Grid.Row="4"
+                           Margin="0,12,0,0"
+                           Text="{DynamicResource MidiBatch_Ready}"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                <StackPanel Grid.Row="5" HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button Content="{DynamicResource MidiBatch_Close}"
+                            Style="{StaticResource AppButtonStyle}"
+                            Click="CloseButton_OnClick" />
+                    <Button x:Name="ConvertButton"
+                            Content="{DynamicResource MidiBatch_Convert}"
+                            IsEnabled="False"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="ConvertButton_OnClick" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
