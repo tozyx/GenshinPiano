@@ -1,5 +1,7 @@
 # GenshinPiano v3
 
+[English](README.en.md) | 简体中文
+
 GenshinPiano v3 是面向 Windows 的原神乐器编曲与演奏工具。目前正在使用 C#、.NET 10 LTS 和 WPF 完全重构。
 
 ## 目标
