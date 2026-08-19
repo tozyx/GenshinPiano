@@ -53,4 +53,4 @@ dotnet test GenshinPiano.sln
 
 旧版格式没有保存 BPM。批量转换目前按 120 BPM、480 PPQ 导入，旧版时值保存为节奏跨度，并以“自然”规则生成 80% 的实际按键保持时间；输出目录中已有的同名 `.gpiano` 默认跳过。
 
-本项目使用 [GNU GPL v3](LICENSE) 许可证。
+本项目使用 [MIT](LICENSE) 许可证。

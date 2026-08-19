@@ -53,4 +53,4 @@ The application runs in portable mode. User settings are stored in `config/setti
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.
 
-This project is licensed under the [GNU GPL v3](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
