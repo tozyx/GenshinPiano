@@ -86,14 +86,20 @@
                     BorderThickness="0"
                     CornerRadius="0,0,9,9">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button MinWidth="88"
+                    <Button Width="112"
+                            Height="36"
+                            Margin="0"
                             Content="{DynamicResource Action_Cancel}"
+                            Style="{StaticResource AppButtonStyle}"
                             Click="CancelButton_OnClick" />
-                    <Button MinWidth="104"
+                    <Button Width="112"
+                            Height="36"
                             Margin="8,0,0,0"
                             Content="{DynamicResource Action_DontSave}"
+                            Style="{StaticResource AppButtonStyle}"
                             Click="DontSaveButton_OnClick" />
-                    <Button MinWidth="88"
+                    <Button Width="112"
+                            Height="36"
                             Margin="8,0,0,0"
                             Content="{DynamicResource Action_Save}"
                             Style="{StaticResource PrimaryButtonStyle}"

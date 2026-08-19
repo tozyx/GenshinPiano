@@ -13,6 +13,33 @@ public sealed class DryWetMidiScoreImporter : IMidiScoreImporter
     private const int MaximumPpq = 9600;
     private const int PercussionChannel = 9;
 
+    public Task<MidiFileInfo> AnalyzeAsync(
+        string path,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var midiFile = MidiFile.Read(path);
+            var tracks = midiFile.GetTrackChunks().Select((chunk, index) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var notes = chunk.GetNotes().ToArray();
+                var pitchedNotes = notes.Where(note => (int)note.Channel != PercussionChannel).ToArray();
+                var name = chunk.Events.OfType<SequenceTrackNameEvent>().FirstOrDefault()?.Text;
+                return new MidiTrackInfo(
+                    index,
+                    string.IsNullOrWhiteSpace(name) ? $"MIDI Track {index + 1}" : name,
+                    notes.Length,
+                    notes.Count(note => (int)note.Channel == PercussionChannel),
+                    pitchedNotes.Length == 0 ? null : pitchedNotes.Min(note => (int)note.NoteNumber),
+                    pitchedNotes.Length == 0 ? null : pitchedNotes.Max(note => (int)note.NoteNumber));
+            }).ToArray();
+            return new MidiFileInfo(Path.GetFileName(path), tracks);
+        }, cancellationToken);
+    }
+
     public Task<MidiImportResult> ImportAsync(
         string path,
         MidiImportOptions? options = null,
@@ -43,10 +70,17 @@ public sealed class DryWetMidiScoreImporter : IMidiScoreImporter
         var foldedNotes = 0;
         var droppedNotes = 0;
         var ignoredPercussionNotes = 0;
+        var selectedTracks = options.TrackIndices is null
+            ? null
+            : options.TrackIndices.ToHashSet();
 
         for (var trackIndex = 0; trackIndex < trackChunks.Length; trackIndex++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (selectedTracks is not null && !selectedTracks.Contains(trackIndex))
+            {
+                continue;
+            }
             var chunk = trackChunks[trackIndex];
             var notes = new List<ScoreNoteEvent>();
             foreach (var midiNote in chunk.GetNotes())
@@ -58,7 +92,7 @@ public sealed class DryWetMidiScoreImporter : IMidiScoreImporter
                     continue;
                 }
 
-                var sourcePitch = (int)midiNote.NoteNumber;
+                var sourcePitch = checked((int)midiNote.NoteNumber + Math.Clamp(options.Transpose, -36, 36));
                 if (!TryMapPitch(sourcePitch, options.OutOfRangePolicy, out var pitch, out var folded))
                 {
                     droppedNotes++;

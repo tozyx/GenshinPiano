@@ -1,0 +1,102 @@
+<Window x:Class="GenshinPiano.App.Dialogs.MidiImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Dialog_MidiImportTitle}"
+        Width="620" Height="500" WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent"
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        FontFamily="{DynamicResource AppFontFamily}"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Border Background="{DynamicResource SidebarBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
+                    CornerRadius="9,9,0,0" MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Margin="14,0" VerticalAlignment="Center" FontWeight="SemiBold"
+                               Text="{DynamicResource Dialog_MidiImportTitle}" />
+                    <Button Width="44" Height="36" HorizontalAlignment="Right" Padding="0"
+                            Background="Transparent" BorderThickness="0" Content="✕"
+                            Click="CancelButton_OnClick" />
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="20,18,20,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="FileNameText" FontSize="16" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+                <Border Grid.Row="1" Margin="0,12,0,14"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        Background="{DynamicResource SurfaceBrush}" CornerRadius="6">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="TrackItemsControl" Margin="8">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              Margin="7,7" VerticalContentAlignment="Center">
+                                        <Grid Width="520">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="90" />
+                                                <ColumnDefinition Width="120" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1" Text="{Binding NoteSummary}"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
+                                            <TextBlock Grid.Column="2" Text="{Binding RangeSummary}"
+                                                       Foreground="{DynamicResource SecondaryTextBrush}" />
+                                        </Grid>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Text="{DynamicResource MidiImport_Transpose}" />
+                    <ComboBox x:Name="TransposeComboBox" Grid.Column="1" Height="30" Margin="8,0,16,0" />
+                    <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                               Text="{DynamicResource MidiImport_OutOfRange}" />
+                    <ComboBox x:Name="OutOfRangeComboBox" Grid.Column="3" Height="30" Margin="8,0,16,0"
+                              SelectedIndex="0">
+                        <ComboBoxItem Content="{DynamicResource MidiImport_OctaveFold}" Tag="OctaveFold" />
+                        <ComboBoxItem Content="{DynamicResource MidiImport_Drop}" Tag="Drop" />
+                        <ComboBoxItem Content="{DynamicResource MidiImport_Reject}" Tag="Reject" />
+                    </ComboBox>
+                    <CheckBox x:Name="IgnorePercussionCheckBox" Grid.Column="4"
+                              IsChecked="True" VerticalAlignment="Center"
+                              Content="{DynamicResource MidiImport_IgnorePercussion}" />
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="20,0,20,18">
+                <TextBlock x:Name="ValidationText" VerticalAlignment="Center"
+                           Foreground="#E36B6B" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Width="96" Height="36" Margin="0" Style="{StaticResource AppButtonStyle}"
+                            Content="{DynamicResource Action_Cancel}" Click="CancelButton_OnClick" />
+                    <Button Width="96" Height="36" Margin="8,0,0,0"
+                            Style="{StaticResource PrimaryButtonStyle}" IsDefault="True"
+                            Content="{DynamicResource Action_Import}" Click="ImportButton_OnClick" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

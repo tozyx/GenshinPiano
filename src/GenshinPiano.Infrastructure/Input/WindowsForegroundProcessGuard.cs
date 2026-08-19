@@ -9,14 +9,17 @@ public sealed class WindowsForegroundProcessGuard : IPlaybackFocusGuard
     public static readonly IReadOnlyList<string> DefaultProcessNames =
         ["YuanShen", "GenshinImpact", "freepiano"];
 
-    private readonly HashSet<string> _allowedProcessNames;
+    private readonly IReadOnlyList<string> _allowedProcessNames;
+    private readonly HashSet<string> _allowedProcessNameSet;
 
     public WindowsForegroundProcessGuard(IEnumerable<string>? allowedProcessNames = null)
     {
         _allowedProcessNames = (allowedProcessNames ?? DefaultProcessNames)
             .Select(NormalizeProcessName)
             .Where(name => name.Length > 0)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        _allowedProcessNameSet = _allowedProcessNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         if (_allowedProcessNames.Count == 0)
         {
@@ -41,13 +44,47 @@ public sealed class WindowsForegroundProcessGuard : IPlaybackFocusGuard
         try
         {
             using var process = Process.GetProcessById(checked((int)processId));
-            return _allowedProcessNames.Contains(process.ProcessName);
+            return _allowedProcessNameSet.Contains(process.ProcessName);
         }
         catch (Exception exception) when (
             exception is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
             return false;
         }
+    }
+
+    public bool TryFocusFirstPlaybackTarget()
+    {
+        foreach (var processName in _allowedProcessNames)
+        {
+            foreach (var process in Process.GetProcessesByName(processName).OrderBy(process => process.Id))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        var window = process.MainWindowHandle;
+                        if (window == IntPtr.Zero)
+                        {
+                            continue;
+                        }
+
+                        _ = ShowWindowAsync(window, RestoreWindow);
+                        if (SetForegroundWindow(window))
+                        {
+                            return true;
+                        }
+                    }
+                    catch (Exception exception) when (
+                        exception is InvalidOperationException or System.ComponentModel.Win32Exception)
+                    {
+                        // The process may exit while its window is being inspected.
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private static string NormalizeProcessName(string name) =>
@@ -58,4 +95,14 @@ public sealed class WindowsForegroundProcessGuard : IPlaybackFocusGuard
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
+
+    private const int RestoreWindow = 9;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindowAsync(IntPtr windowHandle, int command);
 }

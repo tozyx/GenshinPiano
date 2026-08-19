@@ -40,6 +40,9 @@ public sealed class ScorePlaybackService(
 
     public bool IsManuallyPaused => Volatile.Read(ref _manualPauseRequested) != 0;
 
+    public bool TryFocusFirstPlaybackTarget() =>
+        focusGuard?.TryFocusFirstPlaybackTarget() == true;
+
     public void Pause() => Interlocked.Exchange(ref _manualPauseRequested, 1);
 
     public void Resume() => Interlocked.Exchange(ref _manualPauseRequested, 0);

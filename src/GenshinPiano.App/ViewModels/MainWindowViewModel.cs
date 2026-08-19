@@ -1,5 +1,7 @@
 using System.IO;
+using System.Collections.ObjectModel;
 using GenshinPiano.App.Commands;
+using GenshinPiano.App.Dialogs;
 using GenshinPiano.App.Services;
 using GenshinPiano.Application.Abstractions;
 using GenshinPiano.Application.Conversion;
@@ -19,6 +21,8 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly ScorePlaybackService _playbackService;
     private readonly LegacyBatchConversionService _legacyConversionService;
     private readonly IMidiScoreImporter _midiScoreImporter;
+    private readonly ScoreRecoveryService _recoveryService;
+    private CancellationTokenSource? _autosaveCancellation;
     private string _scoreTitle;
     private string _statusKey = "Status_Ready";
     private object?[] _statusArguments = [];
@@ -28,6 +32,11 @@ public sealed class MainWindowViewModel : ObservableObject
     private int _playbackChordIndex;
     private int _playbackChordCount;
     private string _playbackCurrentKeys = "—";
+    private string? _lastBrowseDirectory;
+    private string _scoreFolder = string.Empty;
+    private string _scoreFolderSearch = string.Empty;
+    private string? _currentSourcePath;
+    private IReadOnlyList<ScoreFolderFile> _allScoreFolderFiles = [];
 
     public MainWindowViewModel(
         ScoreWorkspace workspace,
@@ -36,7 +45,8 @@ public sealed class MainWindowViewModel : ObservableObject
         IUserSettingsService userSettingsService,
         ScorePlaybackService playbackService,
         LegacyBatchConversionService legacyConversionService,
-        IMidiScoreImporter midiScoreImporter)
+        IMidiScoreImporter midiScoreImporter,
+        ScoreRecoveryService recoveryService)
     {
         _workspace = workspace;
         _themeService = themeService;
@@ -45,6 +55,7 @@ public sealed class MainWindowViewModel : ObservableObject
         _playbackService = playbackService;
         _legacyConversionService = legacyConversionService;
         _midiScoreImporter = midiScoreImporter;
+        _recoveryService = recoveryService;
         _scoreTitle = workspace.CurrentScore.Metadata.Title;
 
         _themeService.ThemeChanged += OnThemeChanged;
@@ -60,6 +71,14 @@ public sealed class MainWindowViewModel : ObservableObject
         TogglePlaybackCommand = new RelayCommand(TogglePlayback);
         StopCommand = new RelayCommand(StopPlayback, () => IsPlaying);
         ConvertLegacyScoresCommand = new AsyncRelayCommand(ConvertLegacyScoresAsync);
+        OpenScoreFolderCommand = new AsyncRelayCommand(OpenScoreFolderAsync);
+        RefreshScoreFolderCommand = new AsyncRelayCommand(RefreshScoreFolderAsync, () => ScoreFolder.Length > 0);
+        _scoreFolder = _userSettingsService.Current.Library.ScoreFolder;
+        if (_scoreFolder.Length > 0)
+        {
+            _lastBrowseDirectory = _scoreFolder;
+            _ = RefreshScoreFolderAsync();
+        }
     }
 
     public string WindowTitle => $"{(IsDirty ? "*" : string.Empty)}{ScoreTitle} - GenshinPiano v3";
@@ -94,6 +113,7 @@ public sealed class MainWindowViewModel : ObservableObject
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsDirty));
             OnPropertyChanged(nameof(WindowTitle));
+            ScheduleAutosave();
         }
     }
 
@@ -159,6 +179,32 @@ public sealed class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _playbackCurrentKeys, value);
     }
 
+    public ObservableCollection<ScoreFolderFile> ScoreFolderFiles { get; } = [];
+
+    public string ScoreFolder => _scoreFolder;
+
+    public string ScoreFolderName => ScoreFolder.Length == 0
+        ? _localizationService.GetString("Sidebar_NoFolder")
+        : Path.GetFileName(Path.TrimEndingDirectorySeparator(ScoreFolder));
+
+    public string ScoreFolderSearch
+    {
+        get => _scoreFolderSearch;
+        set
+        {
+            if (SetProperty(ref _scoreFolderSearch, value))
+            {
+                ApplyScoreFolderFilter();
+            }
+        }
+    }
+
+    public string? CurrentSourcePath
+    {
+        get => _currentSourcePath;
+        private set => SetProperty(ref _currentSourcePath, value);
+    }
+
     public RelayCommand NewCommand { get; }
 
     public AsyncRelayCommand OpenCommand { get; }
@@ -179,6 +225,10 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public AsyncRelayCommand ConvertLegacyScoresCommand { get; }
 
+    public AsyncRelayCommand OpenScoreFolderCommand { get; }
+
+    public AsyncRelayCommand RefreshScoreFolderCommand { get; }
+
     public void NotifyDurationsOptimized(int noteCount) =>
         SetStatus("Status_DurationsOptimized", noteCount);
 
@@ -187,7 +237,10 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void CreateNew()
     {
+        CancelAutosave();
+        _recoveryService.Discard();
         _workspace.CreateNew(_localizationService.GetString("Score_Untitled"));
+        CurrentSourcePath = null;
         RefreshFromWorkspace();
         SetStatus("Status_NewScoreCreated");
     }
@@ -199,6 +252,7 @@ public sealed class MainWindowViewModel : ObservableObject
             Title = _localizationService.GetString("Dialog_OpenTitle"),
             Filter = _localizationService.GetString("Dialog_OpenFilter"),
             CheckFileExists = true,
+            InitialDirectory = _lastBrowseDirectory,
         };
 
         if (dialog.ShowDialog() != true)
@@ -206,16 +260,54 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
+        await OpenPathAsync(dialog.FileName);
+    }
+
+    public static bool IsSupportedScorePath(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".gpiano", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".json", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".mid", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".midi", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public async Task OpenPathAsync(string path)
+    {
+        if (!IsSupportedScorePath(path))
+        {
+            return;
+        }
+
+        path = Path.GetFullPath(path);
+        _lastBrowseDirectory = Path.GetDirectoryName(path);
         try
         {
             SetStatus("Status_Opening");
-            var extension = Path.GetExtension(dialog.FileName);
+            var extension = Path.GetExtension(path);
             if (extension.Equals(".mid", StringComparison.OrdinalIgnoreCase) ||
                 extension.Equals(".midi", StringComparison.OrdinalIgnoreCase))
             {
                 SetStatus("Status_ImportingMidi");
-                var result = await _midiScoreImporter.ImportAsync(dialog.FileName);
+                var fileInfo = await _midiScoreImporter.AnalyzeAsync(path);
+                var importDialog = new MidiImportDialog(fileInfo)
+                {
+                    Owner = System.Windows.Application.Current.MainWindow,
+                };
+                if (importDialog.ShowDialog() != true || importDialog.Options is null)
+                {
+                    SetStatus("Status_Ready");
+                    return;
+                }
+
+                var result = await _midiScoreImporter.ImportAsync(path, importDialog.Options);
                 _workspace.ImportScore(result.Score);
+                CurrentSourcePath = path;
                 RefreshFromWorkspace();
                 SetStatus(
                     "Status_MidiImported",
@@ -226,14 +318,74 @@ public sealed class MainWindowViewModel : ObservableObject
                 return;
             }
 
-            await _workspace.LoadAsync(dialog.FileName);
+            await _workspace.LoadAsync(path);
+            CurrentSourcePath = path;
+            CancelAutosave();
+            _recoveryService.Discard();
             RefreshFromWorkspace();
-            SetStatus("Status_Opened", Path.GetFileName(dialog.FileName));
+            SetStatus("Status_Opened", Path.GetFileName(path));
         }
         catch (Exception exception)
         {
-            AppLogger.Error($"Failed to open score '{dialog.FileName}'.", exception);
+            AppLogger.Error($"Failed to open score '{path}'.", exception);
             SetStatus("Status_OpenFailed", exception.Message);
+        }
+    }
+
+    private async Task OpenScoreFolderAsync()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = _localizationService.GetString("Dialog_OpenScoreFolder"),
+            InitialDirectory = ScoreFolder.Length > 0 ? ScoreFolder : _lastBrowseDirectory,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _scoreFolder = Path.GetFullPath(dialog.FolderName);
+        _lastBrowseDirectory = _scoreFolder;
+        _userSettingsService.SetScoreFolder(_scoreFolder);
+        OnPropertyChanged(nameof(ScoreFolder));
+        OnPropertyChanged(nameof(ScoreFolderName));
+        RefreshScoreFolderCommand.NotifyCanExecuteChanged();
+        await RefreshScoreFolderAsync();
+    }
+
+    private async Task RefreshScoreFolderAsync()
+    {
+        if (!Directory.Exists(ScoreFolder))
+        {
+            _allScoreFolderFiles = [];
+            ApplyScoreFolderFilter();
+            return;
+        }
+
+        var folder = ScoreFolder;
+        _allScoreFolderFiles = await Task.Run(() => Directory
+            .EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)
+            .Where(IsSupportedScorePath)
+            .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(path => new ScoreFolderFile(
+                path,
+                Path.GetFileNameWithoutExtension(path),
+                Path.GetExtension(path).TrimStart('.').ToUpperInvariant()))
+            .ToArray());
+        ApplyScoreFolderFilter();
+    }
+
+    private void ApplyScoreFolderFilter()
+    {
+        var query = ScoreFolderSearch.Trim();
+        var files = query.Length == 0
+            ? _allScoreFolderFiles
+            : _allScoreFolderFiles.Where(file =>
+                file.DisplayName.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+        ScoreFolderFiles.Clear();
+        foreach (var file in files)
+        {
+            ScoreFolderFiles.Add(file);
         }
     }
 
@@ -283,9 +435,19 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             SetStatus("Status_Saving");
             await _workspace.SaveAsync(path);
+            CurrentSourcePath = Path.GetFullPath(path);
+            CancelAutosave();
+            _recoveryService.Discard();
             OnPropertyChanged(nameof(IsDirty));
             OnPropertyChanged(nameof(WindowTitle));
             SetStatus("Status_Saved", path);
+            if (ScoreFolder.Length > 0 && string.Equals(
+                    Path.GetDirectoryName(CurrentSourcePath),
+                    ScoreFolder,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await RefreshScoreFolderAsync();
+            }
             return true;
         }
         catch (Exception exception)
@@ -296,8 +458,73 @@ public sealed class MainWindowViewModel : ObservableObject
         }
     }
 
+    public void RestoreRecovery(ScoreRecoverySnapshot snapshot)
+    {
+        _workspace.RestoreScore(snapshot.Score, snapshot.OriginalPath);
+        RefreshFromWorkspace();
+        SetStatus("Status_RecoveryRestored");
+        ScheduleAutosave();
+    }
+
+    public void DiscardRecovery() => _recoveryService.Discard();
+
+    private void ScheduleAutosave()
+    {
+        CancelAutosave();
+        if (!_workspace.IsDirty)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _autosaveCancellation = cancellation;
+        _ = AutosaveAfterDelayAsync(cancellation);
+    }
+
+    private async Task AutosaveAfterDelayAsync(CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), cancellation.Token);
+            await _recoveryService.SaveAsync(
+                _workspace.CurrentScore,
+                _workspace.CurrentPath,
+                cancellation.Token);
+            AppLogger.Info("Recovery snapshot saved.");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Error("Failed to save recovery snapshot.", exception);
+        }
+        finally
+        {
+            if (ReferenceEquals(_autosaveCancellation, cancellation))
+            {
+                _autosaveCancellation = null;
+            }
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelAutosave()
+    {
+        _autosaveCancellation?.Cancel();
+        _autosaveCancellation = null;
+    }
+
     private async Task PlayAsync()
     {
+        if (!CurrentScore.Tracks.Any(track => track.Notes.Count > 0))
+        {
+            SetStatus("Status_CannotPlayEmptyScore");
+            return;
+        }
+
+        _playbackService.TryFocusFirstPlaybackTarget();
+
         // Capture exactly what is currently visible in the editor. Later edits or
         // saves must not switch the score underneath an active game playback.
         var scoreToPlay = CurrentScore;
@@ -403,6 +630,7 @@ public sealed class MainWindowViewModel : ObservableObject
 
         if (_playbackService.IsManuallyPaused)
         {
+            _playbackService.TryFocusFirstPlaybackTarget();
             _playbackService.Resume();
             SetStatus("Status_PlayResuming");
         }
@@ -513,9 +741,19 @@ public sealed class MainWindowViewModel : ObservableObject
 
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
+        if (CurrentSourcePath is null &&
+            ScoreTitle is "未命名曲谱" or "Untitled score")
+        {
+            var localizedTitle = _localizationService.GetString("Score_Untitled");
+            _workspace.RelabelCurrentScore(localizedTitle);
+            ScoreTitle = localizedTitle;
+            OnPropertyChanged(nameof(CurrentScore));
+        }
+
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(IsChinese));
         OnPropertyChanged(nameof(IsEnglish));
+        OnPropertyChanged(nameof(ScoreFolderName));
     }
 
     private void SetStatus(string key, params object?[] arguments)
@@ -533,3 +771,5 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(WindowTitle));
     }
 }
+
+public sealed record ScoreFolderFile(string Path, string DisplayName, string FileType);

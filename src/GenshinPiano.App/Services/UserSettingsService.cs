@@ -6,13 +6,20 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     public int Version { get; init; } = CurrentVersion;
 
     public EditorUserSettings Editor { get; init; } = new();
 
     public AppearanceUserSettings Appearance { get; init; } = new();
+
+    public LibraryUserSettings Library { get; init; } = new();
+}
+
+public sealed record LibraryUserSettings
+{
+    public string ScoreFolder { get; init; } = string.Empty;
 }
 
 public sealed record AppearanceUserSettings
@@ -56,6 +63,8 @@ public interface IUserSettingsService
     void SetAuditionInstrument(int value);
 
     void SetAuditionVolume(int value);
+
+    void SetScoreFolder(string? path);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -154,6 +163,15 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
+    public void SetScoreFolder(string? path)
+    {
+        var normalized = string.IsNullOrWhiteSpace(path) ? string.Empty : Path.GetFullPath(path);
+        if (Current.Library.ScoreFolder != normalized)
+        {
+            Update(Current with { Library = Current.Library with { ScoreFolder = normalized } });
+        }
+    }
+
     private UserSettings Load()
     {
         try
@@ -217,6 +235,7 @@ public sealed class UserSettingsService : IUserSettingsService
         var editor = settings?.Editor ?? defaults;
         var appearanceDefaults = new AppearanceUserSettings();
         var appearance = settings?.Appearance ?? appearanceDefaults;
+        var library = settings?.Library ?? new LibraryUserSettings();
         return new UserSettings
         {
             Version = UserSettings.CurrentVersion,
@@ -242,6 +261,10 @@ public sealed class UserSettingsService : IUserSettingsService
                 Language = Enum.TryParse<AppLanguage>(appearance.Language, out var language)
                     ? language.ToString()
                     : appearanceDefaults.Language,
+            },
+            Library = library with
+            {
+                ScoreFolder = Directory.Exists(library.ScoreFolder) ? library.ScoreFolder : string.Empty,
             },
         };
     }

@@ -15,12 +15,12 @@
         Closing="PlaybackMonitorWindow_OnClosing">
     <Window.Resources>
         <Style x:Key="MonitorIconButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="32" />
-            <Setter Property="Height" Value="32" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="{DynamicResource AccentSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -96,15 +96,17 @@
         </Style>
         <Style x:Key="MonitorStopButtonStyle"
                TargetType="Button"
-               BasedOn="{StaticResource MonitorIconButtonStyle}">
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-        </Style>
+               BasedOn="{StaticResource MonitorIconButtonStyle}" />
     </Window.Resources>
-    <Border Background="{DynamicResource PanelBackgroundBrush}"
+    <Border x:Name="MonitorRoot"
+            Background="{DynamicResource PanelBackgroundBrush}"
             BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="1"
-            CornerRadius="10">
+            CornerRadius="10"
+            RenderTransformOrigin="0.5,0.5">
+        <Border.RenderTransform>
+            <ScaleTransform ScaleX="0.94" ScaleY="0.94" />
+        </Border.RenderTransform>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="38" />
@@ -203,43 +205,101 @@
                             Style="{StaticResource MonitorIconButtonStyle}"
                             ToolTip="{DynamicResource Action_Play}"
                             Command="{Binding TogglePlaybackCommand}">
-                        <Grid Width="13" Height="14">
-                            <Path Fill="{DynamicResource PrimaryTextBrush}"
+                        <Grid Width="20" Height="20">
+                            <Path Fill="{DynamicResource AccentBrush}"
+                                  Margin="1"
                                   Stretch="Uniform"
-                                  Data="M 1,0 L 13,7 L 1,14 Z">
+                                  RenderTransformOrigin="0.5,0.5"
+                                  Data="M2,0.7 Q1,0.2 1,1.7 L1,12.3 Q1,13.8 2,13.3 L12.5,7.8 Q13.8,7 12.5,6.2 Z">
+                                <Path.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                </Path.RenderTransform>
                                 <Path.Style>
                                     <Style TargetType="Path">
-                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Setter Property="Opacity" Value="1" />
                                         <Style.Triggers>
                                             <MultiDataTrigger>
                                                 <MultiDataTrigger.Conditions>
                                                     <Condition Binding="{Binding IsPlaying, Mode=OneWay}" Value="True" />
                                                     <Condition Binding="{Binding IsPlaybackPaused, Mode=OneWay}" Value="False" />
                                                 </MultiDataTrigger.Conditions>
-                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <MultiDataTrigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="0" Duration="0:0:0.13" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="0.62" Duration="0:0:0.16" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="0.62" Duration="0:0:0.16" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </MultiDataTrigger.EnterActions>
+                                                <MultiDataTrigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="1" Duration="0:0:0.17" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="1" Duration="0:0:0.19" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="1" Duration="0:0:0.19" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </MultiDataTrigger.ExitActions>
                                             </MultiDataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Path.Style>
                             </Path>
-                            <Path Fill="{DynamicResource PrimaryTextBrush}"
-                                  Stretch="Uniform"
-                                  Data="M 0,0 H 4 V 14 H 0 Z M 9,0 H 13 V 14 H 9 Z">
-                                <Path.Style>
-                                    <Style TargetType="Path">
-                                        <Setter Property="Visibility" Value="Collapsed" />
+                            <Grid Width="17" Height="18" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform ScaleX="0.62" ScaleY="0.62" />
+                                </Grid.RenderTransform>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Opacity" Value="0" />
                                         <Style.Triggers>
                                             <MultiDataTrigger>
                                                 <MultiDataTrigger.Conditions>
                                                     <Condition Binding="{Binding IsPlaying, Mode=OneWay}" Value="True" />
                                                     <Condition Binding="{Binding IsPlaybackPaused, Mode=OneWay}" Value="False" />
                                                 </MultiDataTrigger.Conditions>
-                                                <Setter Property="Visibility" Value="Visible" />
+                                                <MultiDataTrigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="1" Duration="0:0:0.17" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="1" Duration="0:0:0.19" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="1" Duration="0:0:0.19" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </MultiDataTrigger.EnterActions>
+                                                <MultiDataTrigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                             To="0" Duration="0:0:0.13" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                             To="0.62" Duration="0:0:0.16" />
+                                                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                             To="0.62" Duration="0:0:0.16" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </MultiDataTrigger.ExitActions>
                                             </MultiDataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </Path.Style>
-                            </Path>
+                                </Grid.Style>
+                                <Rectangle Width="5" Height="17" Margin="0,0,9,0"
+                                           RadiusX="1.2" RadiusY="1.2"
+                                           Fill="{DynamicResource AccentBrush}" />
+                                <Rectangle Width="5" Height="17" Margin="9,0,0,0"
+                                           RadiusX="1.2" RadiusY="1.2"
+                                           Fill="{DynamicResource AccentBrush}" />
+                            </Grid>
                         </Grid>
                     </Button>
                     <Button Grid.Column="2"
@@ -247,11 +307,11 @@
                             Style="{StaticResource MonitorStopButtonStyle}"
                             ToolTip="{DynamicResource Action_Stop}"
                             Command="{Binding StopCommand}">
-                        <Rectangle Width="11"
-                                   Height="11"
-                                   RadiusX="2"
-                                   RadiusY="2"
-                                   Fill="{DynamicResource PrimaryTextBrush}" />
+                        <Rectangle Width="15"
+                                   Height="15"
+                                   RadiusX="2.5"
+                                   RadiusY="2.5"
+                                   Fill="{DynamicResource StopIconBrush}" />
                     </Button>
                 </Grid>
 

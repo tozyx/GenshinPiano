@@ -12,10 +12,14 @@
         Style="{StaticResource AppWindowStyle}"
         WindowStyle="None"
         ResizeMode="CanResize"
+        AllowDrop="True"
+        PreviewDragOver="MainWindow_OnPreviewDragOver"
+        Drop="MainWindow_OnDrop"
         Closing="MainWindow_OnClosing"
         Closed="MainWindow_OnClosed"
         DataContextChanged="MainWindow_OnDataContextChanged"
         PreviewKeyDown="MainWindow_OnPreviewKeyDown"
+        Deactivated="MainWindow_OnDeactivated"
         StateChanged="MainWindow_OnStateChanged"
         WindowStartupLocation="CenterScreen">
     <shell:WindowChrome.WindowChrome>
@@ -61,6 +65,145 @@
                     <Setter Property="Foreground" Value="White" />
                 </Trigger>
             </Style.Triggers>
+        </Style>
+        <Style x:Key="SidebarIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="7" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="IconButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7">
+                            <ContentPresenter x:Name="IconContent"
+                                              Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RenderTransformOrigin="0.5,0.5">
+                                <ContentPresenter.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                </ContentPresenter.RenderTransform>
+                            </ContentPresenter>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IconContent"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="1.1" Duration="0:0:0.13" />
+                                            <DoubleAnimation Storyboard.TargetName="IconContent"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                             To="1.1" Duration="0:0:0.13" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="IconContent"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                             To="1" Duration="0:0:0.16" />
+                                            <DoubleAnimation Storyboard.TargetName="IconContent"
+                                                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                             To="1" Duration="0:0:0.16" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="IconContent" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="0.92" ScaleY="0.92" /></Setter.Value>
+                                </Setter>
+                                <Setter TargetName="IconButtonBorder" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="IconButtonBorder" Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SidebarPlayButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource SidebarIconButtonStyle}">
+            <Setter Property="Width" Value="56" />
+            <Setter Property="Height" Value="56" />
+            <Setter Property="Padding" Value="13" />
+        </Style>
+        <Style x:Key="SidebarStopButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource SidebarIconButtonStyle}">
+            <Setter Property="Width" Value="48" />
+            <Setter Property="Height" Value="48" />
+            <Setter Property="Padding" Value="12" />
+        </Style>
+        <Style x:Key="ScoreFileItemStyle" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder" Padding="9,8"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="6">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background"
+                                        Value="{DynamicResource SurfaceBrush}" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush"
+                                        Value="{DynamicResource BorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background"
+                                        Value="{DynamicResource AccentSurfaceBrush}" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush"
+                                        Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SidebarSearchTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="9,5" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <Border Background="{TemplateBinding Background}" CornerRadius="5,5,2,2">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                            </Border>
+                            <Border Height="2" VerticalAlignment="Bottom"
+                                    Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="1" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
     <Window.InputBindings>
@@ -227,40 +370,219 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0">
-                        <TextBlock Text="GenshinPiano"
-                                   FontSize="22"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="{DynamicResource App_DevelopmentPreview}"
-                                   Margin="0,4,0,28"
-                                   Foreground="{DynamicResource AccentBrush}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                            <TextBlock Text="GenshinPiano" FontSize="22" FontWeight="SemiBold" />
+                            <TextBlock Text=" v3" Margin="3,3,0,0" FontSize="14"
+                                       Foreground="{DynamicResource AccentBrush}" />
+                        </StackPanel>
 
-                        <TextBlock Text="{DynamicResource Sidebar_CurrentScore}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource SecondaryTextBrush}" />
-                        <TextBlock Text="{Binding ScoreTitle}"
-                                   Margin="0,6,0,20"
-                                   FontSize="16"
-                                   TextWrapping="Wrap" />
+                        <Border x:Name="CurrentScorePanel"
+                                Padding="4,4" Margin="0,0,0,14"
+                                Background="Transparent">
+                            <Grid>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{DynamicResource Sidebar_CurrentScore}"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                                    <Button x:Name="NewScoreButton"
+                                            Width="17"
+                                            Height="17"
+                                            Padding="3"
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            Style="{StaticResource SidebarIconButtonStyle}"
+                                            Command="{Binding NewCommand}"
+                                            ToolTip="{DynamicResource Action_NewScore}">
+                                        <Path Width="9" Height="9"
+                                              Stretch="Uniform"
+                                              Stroke="{DynamicResource SecondaryTextBrush}"
+                                              StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              Data="M6,1 V11 M1,6 H11" />
+                                    </Button>
+                                    </StackPanel>
+                                    <TextBlock x:Name="CurrentScoreTitle"
+                                               Text="{Binding ScoreTitle}"
+                                               Margin="0,5,8,0"
+                                               FontSize="17" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               Cursor="Hand"
+                                               RenderTransformOrigin="0,0.5"
+                                               MouseLeftButtonDown="CurrentScoreTitle_OnMouseLeftButtonDown"
+                                               TextWrapping="Wrap" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.RenderTransform>
+                                            <ScaleTransform ScaleX="1" ScaleY="1" />
+                                        </TextBlock.RenderTransform>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                     To="1.045" Duration="0:0:0.14" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                     To="1.045" Duration="0:0:0.14" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                                     To="1" Duration="0:0:0.16" />
+                                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                                     To="1" Duration="0:0:0.16" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <Button x:Name="NewScoreButton"
-                                Content="{DynamicResource Action_NewScore}"
-                                Command="{Binding NewCommand}"
-                                HorizontalAlignment="Left"
-                                Style="{StaticResource PrimaryButtonStyle}" />
-                        <Button x:Name="OpenScoreButton"
-                                Content="{DynamicResource Action_OpenGpiano}"
-                                Command="{Binding OpenCommand}"
-                                HorizontalAlignment="Left"
-                                Margin="0,8,0,0"
-                                Style="{StaticResource AppButtonStyle}" />
                     </StackPanel>
 
-                    <StackPanel x:Name="GamePlaybackControls"
-                                Grid.Row="2"
-                                Orientation="Horizontal">
+                    <Grid x:Name="WorkspaceLibraryPanel" Grid.Row="1" Margin="0,6,0,16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="0,0,0,8">
+                            <StackPanel DockPanel.Dock="Right"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <Button x:Name="OpenScoreFolderButton"
+                                        Style="{StaticResource SidebarIconButtonStyle}"
+                                        Command="{Binding OpenScoreFolderCommand}"
+                                        ToolTip="{DynamicResource Action_OpenScoreFolder}">
+                                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                                        <Canvas Width="18" Height="18">
+                                            <Path Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.5"
+                                                  StrokeLineJoin="Round" StrokeStartLineCap="Round"
+                                                  Data="M2.5,4.5 H7 L8.5,6 H15.5 V13.5 H2.5 Z M2.5,7 H15.5" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button x:Name="ScoreFolderSearchButton"
+                                        Style="{StaticResource SidebarIconButtonStyle}"
+                                        ToolTip="{DynamicResource Sidebar_SearchScores}"
+                                        MouseEnter="ScoreFolderSearchButton_OnMouseEnter"
+                                        MouseLeave="ScoreFolderSearchArea_OnMouseLeave"
+                                        Click="ScoreFolderSearchButton_OnClick">
+                                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                                        <Canvas Width="18" Height="18">
+                                            <Path Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.7"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                  Data="M3.5,7.5 A4,4 0 1 1 11.5,7.5 A4,4 0 1 1 3.5,7.5 M10.5,10.5 L15,15" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button Style="{StaticResource SidebarIconButtonStyle}"
+                                        Command="{Binding RefreshScoreFolderCommand}"
+                                        Click="RefreshScoreFolderButton_OnClick"
+                                        ToolTip="{DynamicResource Action_RefreshFolder}">
+                                    <Viewbox x:Name="RefreshScoreFolderIcon"
+                                             Width="16" Height="16"
+                                             Stretch="Uniform"
+                                             RenderTransformOrigin="0.5,0.5">
+                                        <Viewbox.RenderTransform>
+                                            <RotateTransform Angle="0" />
+                                        </Viewbox.RenderTransform>
+                                        <Canvas Width="18" Height="18">
+                                            <Path Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.7"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                  Data="M14.5,6.5 A5.5,5.5 0 1 0 14.5,12 M14.5,3.5 L14.5,7.5 L10.5,7.5" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}"
+                                           Text="{DynamicResource Sidebar_ScoreFolder}" />
+                                <TextBlock Margin="0,3,6,0" Text="{Binding ScoreFolderName}"
+                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding ScoreFolder}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ListBox x:Name="WorkspaceFileList" Grid.Row="1"
+                                 Background="Transparent" BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource ScoreFileItemStyle}"
+                                 ItemsSource="{Binding ScoreFolderFiles}"
+                                 SelectedValuePath="Path"
+                                 SelectedValue="{Binding CurrentSourcePath, Mode=OneWay}"
+                                 SelectionChanged="WorkspaceFileList_OnSelectionChanged"
+                                 ScrollViewer.CanContentScroll="False"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Width="184">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding Path}" />
+                                        <TextBlock Grid.Column="1" Margin="6,0,0,0" Text="{Binding FileType}"
+                                                   FontSize="10" Foreground="{DynamicResource MutedTextBrush}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Popup x:Name="ScoreFolderSearchPopup"
+                               PlacementTarget="{Binding ElementName=ScoreFolderSearchButton}"
+                               Placement="Relative"
+                               HorizontalOffset="-146"
+                               VerticalOffset="-2"
+                               AllowsTransparency="True"
+                               PopupAnimation="None"
+                               StaysOpen="True"
+                               Opened="ScoreFolderSearchPopup_OnOpened">
+                            <Grid x:Name="ScoreFolderSearchPopupContent"
+                                  Width="176" Height="34"
+                                  Background="Transparent"
+                                  UseLayoutRounding="True"
+                                  SnapsToDevicePixels="True"
+                                  MouseEnter="ScoreFolderSearchArea_OnMouseEnter"
+                                  MouseLeave="ScoreFolderSearchArea_OnMouseLeave">
+                                <TextBox x:Name="ScoreFolderSearchTextBox"
+                                         Style="{StaticResource SidebarSearchTextBoxStyle}"
+                                         Padding="9,5,38,5"
+                                         RenderTransformOrigin="1,0.5"
+                                         Text="{Binding ScoreFolderSearch, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="{DynamicResource Sidebar_SearchScores}">
+                                    <TextBox.RenderTransform>
+                                        <ScaleTransform ScaleX="0.05" ScaleY="1" />
+                                    </TextBox.RenderTransform>
+                                </TextBox>
+                                <Viewbox Width="16" Height="16" Margin="0,0,7,0"
+                                         HorizontalAlignment="Right" VerticalAlignment="Center"
+                                         UseLayoutRounding="True"
+                                         SnapsToDevicePixels="True"
+                                         IsHitTestVisible="False">
+                                    <Canvas Width="18" Height="18">
+                                        <Path Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.7"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              Data="M3.5,7.5 A4,4 0 1 1 11.5,7.5 A4,4 0 1 1 3.5,7.5 M10.5,10.5 L15,15" />
+                                    </Canvas>
+                                </Viewbox>
+                            </Grid>
+                        </Popup>
+                    </Grid>
+
+                    <Grid x:Name="GamePlaybackControls" Grid.Row="2">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom">
                         <Button Panel.ZIndex="1"
                                 Command="{Binding TogglePlaybackCommand}"
-                                Style="{StaticResource PlaybackIconButtonStyle}">
+                                Style="{StaticResource SidebarPlayButtonStyle}">
                             <Button.ToolTip>
                                 <TextBlock>
                                     <TextBlock.Style>
@@ -279,11 +601,11 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </Button.ToolTip>
-                            <Grid Width="20" Height="20">
-                                <Path Fill="{DynamicResource PrimaryTextBrush}"
-                                      Margin="2"
+                            <Grid Width="28" Height="28">
+                                <Path Fill="{DynamicResource AccentBrush}"
+                                      Margin="3"
                                       Stretch="Uniform"
-                                      Data="M 5,3.5 L 17,10 L 5,16.5 Z">
+                                      Data="M5.5,3.4 Q4.5,2.85 4.5,4.2 L4.5,15.8 Q4.5,17.15 5.5,16.6 L16.8,10.8 Q18.2,10 16.8,9.2 Z">
                                     <Path.Style>
                                         <Style TargetType="Path">
                                             <Setter Property="Visibility" Value="Visible" />
@@ -299,7 +621,7 @@
                                         </Style>
                                     </Path.Style>
                                 </Path>
-                                <Grid Width="16" Height="16">
+                                <Grid Width="22" Height="22">
                                     <Grid.Style>
                                         <Style TargetType="Grid">
                                             <Setter Property="Visibility" Value="Collapsed" />
@@ -314,25 +636,25 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Grid.Style>
-                                    <Rectangle Width="4.5"
-                                               Height="14"
-                                               Margin="0,0,7,0"
+                                    <Rectangle Width="5.5"
+                                               Height="19"
+                                               Margin="0,0,9,0"
                                                RadiusX="1.2"
                                                RadiusY="1.2"
-                                               Fill="{DynamicResource PrimaryTextBrush}" />
-                                    <Rectangle Width="4.5"
-                                               Height="14"
-                                               Margin="7,0,0,0"
+                                               Fill="{DynamicResource AccentBrush}" />
+                                    <Rectangle Width="5.5"
+                                               Height="19"
+                                               Margin="9,0,0,0"
                                                RadiusX="1.2"
                                                RadiusY="1.2"
-                                               Fill="{DynamicResource PrimaryTextBrush}" />
+                                               Fill="{DynamicResource AccentBrush}" />
                                 </Grid>
                             </Grid>
                         </Button>
 
                         <Border Margin="8,0,0,0" RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform>
-                                <TranslateTransform X="-44" />
+                                <TranslateTransform X="-52" />
                             </Border.RenderTransform>
                             <Border.Style>
                                 <Style TargetType="Border">
@@ -354,7 +676,7 @@
                                                                          From="0" To="1"
                                                                          Duration="0:0:0.18" />
                                                         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                                         From="-44" To="0"
+                                                                         From="-52" To="0"
                                                                          Duration="0:0:0.22">
                                                             <DoubleAnimation.EasingFunction>
                                                                 <CubicEase EasingMode="EaseOut" />
@@ -370,7 +692,7 @@
                                                                          From="1" To="0"
                                                                          Duration="0:0:0.14" />
                                                         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                                         From="0" To="-44"
+                                                                         From="0" To="-52"
                                                                          Duration="0:0:0.16" />
                                                     </Storyboard>
                                                 </BeginStoryboard>
@@ -381,17 +703,19 @@
                             </Border.Style>
                             <Button Command="{Binding StopCommand}"
                                     ToolTip="{DynamicResource Action_Stop}"
-                                    Style="{StaticResource SecondaryPlaybackIconButtonStyle}">
-                                <Rectangle Width="13"
-                                           Height="13"
-                                           RadiusX="2"
-                                           RadiusY="2"
+                                    Style="{StaticResource SidebarStopButtonStyle}">
+                                <Rectangle Width="17"
+                                           Height="17"
+                                           RadiusX="2.5"
+                                           RadiusY="2.5"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"
-                                           Fill="{DynamicResource PrimaryTextBrush}" />
+                                           Fill="{DynamicResource StopIconBrush}" />
                             </Button>
                         </Border>
-                    </StackPanel>
+                        </StackPanel>
+
+                    </Grid>
                 </Grid>
             </Border>
 

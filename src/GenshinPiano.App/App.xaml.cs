@@ -45,6 +45,7 @@ public partial class App : System.Windows.Application
 
         var serializer = new JsonScoreDocumentSerializer();
         var workspace = new ScoreWorkspace(serializer);
+        var recoveryService = new ScoreRecoveryService(serializer);
         UserSettingsService = new UserSettingsService();
         var themeService = new ThemeService();
         var localizationService = new LocalizationService();
@@ -82,7 +83,8 @@ public partial class App : System.Windows.Application
             UserSettingsService,
             playbackService,
             legacyConversionService,
-            midiScoreImporter);
+            midiScoreImporter,
+            recoveryService);
 
         var mainWindow = new MainWindow
         {
@@ -91,6 +93,11 @@ public partial class App : System.Windows.Application
 
         MainWindow = mainWindow;
         mainWindow.Show();
+
+        if (recoveryService.HasRecovery)
+        {
+            _ = RestorePreviousSessionAsync(mainWindow, viewModel, recoveryService);
+        }
 
         try
         {
@@ -106,6 +113,37 @@ public partial class App : System.Windows.Application
 
 
         AppLogger.Info("Application startup completed.");
+    }
+
+    private static async Task RestorePreviousSessionAsync(
+        MainWindow owner,
+        MainWindowViewModel viewModel,
+        ScoreRecoveryService recoveryService)
+    {
+        try
+        {
+            var snapshot = await recoveryService.LoadAsync();
+            if (snapshot is null)
+            {
+                return;
+            }
+
+            var dialog = new Dialogs.RecoveryDialog(snapshot.SavedAt) { Owner = owner };
+            dialog.ShowDialog();
+            if (dialog.ShouldRestore)
+            {
+                viewModel.RestoreRecovery(snapshot);
+            }
+            else
+            {
+                viewModel.DiscardRecovery();
+            }
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Error("Failed to restore autosaved score.", exception);
+            recoveryService.Discard();
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

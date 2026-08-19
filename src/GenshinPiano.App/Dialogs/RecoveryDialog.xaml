@@ -1,0 +1,35 @@
+<Window x:Class="GenshinPiano.App.Dialogs.RecoveryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Dialog_RecoveryTitle}"
+        Width="460" SizeToContent="Height" WindowStyle="None"
+        ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent"
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        FontFamily="{DynamicResource AppFontFamily}"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="{DynamicResource Dialog_RecoveryHeading}"
+                       FontSize="17" FontWeight="SemiBold" />
+            <TextBlock x:Name="MessageText" Grid.Row="1" Margin="0,12,0,22"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       TextWrapping="Wrap" LineHeight="21" />
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Width="96" Height="36" Margin="0"
+                        Content="{DynamicResource Action_Discard}"
+                        Style="{StaticResource AppButtonStyle}"
+                        Click="DiscardButton_OnClick" />
+                <Button Width="96" Height="36" Margin="8,0,0,0"
+                        Content="{DynamicResource Action_Restore}"
+                        Style="{StaticResource PrimaryButtonStyle}" IsDefault="True"
+                        Click="RestoreButton_OnClick" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

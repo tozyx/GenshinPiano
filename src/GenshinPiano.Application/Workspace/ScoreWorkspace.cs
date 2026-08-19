@@ -52,4 +52,22 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer)
         CurrentPath = null;
         IsDirty = true;
     }
+
+    public void RelabelCurrentScore(string title)
+    {
+        CurrentScore = CurrentScore with
+        {
+            Metadata = CurrentScore.Metadata with { Title = title },
+        };
+    }
+
+    public void RestoreScore(ScoreDocument score, string? originalPath)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        CurrentScore = score;
+        CurrentPath = string.IsNullOrWhiteSpace(originalPath)
+            ? null
+            : Path.GetFullPath(originalPath);
+        IsDirty = true;
+    }
 }

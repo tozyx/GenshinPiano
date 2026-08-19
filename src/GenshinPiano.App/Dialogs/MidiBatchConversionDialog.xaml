@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource MidiBatch_Title}"
         Width="520"
-        Height="350"
+        Height="300"
         MinWidth="480"
-        MinHeight="330"
+        MinHeight="300"
         WindowStyle="None"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
@@ -42,7 +42,7 @@
                 </DockPanel>
             </Border>
 
-            <Grid Grid.Row="1" Margin="22,18,22,18">
+            <Grid Grid.Row="1" Margin="22,14,22,14">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -57,7 +57,7 @@
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource SecondaryTextBrush}" />
 
-                <Grid Grid.Row="1" Margin="0,16,0,0">
+                <Grid Grid.Row="1" Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="86" />
                         <ColumnDefinition Width="*" />
@@ -114,7 +114,7 @@
                 <ProgressBar x:Name="ConversionProgress"
                              Grid.Row="3"
                              Height="5"
-                             Margin="0,18,0,0"
+                             Margin="0,12,0,0"
                              Minimum="0"
                              Maximum="1"
                              Value="0"
@@ -122,7 +122,7 @@
 
                 <TextBlock x:Name="ResultText"
                            Grid.Row="4"
-                           Margin="0,12,0,0"
+                           Margin="0,9,0,0"
                            Text="{DynamicResource MidiBatch_Ready}"
                            TextWrapping="Wrap"
                            Foreground="{DynamicResource SecondaryTextBrush}" />

@@ -15,6 +15,12 @@ namespace GenshinPiano.App;
 
 public partial class MainWindow : Window
 {
+    private static readonly DependencyProperty AnimatedVerticalOffsetProperty =
+        DependencyProperty.RegisterAttached(
+            "AnimatedVerticalOffset",
+            typeof(double),
+            typeof(MainWindow),
+            new PropertyMetadata(0d, OnAnimatedVerticalOffsetChanged));
     private const int WindowStyleIndex = -16;
     private const int NativeCaption = 0x00C00000;
     private const int NativeSystemMenu = 0x00080000;
@@ -31,10 +37,18 @@ public partial class MainWindow : Window
     private bool _isLocalAuditionPlaying;
     private MainWindowViewModel? _subscribedViewModel;
     private PlaybackMonitorWindow? _playbackMonitorWindow;
+    private bool _workspaceFileSelectionBusy;
+    private bool _scoreSearchClosing;
+    private readonly DispatcherTimer _scoreSearchCloseTimer;
 
     public MainWindow()
     {
         InitializeComponent();
+        _scoreSearchCloseTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(180),
+        };
+        _scoreSearchCloseTimer.Tick += ScoreSearchCloseTimer_OnTick;
         InputManager.Current.PreProcessInput += InputManager_OnPreProcessInput;
     }
 
@@ -67,6 +81,290 @@ public partial class MainWindow : Window
             0,
             0,
             NoSize | NoMove | NoZOrder | NoActivate | FrameChanged);
+    }
+
+    private void MainWindow_OnPreviewDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = TryGetSupportedDroppedFile(e.Data, out _)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void MainWindow_OnDrop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is MainWindowViewModel viewModel &&
+            TryGetSupportedDroppedFile(e.Data, out var path))
+        {
+            await viewModel.OpenPathAsync(path);
+        }
+    }
+
+    private static bool TryGetSupportedDroppedFile(IDataObject data, out string path)
+    {
+        path = string.Empty;
+        if (!data.GetDataPresent(DataFormats.FileDrop) ||
+            data.GetData(DataFormats.FileDrop) is not string[] paths)
+        {
+            return false;
+        }
+
+        path = paths.FirstOrDefault(MainWindowViewModel.IsSupportedScorePath) ?? string.Empty;
+        return path.Length > 0;
+    }
+
+    private async void WorkspaceFileList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_workspaceFileSelectionBusy ||
+            e.AddedItems.OfType<ScoreFolderFile>().FirstOrDefault() is not { } file ||
+            DataContext is not MainWindowViewModel viewModel ||
+            string.Equals(file.Path, viewModel.CurrentSourcePath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _workspaceFileSelectionBusy = true;
+        try
+        {
+            if (viewModel.IsDirty)
+            {
+                var dialog = new UnsavedChangesDialog { Owner = this };
+                dialog.ShowDialog();
+                if (dialog.Choice == UnsavedChangesChoice.Cancel)
+                {
+                    WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+                    return;
+                }
+
+                if (dialog.Choice == UnsavedChangesChoice.Save &&
+                    !await viewModel.SavePendingChangesAsync())
+                {
+                    WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+                    return;
+                }
+
+                if (dialog.Choice == UnsavedChangesChoice.DontSave)
+                {
+                    viewModel.DiscardRecovery();
+                }
+            }
+
+            await viewModel.OpenPathAsync(file.Path);
+            WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+        }
+        finally
+        {
+            _workspaceFileSelectionBusy = false;
+        }
+    }
+
+    private void CurrentScoreTitle_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var currentFile = viewModel.ScoreFolderFiles.FirstOrDefault(file =>
+            string.Equals(file.Path, viewModel.CurrentSourcePath, StringComparison.OrdinalIgnoreCase));
+        if (currentFile is not null)
+        {
+            AnimateWorkspaceFileIntoView(currentFile);
+        }
+
+        e.Handled = true;
+    }
+
+    private void AnimateWorkspaceFileIntoView(ScoreFolderFile currentFile)
+    {
+        WorkspaceFileList.UpdateLayout();
+        var scrollViewer = FindDescendant<ScrollViewer>(WorkspaceFileList);
+        if (scrollViewer is null)
+        {
+            WorkspaceFileList.ScrollIntoView(currentFile);
+            WorkspaceFileList.SelectedItem = currentFile;
+            WorkspaceFileList.Focus();
+            return;
+        }
+
+        var index = WorkspaceFileList.Items.IndexOf(currentFile);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var itemHeight = 38d;
+        if (WorkspaceFileList.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement firstItem &&
+            firstItem.ActualHeight > 0)
+        {
+            itemHeight = firstItem.ActualHeight;
+        }
+
+        var target = Math.Clamp(
+            index * itemHeight - (scrollViewer.ViewportHeight - itemHeight) / 2,
+            0,
+            scrollViewer.ScrollableHeight);
+        scrollViewer.BeginAnimation(AnimatedVerticalOffsetProperty, null);
+        scrollViewer.SetValue(AnimatedVerticalOffsetProperty, scrollViewer.VerticalOffset);
+        var animation = new System.Windows.Media.Animation.DoubleAnimation(
+                scrollViewer.VerticalOffset,
+                target,
+                TimeSpan.FromMilliseconds(420))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+            },
+        };
+        animation.Completed += (_, _) =>
+        {
+            WorkspaceFileList.SelectedItem = currentFile;
+            WorkspaceFileList.Focus();
+        };
+        scrollViewer.BeginAnimation(AnimatedVerticalOffsetProperty, animation);
+    }
+
+    private static void OnAnimatedVerticalOffsetChanged(
+        DependencyObject dependencyObject,
+        DependencyPropertyChangedEventArgs e)
+    {
+        if (dependencyObject is ScrollViewer scrollViewer && e.NewValue is double offset)
+        {
+            scrollViewer.ScrollToVerticalOffset(offset);
+        }
+    }
+
+    private void ScoreFolderSearchButton_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        _scoreSearchCloseTimer.Stop();
+        _scoreSearchClosing = false;
+        ScoreFolderSearchPopup.IsOpen = true;
+    }
+
+    private void ScoreFolderSearchButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _scoreSearchCloseTimer.Stop();
+        ScoreFolderSearchPopup.IsOpen = true;
+    }
+
+    private void RefreshScoreFolderButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (RefreshScoreFolderIcon.RenderTransform is not RotateTransform transform)
+        {
+            return;
+        }
+
+        transform.BeginAnimation(RotateTransform.AngleProperty, null);
+        transform.Angle = 0;
+        transform.BeginAnimation(
+            RotateTransform.AngleProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                0,
+                360,
+                TimeSpan.FromMilliseconds(380))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                },
+            });
+    }
+
+    private void ScoreFolderSearchArea_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        _scoreSearchCloseTimer.Stop();
+        _scoreSearchClosing = false;
+    }
+
+    private void ScoreFolderSearchArea_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        _scoreSearchCloseTimer.Stop();
+        _scoreSearchCloseTimer.Start();
+    }
+
+    private void ScoreSearchCloseTimer_OnTick(object? sender, EventArgs e)
+    {
+        _scoreSearchCloseTimer.Stop();
+        if (!ScoreFolderSearchButton.IsMouseOver &&
+            !ScoreFolderSearchPopupContent.IsMouseOver)
+        {
+            BeginCloseScoreFolderSearch();
+        }
+    }
+
+    private void BeginCloseScoreFolderSearch()
+    {
+        if (!ScoreFolderSearchPopup.IsOpen || _scoreSearchClosing)
+        {
+            return;
+        }
+
+        _scoreSearchClosing = true;
+        if (ScoreFolderSearchTextBox.RenderTransform is not ScaleTransform transform)
+        {
+            ScoreFolderSearchPopup.IsOpen = false;
+            _scoreSearchClosing = false;
+            return;
+        }
+
+        var animation = new System.Windows.Media.Animation.DoubleAnimation(
+            transform.ScaleX,
+            0.05,
+            TimeSpan.FromMilliseconds(150))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn,
+            },
+        };
+        animation.Completed += (_, _) =>
+        {
+            if (_scoreSearchClosing)
+            {
+                ScoreFolderSearchPopup.IsOpen = false;
+                _scoreSearchClosing = false;
+            }
+        };
+        transform.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
+        ScoreFolderSearchTextBox.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                ScoreFolderSearchTextBox.Opacity,
+                0.82,
+                TimeSpan.FromMilliseconds(125)));
+    }
+
+    private void ScoreFolderSearchPopup_OnOpened(object? sender, EventArgs e)
+    {
+        _scoreSearchClosing = false;
+        ScoreFolderSearchTextBox.BeginAnimation(OpacityProperty, null);
+        ScoreFolderSearchTextBox.Opacity = 0.82;
+        ScoreFolderSearchTextBox.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                0.82,
+                1,
+                TimeSpan.FromMilliseconds(160)));
+
+        if (ScoreFolderSearchTextBox.RenderTransform is ScaleTransform transform)
+        {
+            transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            transform.ScaleX = 0.05;
+            transform.BeginAnimation(
+                ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(
+                    0.05,
+                    1,
+                    TimeSpan.FromMilliseconds(190))
+                {
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                    },
+                });
+        }
     }
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -126,14 +424,40 @@ public partial class MainWindow : Window
 
     private void InputManager_OnPreProcessInput(object sender, PreProcessInputEventArgs e)
     {
-        if (!IsActive ||
-            e.StagingItem.Input is not KeyEventArgs { RoutedEvent: var routedEvent } keyEventArgs ||
+        if (!IsActive)
+        {
+            return;
+        }
+
+        if (e.StagingItem.Input is MouseButtonEventArgs
+            {
+                RoutedEvent: var mouseEvent,
+                ChangedButton: MouseButton.Left,
+            } &&
+            mouseEvent == Mouse.PreviewMouseDownEvent)
+        {
+            if (ScoreFolderSearchPopup.IsOpen &&
+                !ScoreFolderSearchButton.IsMouseOver &&
+                !ScoreFolderSearchPopupContent.IsMouseOver)
+            {
+                BeginCloseScoreFolderSearch();
+            }
+
+            return;
+        }
+
+        if (e.StagingItem.Input is not KeyEventArgs { RoutedEvent: var routedEvent } keyEventArgs ||
             routedEvent != Keyboard.PreviewKeyDownEvent)
         {
             return;
         }
 
         TryHandleFileShortcut(keyEventArgs);
+    }
+
+    private void MainWindow_OnDeactivated(object? sender, EventArgs e)
+    {
+        BeginCloseScoreFolderSearch();
     }
 
     private void TryHandleFileShortcut(KeyEventArgs e)
@@ -180,7 +504,8 @@ public partial class MainWindow : Window
         EditMenuItem.IsEnabled = !e.IsPlaying;
         ImportMenuItem.IsEnabled = !e.IsPlaying;
         NewScoreButton.IsEnabled = !e.IsPlaying;
-        OpenScoreButton.IsEnabled = !e.IsPlaying;
+        OpenScoreFolderButton.IsEnabled = !e.IsPlaying;
+        WorkspaceLibraryPanel.IsEnabled = !e.IsPlaying;
         GamePlaybackControls.IsEnabled = !e.IsPlaying;
     }
 
@@ -322,6 +647,11 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (dialog.Choice == UnsavedChangesChoice.DontSave)
+            {
+                viewModel.DiscardRecovery();
+            }
+
             _allowClose = true;
             _ = Dispatcher.BeginInvoke(
                 DispatcherPriority.Normal,
@@ -359,10 +689,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private static T? FindDescendant<T>(DependencyObject root, string name)
+    private static T? FindDescendant<T>(DependencyObject root, string? name = null)
         where T : FrameworkElement
     {
-        if (root is T matchingElement && matchingElement.Name == name)
+        if (root is T matchingElement &&
+            (string.IsNullOrEmpty(name) || matchingElement.Name == name))
         {
             return matchingElement;
         }

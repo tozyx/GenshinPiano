@@ -24,18 +24,23 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         int instrument,
         bool naturalSustain,
         IProgress<AuditionProgress>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        long? endTick = null)
     {
         var plan = ScoreAuditionPlanner.Create(score, naturalSustain);
         startTick = Math.Clamp(startTick, 0, plan.DurationTick);
+        var playbackEndTick = Math.Clamp(endTick ?? plan.DurationTick, startTick, plan.DurationTick);
         var startTime = ScorePlaybackPlanner.TickToTime(startTick, score.Timing);
-        var events = plan.Events.Where(item => item.Tick >= startTick).ToArray();
+        var endTime = ScorePlaybackPlanner.TickToTime(playbackEndTick, score.Timing);
+        var events = plan.Events
+            .Where(item => item.Tick >= startTick && item.Tick <= playbackEndTick)
+            .ToArray();
         var eventIndex = 0;
         output.SetInstrument(Math.Clamp(instrument, 0, 127));
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            while (startTime + stopwatch.Elapsed < plan.Duration)
+            while (startTime + stopwatch.Elapsed < endTime)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var absoluteTime = startTime + stopwatch.Elapsed;
@@ -55,15 +60,15 @@ public sealed class ScoreAuditionService(IMidiOutput output)
                 }
 
                 var tick = TimeToTick(absoluteTime, score.Timing, plan.DurationTick);
-                progress?.Report(new AuditionProgress(tick, plan.DurationTick, absoluteTime, plan.Duration));
+                progress?.Report(new AuditionProgress(tick, playbackEndTick, absoluteTime, endTime));
                 await Task.Delay(16, cancellationToken).ConfigureAwait(false);
             }
 
             progress?.Report(new AuditionProgress(
-                plan.DurationTick,
-                plan.DurationTick,
-                plan.Duration,
-                plan.Duration));
+                playbackEndTick,
+                playbackEndTick,
+                endTime,
+                endTime));
         }
         finally
         {

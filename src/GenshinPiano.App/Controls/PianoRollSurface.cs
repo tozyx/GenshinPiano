@@ -71,6 +71,12 @@ public sealed class PianoRollSurface : Control
     private bool _internalScoreChange;
     private double _pixelsPerBeat = 112;
     private int _snapDivision = 4;
+    private double _rulerHoverX = double.NaN;
+    private Rect _viewport = Rect.Empty;
+    private bool _isDraggingPlaybackCursor;
+    private double _playbackCursorMouseDownX;
+    private bool _playbackCursorDragMoved;
+    private bool _suppressPlaybackResizeCursorUntilExit;
 
     public NoteArticulation DefaultArticulation { get; set; } = NoteArticulation.Natural;
 
@@ -151,6 +157,22 @@ public sealed class PianoRollSurface : Control
         }
     }
 
+    public void SetViewport(double left, double top, double width, double height)
+    {
+        var viewport = new Rect(
+            Math.Max(0, left),
+            Math.Max(0, top),
+            Math.Max(1, width),
+            Math.Max(1, height));
+        if (_viewport == viewport)
+        {
+            return;
+        }
+
+        _viewport = viewport;
+        InvalidateVisual();
+    }
+
     public void ZoomIn() => PixelsPerBeat *= 1.2;
 
     public void ZoomOut() => PixelsPerBeat /= 1.2;
@@ -169,6 +191,22 @@ public sealed class PianoRollSurface : Control
         .FirstOrDefault(note => note.Id == _primarySelectedNoteId);
 
     public int SelectedNoteCount => _selectedNoteIds.Count;
+
+    public bool TryGetSelectedTickRange(out long startTick, out long endTick)
+    {
+        var notes = GetSelectedNotes();
+        if (notes.Count == 0 || Score is null)
+        {
+            startTick = 0;
+            endTick = 0;
+            return false;
+        }
+
+        startTick = notes.Min(note => note.StartTick);
+        endTick = notes.Max(note => checked(
+            note.StartTick + Math.Max(1, note.RhythmTick ?? note.DurationTick)));
+        return endTick > startTick;
+    }
 
     public bool CanUndo => _undo.Count > 0;
 
@@ -313,9 +351,11 @@ public sealed class PianoRollSurface : Control
 
         if (point.Y < RulerHeight)
         {
-            var tick = Math.Max(0, XToTick(point.X, Score.Timing.Ppq));
-            PlaybackTick = tick;
-            PlaybackSeekRequested?.Invoke(this, new PlaybackSeekRequestedEventArgs(tick));
+            SetPlaybackCursorFromX(point.X);
+            _isDraggingPlaybackCursor = true;
+            _playbackCursorMouseDownX = point.X;
+            _playbackCursorDragMoved = false;
+            CaptureMouse();
             e.Handled = true;
             return;
         }
@@ -422,9 +462,46 @@ public sealed class PianoRollSurface : Control
     {
         base.OnMouseMove(e);
         var point = e.GetPosition(this);
+        if (_isDraggingPlaybackCursor && Score is not null)
+        {
+            if (Math.Abs(point.X - _playbackCursorMouseDownX) >= 3)
+            {
+                _playbackCursorDragMoved = true;
+            }
+            SetPlaybackCursorFromX(point.X);
+            if (_playbackCursorDragMoved)
+            {
+                Cursor = Cursors.SizeWE;
+            }
+            e.Handled = true;
+            return;
+        }
+
         if (_dragMode == DragMode.None || Score is null)
         {
-            Cursor = Cursors.Arrow;
+            var isOverRuler = Score is not null && point.Y < RulerHeight;
+            var cursorX = Score is null || PlaybackTick < 0
+                ? double.NaN
+                : TickToX(PlaybackTick, Score.Timing.Ppq);
+            var isNearPlaybackCursor = isOverRuler &&
+                                       !double.IsNaN(cursorX) &&
+                                       Math.Abs(point.X - cursorX) <= 7;
+            if (_suppressPlaybackResizeCursorUntilExit &&
+                (!isOverRuler || double.IsNaN(cursorX) || Math.Abs(point.X - cursorX) > 10))
+            {
+                _suppressPlaybackResizeCursorUntilExit = false;
+            }
+            Cursor = isNearPlaybackCursor && !_suppressPlaybackResizeCursorUntilExit
+                ? Cursors.SizeWE
+                : isOverRuler ? Cursors.Hand : Cursors.Arrow;
+            var hoverX = isOverRuler
+                ? Math.Clamp(point.X, 0, RenderSize.Width)
+                : double.NaN;
+            if (!double.Equals(_rulerHoverX, hoverX))
+            {
+                _rulerHoverX = hoverX;
+                InvalidateVisual();
+            }
             return;
         }
 
@@ -465,9 +542,38 @@ public sealed class PianoRollSurface : Control
         e.Handled = true;
     }
 
+    protected override void OnMouseLeave(MouseEventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (!double.IsNaN(_rulerHoverX))
+        {
+            _rulerHoverX = double.NaN;
+            InvalidateVisual();
+        }
+        _suppressPlaybackResizeCursorUntilExit = false;
+    }
+
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
+        if (_isDraggingPlaybackCursor)
+        {
+            _isDraggingPlaybackCursor = false;
+            if (IsMouseCaptured)
+            {
+                ReleaseMouseCapture();
+            }
+            var releasePoint = e.GetPosition(this);
+            _rulerHoverX = releasePoint.Y < RulerHeight
+                ? Math.Clamp(releasePoint.X, 0, RenderSize.Width)
+                : double.NaN;
+            _suppressPlaybackResizeCursorUntilExit = true;
+            Cursor = releasePoint.Y < RulerHeight ? Cursors.Hand : Cursors.Arrow;
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         if (_dragMode == DragMode.Marquee)
         {
             _selectionRect = null;
@@ -543,7 +649,7 @@ public sealed class PianoRollSurface : Control
         }
 
         var key = ShortcutKeyResolver.Resolve(e);
-        if (key == Key.Delete && _selectedNoteIds.Count > 0)
+        if (key is Key.Delete or Key.Back && _selectedNoteIds.Count > 0)
         {
             DeleteSelectedNotes();
             e.Handled = true;
@@ -560,9 +666,35 @@ public sealed class PianoRollSurface : Control
         }
     }
 
+    protected override void OnLostMouseCapture(MouseEventArgs e)
+    {
+        base.OnLostMouseCapture(e);
+        _isDraggingPlaybackCursor = false;
+    }
+
+    private void SetPlaybackCursorFromX(double x)
+    {
+        if (Score is null)
+        {
+            return;
+        }
+
+        var clampedX = Math.Clamp(x, 0, Math.Max(0, RenderSize.Width));
+        var tick = Math.Max(0, XToTick(clampedX, Score.Timing.Ppq));
+        PlaybackTick = tick;
+        PlaybackSeekRequested?.Invoke(this, new PlaybackSeekRequestedEventArgs(tick));
+    }
+
     private void DrawRows(DrawingContext drawingContext)
     {
-        for (var row = 0; row < Rows.Length; row++)
+        var firstRow = _viewport.IsEmpty
+            ? 0
+            : Math.Max(0, (int)Math.Floor((_viewport.Top - RulerHeight) / RowHeight));
+        var lastRow = _viewport.IsEmpty
+            ? Rows.Length - 1
+            : Math.Min(Rows.Length - 1,
+                (int)Math.Ceiling((_viewport.Bottom - RulerHeight) / RowHeight));
+        for (var row = firstRow; row <= lastRow; row++)
         {
             if (row % 2 == 1)
             {
@@ -578,40 +710,77 @@ public sealed class PianoRollSurface : Control
     {
         var ppq = score.Timing.Ppq;
         var snap = GetSnapTick(score);
-        var maximumTick = Math.Max(1, XToTick(RenderSize.Width, ppq));
+        var minimumTick = _viewport.IsEmpty ? 0 : Math.Max(0, XToTick(_viewport.Left, ppq));
+        var maximumTick = Math.Max(1, XToTick(
+            _viewport.IsEmpty ? RenderSize.Width : _viewport.Right,
+            ppq));
+        var firstGridTick = Math.Max(0, minimumTick - minimumTick % snap);
         var minorPen = new Pen(WithOpacity(BorderBrush, 0.28), 1);
         var beatPen = new Pen(WithOpacity(BorderBrush, 0.60), 1);
         var barPen = new Pen(WithOpacity(Foreground, 0.42), 1.2);
 
-        for (long tick = 0; tick <= maximumTick; tick += snap)
+        drawingContext.DrawRectangle(
+            WithOpacity(BorderBrush, 0.13),
+            null,
+            new Rect(0, 0, RenderSize.Width, RulerHeight));
+
+        for (var tick = firstGridTick; tick <= maximumTick; tick += snap)
         {
             var x = TickToX(tick, ppq);
-            var pen = tick % (ppq * 4L) == 0
+            var isBar = tick % (ppq * 4L) == 0;
+            var isBeat = tick % ppq == 0;
+            var pen = isBar
                 ? barPen
-                : tick % ppq == 0 ? beatPen : minorPen;
+                : isBeat ? beatPen : minorPen;
             drawingContext.DrawLine(pen, new Point(x, 0), new Point(x, RenderSize.Height));
+
+            var rulerTickHeight = isBar ? 12 : isBeat ? 8 : 4;
+            drawingContext.DrawLine(
+                new Pen(WithOpacity(Foreground, isBar ? 0.72 : isBeat ? 0.52 : 0.34), 1),
+                new Point(x, 0),
+                new Point(x, rulerTickHeight));
         }
 
         var rowPen = new Pen(WithOpacity(BorderBrush, 0.35), 1);
-        for (var row = 0; row <= Rows.Length; row++)
+        var firstRow = _viewport.IsEmpty
+            ? 0
+            : Math.Max(0, (int)Math.Floor((_viewport.Top - RulerHeight) / RowHeight));
+        var lastRow = _viewport.IsEmpty
+            ? Rows.Length
+            : Math.Min(Rows.Length,
+                (int)Math.Ceiling((_viewport.Bottom - RulerHeight) / RowHeight));
+        for (var row = firstRow; row <= lastRow; row++)
         {
             var y = RulerHeight + row * RowHeight;
             drawingContext.DrawLine(rowPen, new Point(0, y), new Point(RenderSize.Width, y));
         }
+        drawingContext.DrawLine(
+            new Pen(WithOpacity(NoteBrush, 0.72), 1),
+            new Point(0, 0.5),
+            new Point(RenderSize.Width, 0.5));
+
+        if (!double.IsNaN(_rulerHoverX))
+        {
+            drawingContext.DrawLine(
+                new Pen(WithOpacity(NoteBrush, 0.55), 1),
+                new Point(_rulerHoverX, 0),
+                new Point(_rulerHoverX, RulerHeight));
+        }
 
         var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var measure = 1;
-        for (long tick = 0; tick <= maximumTick; tick += ppq * 4L)
+        var ticksPerMeasure = ppq * 4L;
+        var firstMeasureTick = Math.Max(0, minimumTick - minimumTick % ticksPerMeasure);
+        for (var tick = firstMeasureTick; tick <= maximumTick; tick += ticksPerMeasure)
         {
             var text = new FormattedText(
-                measure++.ToString(),
+                (tick / ticksPerMeasure + 1).ToString(),
                 System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight,
                 new Typeface(FontFamily, FontStyle, FontWeight, FontStretch),
                 11,
                 Foreground,
                 pixelsPerDip);
-            drawingContext.DrawText(text, new Point(TickToX(tick, ppq) + 6, 7));
+            drawingContext.DrawText(text, new Point(TickToX(tick, ppq) + 6, 14));
         }
     }
 
@@ -620,8 +789,21 @@ public sealed class PianoRollSurface : Control
         var movePreviews = _dragMode == DragMode.Move
             ? _dragPreviews.ToDictionary(note => note.Id)
             : new Dictionary<Guid, NoteEvent>();
+        var visibleLeft = _viewport.IsEmpty ? 0 : _viewport.Left - 4;
+        var visibleRight = _viewport.IsEmpty ? RenderSize.Width : _viewport.Right + 4;
+        var visibleTop = _viewport.IsEmpty ? RulerHeight : _viewport.Top - RowHeight;
+        var visibleBottom = _viewport.IsEmpty ? RenderSize.Height : _viewport.Bottom + RowHeight;
         foreach (var note in score.Tracks.Where(track => !track.IsMuted).SelectMany(track => track.Notes))
         {
+            var noteX = TickToX(note.StartTick, score.Timing.Ppq);
+            var noteWidth = Math.Max(3, TickToX(Math.Max(1, note.DurationTick), score.Timing.Ppq));
+            var noteY = RulerHeight + PitchToRow(note.Pitch) * RowHeight;
+            if (noteX + noteWidth < visibleLeft || noteX > visibleRight ||
+                noteY + RowHeight < visibleTop || noteY > visibleBottom)
+            {
+                continue;
+            }
+
             DrawNote(
                 drawingContext,
                 movePreviews.GetValueOrDefault(note.Id) ?? note,

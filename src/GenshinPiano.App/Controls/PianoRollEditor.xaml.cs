@@ -21,8 +21,12 @@ public partial class PianoRollEditor : UserControl
     private bool _auditionIsPlaying;
     private bool _auditionPauseRequested;
     private bool _isDraggingAuditionVolume;
+    private bool _isClosingAuditionVolume;
+    private bool _isClosingBpmEditor;
     private Window? _ownerWindow;
     private long _auditionTick;
+    private bool _continuousFollowActive;
+    private long _lastFollowTick = -1;
 
     public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
         nameof(Score),
@@ -90,6 +94,11 @@ public partial class PianoRollEditor : UserControl
 
     private void EditorScrollViewer_OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        Surface.SetViewport(
+            e.HorizontalOffset,
+            e.VerticalOffset,
+            e.ViewportWidth,
+            e.ViewportHeight);
         if (e.VerticalChange != 0)
         {
             KeyboardScrollViewer.ScrollToVerticalOffset(e.VerticalOffset);
@@ -112,6 +121,12 @@ public partial class PianoRollEditor : UserControl
 
     private void Surface_OnSelectedNoteChanged(object? sender, EventArgs e)
     {
+        if (Surface.SelectedNoteCount == 0)
+        {
+            SelectionLoopToggle.IsChecked = false;
+            return;
+        }
+
         var articulation = Surface.SelectedArticulation;
         if (articulation is null)
         {
@@ -236,10 +251,16 @@ public partial class PianoRollEditor : UserControl
 
         _auditionTick = e.Tick;
         UpdatePlaybackCursor(e.Tick);
-        UpdateAuditionPosition(e.Tick, TimeSpan.Zero);
+        var position = Score is null
+            ? TimeSpan.Zero
+            : GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(e.Tick, Score.Timing);
+        UpdateAuditionPosition(e.Tick, position);
     }
 
-    private async void AuditionPlayButton_OnClick(object sender, RoutedEventArgs e)
+    private async void AuditionPlayButton_OnClick(object sender, RoutedEventArgs e) =>
+        await ToggleAuditionAsync();
+
+    private async Task ToggleAuditionAsync()
     {
         if (_auditionIsPlaying)
         {
@@ -258,7 +279,20 @@ public partial class PianoRollEditor : UserControl
             return;
         }
 
-        if (_auditionTick >= plan.DurationTick)
+        long loopStartTick = 0;
+        long loopEndTick = 0;
+        var loopSelection = SelectionLoopToggle.IsChecked == true &&
+                            Surface.TryGetSelectedTickRange(out loopStartTick, out loopEndTick);
+        if (SelectionLoopToggle.IsChecked == true && !loopSelection)
+        {
+            SelectionLoopToggle.IsChecked = false;
+        }
+
+        if (loopSelection)
+        {
+            _auditionTick = loopStartTick;
+        }
+        else if (_auditionTick >= plan.DurationTick)
         {
             _auditionTick = 0;
         }
@@ -272,7 +306,7 @@ public partial class PianoRollEditor : UserControl
         _auditionPauseRequested = false;
         SetAuditionPlayingState(true);
         NoteEditorPopup.IsOpen = false;
-        AuditionPlayButton.Content = CreatePauseIcon();
+        AnimateAuditionPlayIcon(true);
         var progress = new Progress<AuditionProgress>(item =>
         {
             _auditionTick = item.Tick;
@@ -284,14 +318,19 @@ public partial class PianoRollEditor : UserControl
 
         try
         {
-            await _auditionService.PlayAsync(
-                Score,
-                _auditionTick,
-                instrument,
-                NaturalSustainCheckBox.IsChecked == true,
-                progress,
-                cancellation.Token);
-            _auditionTick = plan.DurationTick;
+            do
+            {
+                await _auditionService.PlayAsync(
+                    Score,
+                    loopSelection ? loopStartTick : _auditionTick,
+                    instrument,
+                    NaturalSustainCheckBox.IsChecked == true,
+                    progress,
+                    cancellation.Token,
+                    loopSelection ? loopEndTick : null);
+                _auditionTick = loopSelection ? loopStartTick : plan.DurationTick;
+            }
+            while (loopSelection && !cancellation.IsCancellationRequested);
         }
         catch (OperationCanceledException)
         {
@@ -303,7 +342,7 @@ public partial class PianoRollEditor : UserControl
             {
                 _auditionCancellation = null;
                 SetAuditionPlayingState(false);
-                AuditionPlayButton.Content = "▶";
+                AnimateAuditionPlayIcon(false);
                 if (!_auditionPauseRequested)
                 {
                     _auditionTick = 0;
@@ -342,8 +381,10 @@ public partial class PianoRollEditor : UserControl
 
         _auditionIsPlaying = isPlaying;
         BpmTextBox.IsEnabled = !isPlaying;
+        BpmDisplayButton.IsEnabled = !isPlaying;
         AuditionInstrumentComboBox.IsEnabled = !isPlaying;
         NaturalSustainCheckBox.IsEnabled = !isPlaying;
+        SelectionLoopToggle.IsEnabled = !isPlaying;
         EditingToolbar.IsEnabled = !isPlaying;
         Surface.IsEditingEnabled = !isPlaying;
         AuditionStateChanged?.Invoke(this, new AuditionStateChangedEventArgs(isPlaying));
@@ -361,26 +402,104 @@ public partial class PianoRollEditor : UserControl
         object sender,
         SelectionChangedEventArgs e)
     {
-        if (!_loadingSettings &&
-            AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
-            int.TryParse(tag, out var instrument))
+        if (AuditionInstrumentComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !int.TryParse(tag, out var instrument))
+        {
+            return;
+        }
+
+        if (!_loadingSettings)
         {
             _settingsService?.SetAuditionInstrument(instrument);
         }
     }
 
+    private void SelectionLoopToggle_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (SelectionLoopIcon is null ||
+            SelectionLoopIcon.RenderTransform is not System.Windows.Media.RotateTransform transform)
+        {
+            return;
+        }
+
+        transform.BeginAnimation(System.Windows.Media.RotateTransform.AngleProperty, null);
+        var enabled = SelectionLoopToggle.IsChecked == true;
+        transform.Angle = enabled ? 0 : 360;
+        transform.BeginAnimation(
+            System.Windows.Media.RotateTransform.AngleProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                enabled ? 0 : 360,
+                enabled ? 360 : 0,
+                TimeSpan.FromMilliseconds(360))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                },
+            });
+    }
+
+    private void AnimateAuditionPlayIcon(bool playing)
+    {
+        var duration = TimeSpan.FromMilliseconds(170);
+        AuditionPlayIcon.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(playing ? 0 : 1, duration));
+        AuditionPauseIcon.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(playing ? 1 : 0, duration));
+
+        if (AuditionPlayIcon.RenderTransform is System.Windows.Media.ScaleTransform playScale)
+        {
+            playScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(playing ? 0.65 : 1, duration));
+            playScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(playing ? 0.65 : 1, duration));
+        }
+
+        if (AuditionPauseIcon.RenderTransform is System.Windows.Media.ScaleTransform pauseScale)
+        {
+            pauseScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(playing ? 1 : 0.65, duration));
+            pauseScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(playing ? 1 : 0.65, duration));
+        }
+    }
+
     private void AuditionVolumeButton_OnClick(object sender, RoutedEventArgs e)
     {
-        AuditionVolumePopup.IsOpen = !AuditionVolumePopup.IsOpen;
+        if (AuditionVolumePopup.IsOpen)
+        {
+            BeginCloseAuditionVolumePopup();
+            return;
+        }
+
+        _isClosingAuditionVolume = false;
+        AuditionVolumePopup.IsOpen = true;
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            AnimateOpenAuditionVolumePopup);
     }
 
     private void OwnerWindow_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (BpmEditPanel.Visibility == Visibility.Visible &&
+            !BpmControlHost.IsMouseOver)
+        {
+            Keyboard.ClearFocus();
+            ApplyBpm();
+            BeginCloseBpmEditor();
+        }
+
         if (AuditionVolumePopup.IsOpen &&
             !AuditionVolumeButton.IsMouseOver &&
             !IsPointerOverAuditionVolumePopup())
         {
-            AuditionVolumePopup.IsOpen = false;
+            BeginCloseAuditionVolumePopup();
         }
     }
 
@@ -392,9 +511,65 @@ public partial class PianoRollEditor : UserControl
                 !AuditionVolumeSlider.IsMouseCaptureWithin &&
                 !_isDraggingAuditionVolume)
             {
-                AuditionVolumePopup.IsOpen = false;
+                BeginCloseAuditionVolumePopup();
             }
         });
+    }
+
+    private void AnimateOpenAuditionVolumePopup()
+    {
+        if (AuditionVolumePopupContent.RenderTransform is not System.Windows.Media.ScaleTransform transform)
+        {
+            return;
+        }
+
+        transform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+        transform.ScaleX = 0.08;
+        transform.BeginAnimation(
+            System.Windows.Media.ScaleTransform.ScaleXProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                0.08,
+                1,
+                TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                },
+            });
+    }
+
+    private void BeginCloseAuditionVolumePopup()
+    {
+        if (!AuditionVolumePopup.IsOpen || _isClosingAuditionVolume)
+        {
+            return;
+        }
+
+        _isClosingAuditionVolume = true;
+        if (AuditionVolumePopupContent.RenderTransform is not System.Windows.Media.ScaleTransform transform)
+        {
+            AuditionVolumePopup.IsOpen = false;
+            _isClosingAuditionVolume = false;
+            return;
+        }
+
+        var animation = new System.Windows.Media.Animation.DoubleAnimation(
+            transform.ScaleX,
+            0.08,
+            TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn,
+            },
+        };
+        animation.Completed += (_, _) =>
+        {
+            AuditionVolumePopup.IsOpen = false;
+            _isClosingAuditionVolume = false;
+        };
+        transform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, animation);
     }
 
     private bool IsPointerOverAuditionVolumePopup()
@@ -457,10 +632,10 @@ public partial class PianoRollEditor : UserControl
 
     private void UpdateAuditionVolumeFromPointer(MouseEventArgs e)
     {
-        const double trackMargin = 9;
-        var usableHeight = Math.Max(1, AuditionVolumeSlider.ActualHeight - trackMargin * 2);
-        var y = e.GetPosition(AuditionVolumeSlider).Y;
-        var normalized = 1 - (y - trackMargin) / usableHeight;
+        const double trackMargin = 8;
+        var usableWidth = Math.Max(1, AuditionVolumeSlider.ActualWidth - trackMargin * 2);
+        var x = e.GetPosition(AuditionVolumeSlider).X;
+        var normalized = (x - trackMargin) / usableWidth;
         AuditionVolumeSlider.Value = Math.Clamp(normalized, 0, 1);
     }
 
@@ -477,6 +652,21 @@ public partial class PianoRollEditor : UserControl
     private void AuditionVolumeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         SetAuditionVolume(e.NewValue * 100);
+        UpdateAuditionVolumeValueTrack();
+    }
+
+    private void AuditionVolumeSlider_OnSizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateAuditionVolumeValueTrack();
+
+    private void UpdateAuditionVolumeValueTrack()
+    {
+        if (AuditionVolumeValueTrack is null || AuditionVolumeSlider is null)
+        {
+            return;
+        }
+
+        var availableWidth = Math.Max(0, AuditionVolumeSlider.ActualWidth - 12);
+        AuditionVolumeValueTrack.Width = availableWidth * AuditionVolumeSlider.Value;
     }
 
     private void SetAuditionVolume(double percentage)
@@ -516,7 +706,126 @@ public partial class PianoRollEditor : UserControl
         return panel;
     }
 
-    private void BpmTextBox_OnLostFocus(object sender, RoutedEventArgs e) => ApplyBpm();
+    private void BpmDisplayButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _isClosingBpmEditor = false;
+        if (BpmEditLabel.RenderTransform is System.Windows.Media.ScaleTransform labelScale)
+        {
+            labelScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+            labelScale.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleYProperty, null);
+            labelScale.ScaleX = 1.1;
+            labelScale.ScaleY = 1.1;
+        }
+
+        BpmDisplayButton.Visibility = Visibility.Collapsed;
+        BpmEditPanel.Visibility = Visibility.Visible;
+        BpmEditPanel.BeginAnimation(OpacityProperty, null);
+        BpmEditPanel.Opacity = 0;
+        BpmEditPanel.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                0,
+                1,
+                TimeSpan.FromMilliseconds(150)));
+        BpmControlHost.BeginAnimation(WidthProperty, null);
+        BpmControlHost.Width = 68;
+        BpmControlHost.BeginAnimation(
+            WidthProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                68,
+                108,
+                TimeSpan.FromMilliseconds(180))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                },
+            });
+        if (BpmTextBox.RenderTransform is System.Windows.Media.ScaleTransform transform)
+        {
+            transform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, null);
+            transform.ScaleX = 0.08;
+            transform.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(
+                    0.08,
+                    1,
+                    TimeSpan.FromMilliseconds(180))
+                {
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                    },
+                });
+        }
+
+        BpmTextBox.Focus();
+        BpmTextBox.SelectAll();
+    }
+
+    private void BpmTextBox_OnLostFocus(object sender, RoutedEventArgs e)
+    {
+        ApplyBpm();
+        BeginCloseBpmEditor();
+    }
+
+    private void BeginCloseBpmEditor()
+    {
+        if (BpmEditPanel.Visibility != Visibility.Visible || _isClosingBpmEditor)
+        {
+            return;
+        }
+
+        _isClosingBpmEditor = true;
+        if (BpmTextBox.RenderTransform is not System.Windows.Media.ScaleTransform transform)
+        {
+            BpmEditPanel.Visibility = Visibility.Collapsed;
+            BpmDisplayButton.Visibility = Visibility.Visible;
+            _isClosingBpmEditor = false;
+            return;
+        }
+
+        var animation = new System.Windows.Media.Animation.DoubleAnimation(
+            transform.ScaleX,
+            0.08,
+            TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+            {
+                EasingMode = System.Windows.Media.Animation.EasingMode.EaseIn,
+            },
+        };
+        BpmControlHost.BeginAnimation(
+            WidthProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                BpmControlHost.ActualWidth,
+                68,
+                TimeSpan.FromMilliseconds(150))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseInOut,
+                },
+            });
+        if (BpmEditLabel.RenderTransform is System.Windows.Media.ScaleTransform labelScale)
+        {
+            labelScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(1.1, 1, TimeSpan.FromMilliseconds(150)));
+            labelScale.BeginAnimation(
+                System.Windows.Media.ScaleTransform.ScaleYProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(1.1, 1, TimeSpan.FromMilliseconds(150)));
+        }
+        animation.Completed += (_, _) =>
+        {
+            BpmEditPanel.Visibility = Visibility.Collapsed;
+            BpmDisplayButton.Visibility = Visibility.Visible;
+            BpmControlHost.BeginAnimation(WidthProperty, null);
+            BpmControlHost.Width = 68;
+            _isClosingBpmEditor = false;
+        };
+        transform.BeginAnimation(System.Windows.Media.ScaleTransform.ScaleXProperty, animation);
+    }
 
     private void BpmClearButton_OnClick(object sender, RoutedEventArgs e)
     {
@@ -564,7 +873,9 @@ public partial class PianoRollEditor : UserControl
         var ppq = Score?.Timing.Ppq ?? 480;
         var bar = tick / (ppq * 4L) + 1;
         var beat = tick % (ppq * 4L) / ppq + 1;
-        AuditionPositionText.Text = $"{bar}.{beat}  {position:mm\\:ss}";
+        var totalMinutes = (long)position.TotalMinutes;
+        AuditionPositionText.Text =
+            $"{bar}.{beat}  {totalMinutes:00}:{position.Seconds:00}.{position.Milliseconds:000}";
     }
 
     private void UpdatePlaybackCursor(long tick)
@@ -574,7 +885,7 @@ public partial class PianoRollEditor : UserControl
             return;
         }
 
-        transform.X = tick * Surface.PixelsPerBeat / Score.Timing.Ppq;
+        transform.X = tick * Surface.PixelsPerBeat / Score.Timing.Ppq - PlaybackCursor.Width / 2;
         PlaybackCursor.Visibility = Visibility.Visible;
     }
 
@@ -586,12 +897,26 @@ public partial class PianoRollEditor : UserControl
         }
 
         var x = tick * Surface.PixelsPerBeat / Score.Timing.Ppq;
-        var followPosition = EditorScrollViewer.ViewportWidth * 0.72;
-        var followEdge = EditorScrollViewer.HorizontalOffset + followPosition;
-        if (x > followEdge)
+        if (_lastFollowTick >= 0 && tick < _lastFollowTick)
         {
-            EditorScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - followPosition));
+            _continuousFollowActive = false;
         }
+        _lastFollowTick = tick;
+
+        const double anchorRatio = 0.72;
+        var anchor = EditorScrollViewer.ViewportWidth * anchorRatio;
+        if (!_continuousFollowActive)
+        {
+            var activationEdge = EditorScrollViewer.HorizontalOffset + anchor;
+            if (x <= activationEdge)
+            {
+                return;
+            }
+
+            _continuousFollowActive = true;
+        }
+
+        EditorScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - anchor));
     }
 
     private static void SelectComboItem(ComboBox comboBox, string tag)
@@ -738,22 +1063,33 @@ public partial class PianoRollEditor : UserControl
 
     private void Root_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (_auditionIsPlaying)
-        {
-            return;
-        }
-
         if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
         {
             return;
         }
 
-        var step = ShortcutKeyResolver.Resolve(e) switch
+        var key = ShortcutKeyResolver.Resolve(e);
+        if (key == Key.Space &&
+            Keyboard.FocusedElement is not TextBox &&
+            Keyboard.FocusedElement is not ComboBox &&
+            _auditionService is not null)
         {
-            Key.OemOpenBrackets => 1,
-            Key.OemCloseBrackets => -1,
-            _ => 0,
-        };
+            e.Handled = true;
+            _ = ToggleAuditionAsync();
+            return;
+        }
+
+        if (_auditionIsPlaying)
+        {
+            return;
+        }
+
+        if (Keyboard.FocusedElement is TextBox or ComboBox)
+        {
+            return;
+        }
+
+        var step = ShortcutKeyResolver.ResolveBracketStep(e);
         if (step == 0)
         {
             return;

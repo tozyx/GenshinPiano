@@ -133,6 +133,58 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="AuditionHorizontalVolumeSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Margin="6,0" VerticalAlignment="Center">
+                            <Track x:Name="PART_Track" Height="18" VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Focusable="False"
+                                                  IsTabStop="False"
+                                                  Command="{x:Static Slider.DecreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" VerticalAlignment="Center"
+                                                        Background="Transparent"
+                                                        CornerRadius="2" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Focusable="False"
+                                                  IsTabStop="False"
+                                                  Command="{x:Static Slider.IncreaseLarge}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" VerticalAlignment="Center"
+                                                        Background="Transparent"
+                                                        CornerRadius="2" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="16" Height="16">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Grid>
+                                                    <Ellipse Fill="{DynamicResource AccentSurfaceBrush}" />
+                                                    <Ellipse Width="11" Height="11"
+                                                             Fill="{DynamicResource AccentBrush}" />
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="SustainToggleStyle" TargetType="ToggleButton">
             <Setter Property="Width" Value="36" />
             <Setter Property="Height" Value="20" />
@@ -198,6 +250,171 @@
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ToggleTrack" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="LoopToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="LoopBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="LoopBorder" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="LoopBorder" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="EditorIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot" Background="Transparent" CornerRadius="5"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1" />
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.8" />
+                                <Setter TargetName="ButtonRoot" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="1.1" ScaleY="1.1" /></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="0.9" ScaleY="0.9" /></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.38" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TextToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          RenderTransformOrigin="0.5,0.5">
+                            <ContentPresenter.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1" />
+                            </ContentPresenter.RenderTransform>
+                        </ContentPresenter>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.82" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.62" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.38" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="BpmDisplayButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource EditorIconButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot"
+                                Background="Transparent"
+                                RenderTransformOrigin="0,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="1" ScaleY="1" />
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="1.1" ScaleY="1.1" /></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.78" />
+                                <Setter TargetName="ButtonRoot" Property="RenderTransform">
+                                    <Setter.Value><ScaleTransform ScaleX="1.1" ScaleY="1.1" /></Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.38" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="VolumeIconButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource EditorIconButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonRoot" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.82" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.62" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.38" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -289,6 +506,15 @@
                         <ComboBoxItem Content="{DynamicResource Editor_PitchLettersOnly}" Tag="LetterOnly" />
                         <ComboBoxItem Content="{DynamicResource Editor_PitchNumbersOnly}" Tag="NumberedOnly" />
                     </ComboBox>
+                    <ComboBox x:Name="AuditionInstrumentComboBox"
+                              Width="94"
+                              Margin="12,0,0,0"
+                              SelectedIndex="0"
+                              SelectionChanged="AuditionInstrumentComboBox_OnSelectionChanged">
+                        <ComboBoxItem Content="{DynamicResource Audition_Piano}" Tag="0" />
+                        <ComboBoxItem Content="{DynamicResource Audition_Harp}" Tag="46" />
+                        <ComboBoxItem Content="{DynamicResource Audition_Organ}" Tag="19" />
+                    </ComboBox>
                 </StackPanel>
 
                 <StackPanel Margin="18,0,0,0" Orientation="Horizontal">
@@ -315,6 +541,19 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
+            <ToggleButton x:Name="EditorHelpButton"
+                          Panel.ZIndex="5"
+                          Grid.Column="0"
+                          Width="72" Height="34"
+                          HorizontalAlignment="Left" VerticalAlignment="Top"
+                          Content="?" FontWeight="SemiBold"
+                          Background="{DynamicResource PanelBackgroundBrush}"
+                          BorderBrush="{DynamicResource BorderBrush}"
+                          BorderThickness="0,0,1,1"
+                          Foreground="{DynamicResource AccentBrush}"
+                          Cursor="Hand"
+                          ToolTip="{DynamicResource Editor_Hint}" />
+
             <ScrollViewer x:Name="KeyboardScrollViewer"
                           Grid.Column="0"
                           VerticalScrollBarVisibility="Hidden"
@@ -340,18 +579,24 @@
                                            BorderBrush="{DynamicResource BorderBrush}"
                                            LabelMode="{Binding LabelMode, ElementName=KeyboardLabels}"
                                            NoteBrush="{DynamicResource AccentBrush}" />
-                    <Border x:Name="PlaybackCursor"
-                            Width="2"
+                    <Grid x:Name="PlaybackCursor"
+                            Width="10"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Stretch"
                             IsHitTestVisible="False"
                             Visibility="Collapsed"
-                            Background="{DynamicResource AccentBrush}"
                             RenderTransformOrigin="0.5,0">
-                        <Border.RenderTransform>
+                        <Grid.RenderTransform>
                             <TranslateTransform />
-                        </Border.RenderTransform>
-                    </Border>
+                        </Grid.RenderTransform>
+                        <Border Width="2"
+                                HorizontalAlignment="Center"
+                                Background="{DynamicResource AccentBrush}" />
+                        <Path Width="10" Height="7"
+                              HorizontalAlignment="Center" VerticalAlignment="Top"
+                              Stretch="Fill" Fill="{DynamicResource AccentBrush}"
+                              Data="M0,0 L10,0 L5,7 Z" />
+                    </Grid>
                 </Grid>
             </ScrollViewer>
         </Grid>
@@ -366,75 +611,132 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="1"
-                            HorizontalAlignment="Right"
+                <StackPanel Grid.Column="0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
                             Orientation="Horizontal">
-                    <TextBlock Text="BPM"
-                               Margin="0,0,6,0"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
-                    <TextBox x:Name="BpmTextBox"
-                             Width="64"
-                             Height="28"
-                             Style="{StaticResource BpmTextBoxStyle}"
-                             MaxLength="6"
-                             VerticalContentAlignment="Center"
-                             Text="120"
-                             LostFocus="BpmTextBox_OnLostFocus"
-                             KeyDown="BpmTextBox_OnKeyDown" />
-                    <ComboBox x:Name="AuditionInstrumentComboBox"
-                              Width="94"
-                              Height="28"
-                              Margin="8,0,0,0"
-                              SelectedIndex="0"
-                              SelectionChanged="AuditionInstrumentComboBox_OnSelectionChanged">
-                        <ComboBoxItem Content="{DynamicResource Audition_Piano}" Tag="0" />
-                        <ComboBoxItem Content="{DynamicResource Audition_Harp}" Tag="46" />
-                        <ComboBoxItem Content="{DynamicResource Audition_Organ}" Tag="19" />
-                    </ComboBox>
+                    <Grid x:Name="BpmControlHost" Width="68" Height="28" Margin="0,0,12,0">
+                        <Button x:Name="BpmDisplayButton"
+                                Height="28" Padding="5,0"
+                                HorizontalAlignment="Left"
+                                Style="{StaticResource BpmDisplayButtonStyle}"
+                                Width="Auto" Click="BpmDisplayButton_OnClick">
+                            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}">
+                                <Run Text="BPM " /><Run Text="{Binding Text, ElementName=BpmTextBox}" />
+                            </TextBlock>
+                        </Button>
+                        <Grid x:Name="BpmEditPanel" Visibility="Collapsed">
+                            <TextBlock x:Name="BpmEditLabel" Text="BPM" Margin="5,0,0,0"
+                                       HorizontalAlignment="Left" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       RenderTransformOrigin="0,0.5">
+                                <TextBlock.RenderTransform>
+                                    <ScaleTransform ScaleX="1.1" ScaleY="1.1" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                            <TextBox x:Name="BpmTextBox"
+                                     Width="64" Height="28" Margin="40,0,0,0"
+                                     HorizontalAlignment="Left"
+                                     RenderTransformOrigin="0,0.5"
+                                     Style="{StaticResource BpmTextBoxStyle}"
+                                     MaxLength="6" VerticalContentAlignment="Center"
+                                     Text="120"
+                                     LostFocus="BpmTextBox_OnLostFocus"
+                                     KeyDown="BpmTextBox_OnKeyDown">
+                                <TextBox.RenderTransform>
+                                    <ScaleTransform ScaleX="0.08" ScaleY="1" />
+                                </TextBox.RenderTransform>
+                            </TextBox>
+                        </Grid>
+                    </Grid>
                     <ToggleButton x:Name="NaturalSustainCheckBox"
-                                  Margin="8,0,0,0"
                                   VerticalAlignment="Center"
-                                  Style="{StaticResource SustainToggleStyle}"
+                                  Style="{StaticResource TextToggleButtonStyle}"
                                   ToolTip="{DynamicResource Audition_NaturalSustainHint}"
                                   Checked="NaturalSustainCheckBox_OnChanged"
-                                  Unchecked="NaturalSustainCheckBox_OnChanged" />
-                    <TextBlock Margin="6,0,2,0"
-                               VerticalAlignment="Center"
-                               Text="{DynamicResource Audition_NaturalSustain}"
-                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                                  Unchecked="NaturalSustainCheckBox_OnChanged">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="6" Height="6" Margin="0,0,6,0"
+                                     VerticalAlignment="Center"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                            <TextBlock Text="{DynamicResource Audition_NaturalSustain}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </ToggleButton>
                     <Button x:Name="AuditionVolumeButton"
-                            Width="30"
-                            Height="28"
                             Margin="4,0,0,0"
-                            Padding="6"
+                            Style="{StaticResource VolumeIconButtonStyle}"
                             ToolTip="{DynamicResource Audition_Volume}"
                             Click="AuditionVolumeButton_OnClick">
-                        <Viewbox Stretch="Uniform">
+                        <Viewbox Width="18" Height="18" Stretch="Uniform">
                             <Canvas Width="18" Height="18">
-                                <Path Fill="{DynamicResource PrimaryTextBrush}"
-                                      Data="M1,7 L5,7 L10,3 L10,15 L5,11 L1,11 Z" />
                                 <Path Stroke="{DynamicResource PrimaryTextBrush}"
-                                      StrokeThickness="1.8"
+                                      StrokeThickness="1.6" StrokeLineJoin="Round"
                                       StrokeStartLineCap="Round"
                                       StrokeEndLineCap="Round"
-                                      Data="M12,6 C15,8 15,10 12,12 M14,3.5 C18,7 18,11 14,14.5" />
+                                      Data="M2.5,7 H6 L10,3.8 V14.2 L6,11 H2.5 Z M12.3,6.2 C14.5,7.7 14.5,10.3 12.3,11.8" />
                             </Canvas>
                         </Viewbox>
                     </Button>
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            HorizontalAlignment="Right"
+                            Orientation="Horizontal">
+                    <ToggleButton x:Name="SelectionLoopToggle"
+                                  Width="30"
+                                  Height="28"
+                                  Margin="8,0,0,0"
+                                  Padding="0"
+                                  Style="{StaticResource LoopToggleButtonStyle}"
+                                  Checked="SelectionLoopToggle_OnChanged"
+                                  Unchecked="SelectionLoopToggle_OnChanged"
+                                  ToolTip="{DynamicResource Audition_SelectionLoop}">
+                        <Viewbox x:Name="SelectionLoopIcon" Width="16" Height="16"
+                                 Stretch="Uniform" RenderTransformOrigin="0.5,0.5">
+                            <Viewbox.RenderTransform>
+                                <RotateTransform Angle="0" />
+                            </Viewbox.RenderTransform>
+                            <Canvas Width="18" Height="18">
+                                <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Data="M14.5,6 A6,6 0 1 0 14.5,12" />
+                                <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                      StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Data="M11.5,4 L14.8,6 L12.5,9" />
+                            </Canvas>
+                        </Viewbox>
+                    </ToggleButton>
                     <Button x:Name="AuditionPlayButton"
-                            Content="▶"
-                            Width="30"
-                            Height="28"
-                            Margin="8,0,0,0"
-                            Padding="0"
-                            ToolTip="{DynamicResource Audition_PlayPause}"
-                            Click="AuditionPlayButton_OnClick" />
-                    <Button x:Name="AuditionStopButton"
-                            Width="30"
-                            Height="28"
                             Margin="4,0,0,0"
-                            Padding="0"
+                            Style="{StaticResource EditorIconButtonStyle}"
+                            ToolTip="{DynamicResource Audition_PlayPause}"
+                            Click="AuditionPlayButton_OnClick">
+                        <Grid Width="18" Height="18">
+                            <Path x:Name="AuditionPlayIcon" Fill="White" Stretch="Uniform"
+                                  Margin="2" Data="M2.5,0.7 Q1.5,0.2 1.5,1.8 L1.5,14.2 Q1.5,15.8 2.5,15.3 L13.8,8.8 Q15.2,8 13.8,7.2 Z"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                </Path.RenderTransform>
+                            </Path>
+                            <Grid x:Name="AuditionPauseIcon" Opacity="0"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform ScaleX="0.65" ScaleY="0.65" />
+                                </Grid.RenderTransform>
+                                <Rectangle Width="4.5" Height="16" Margin="0,0,8,0" RadiusX="1" Fill="White" />
+                                <Rectangle Width="4.5" Height="16" Margin="8,0,0,0" RadiusX="1" Fill="White" />
+                            </Grid>
+                        </Grid>
+                    </Button>
+                    <Button x:Name="AuditionStopButton"
+                            Margin="4,0,0,0"
+                            Style="{StaticResource EditorIconButtonStyle}"
                             ToolTip="{DynamicResource Audition_Stop}"
                             Click="AuditionStopButton_OnClick">
                         <Viewbox Width="11"
@@ -446,55 +748,81 @@
                                        Height="10"
                                        RadiusX="1"
                                        RadiusY="1"
-                                       Fill="{DynamicResource PrimaryTextBrush}" />
+                                       Fill="White" />
                         </Viewbox>
                     </Button>
                     <TextBlock x:Name="AuditionPositionText"
-                               Width="94"
+                               MinWidth="100"
                                Margin="8,0,0,0"
                                VerticalAlignment="Center"
-                               Text="1.1  00:00"
+                               TextAlignment="Right"
+                               Text="1.1  00:00.000"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                 </StackPanel>
-                <TextBlock Grid.Column="0"
-                           Text="{DynamicResource Editor_Hint}"
-                           Margin="0,0,12,0"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource MutedTextBrush}" />
             </Grid>
         </Border>
 
-        <Popup x:Name="AuditionVolumePopup"
-               PlacementTarget="{Binding ElementName=AuditionVolumeButton}"
-               Placement="Top"
-               HorizontalOffset="-7"
-               VerticalOffset="-6"
-               AllowsTransparency="True"
-               PopupAnimation="Fade"
-               StaysOpen="True">
-            <Border Width="44"
-                    Height="150"
-                    Padding="6,12"
+        <Popup x:Name="EditorHelpPopup"
+               PlacementTarget="{Binding ElementName=EditorHelpButton}"
+               Placement="Right" HorizontalOffset="6"
+               IsOpen="{Binding IsChecked, ElementName=EditorHelpButton, Mode=TwoWay}"
+               AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False">
+            <Border MaxWidth="430" Padding="12,9"
                     Background="{DynamicResource PanelBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="7">
-                <Slider x:Name="AuditionVolumeSlider"
-                        Width="30"
-                        HorizontalAlignment="Center"
-                        Orientation="Vertical"
-                        Style="{StaticResource AuditionVolumeSliderStyle}"
-                        Minimum="0"
-                        Maximum="1"
-                        Value="0.8"
-                        SmallChange="0.01"
-                        LargeChange="0.1"
-                        TickFrequency="0.1"
-                        PreviewMouseLeftButtonDown="AuditionVolumeSlider_OnPreviewMouseLeftButtonDown"
-                        PreviewMouseMove="AuditionVolumeSlider_OnPreviewMouseMove"
-                        PreviewMouseLeftButtonUp="AuditionVolumeSlider_OnPreviewMouseLeftButtonUp"
-                        ValueChanged="AuditionVolumeSlider_OnValueChanged" />
+                    BorderThickness="1" CornerRadius="6">
+                <TextBlock Text="{DynamicResource Editor_Hint}"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
+            </Border>
+        </Popup>
+
+        <Popup x:Name="AuditionVolumePopup"
+               PlacementTarget="{Binding ElementName=AuditionVolumeButton}"
+               Placement="Right"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               AllowsTransparency="True"
+               PopupAnimation="None"
+               StaysOpen="True">
+            <Border x:Name="AuditionVolumePopupContent"
+                    Width="170"
+                    Height="28"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    RenderTransformOrigin="0,0.5">
+                <Border.RenderTransform>
+                    <ScaleTransform ScaleX="0.08" ScaleY="1" />
+                </Border.RenderTransform>
+                <Grid Width="170" Height="28">
+                    <Border Height="4" Margin="6,0"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource BorderBrush}"
+                            CornerRadius="2" />
+                    <Border x:Name="AuditionVolumeValueTrack"
+                            Width="0" Height="4" Margin="6,0,0,0"
+                            HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Background="{DynamicResource AccentBrush}"
+                            CornerRadius="2" />
+                    <Slider x:Name="AuditionVolumeSlider"
+                            Width="170"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Minimum="0"
+                            Maximum="1"
+                            Value="0.8"
+                            SmallChange="0.01"
+                            LargeChange="0.1"
+                            TickFrequency="0.1"
+                            Style="{StaticResource AuditionHorizontalVolumeSliderStyle}"
+                            SizeChanged="AuditionVolumeSlider_OnSizeChanged"
+                            PreviewMouseLeftButtonDown="AuditionVolumeSlider_OnPreviewMouseLeftButtonDown"
+                            PreviewMouseMove="AuditionVolumeSlider_OnPreviewMouseMove"
+                            PreviewMouseLeftButtonUp="AuditionVolumeSlider_OnPreviewMouseLeftButtonUp"
+                            ValueChanged="AuditionVolumeSlider_OnValueChanged" />
+                </Grid>
             </Border>
         </Popup>
 
@@ -544,7 +872,7 @@
                                         <ControlTemplate TargetType="ListBoxItem">
                                             <Border x:Name="OptionBorder"
                                                     Padding="{TemplateBinding Padding}"
-                                                    Background="{DynamicResource ControlBackgroundBrush}"
+                                                    Background="{DynamicResource SurfaceBrush}"
                                                     BorderBrush="{TemplateBinding BorderBrush}"
                                                     BorderThickness="{TemplateBinding BorderThickness}"
                                                     CornerRadius="4">
