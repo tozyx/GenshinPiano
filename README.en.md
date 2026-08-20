@@ -53,7 +53,7 @@ The application runs in portable mode. User settings are stored in `config/setti
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.
 
-# Score Resource Notice
+## Score Resource Notice
 The score files in this directory are provided to demonstrate and test GenshinPiano features, including score editing, file loading, local audition, format conversion, and in-game performance.
 
 Unless a score file or its accompanying information explicitly states otherwise:
