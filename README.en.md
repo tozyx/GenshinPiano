@@ -53,4 +53,23 @@ The application runs in portable mode. User settings are stored in `config/setti
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.
 
+# Score Resource Notice
+The score files in this directory are provided to demonstrate and test GenshinPiano features, including score editing, file loading, local audition, format conversion, and in-game performance.
+
+Unless a score file or its accompanying information explicitly states otherwise:
+
+- The scores are intended only for personal study, software testing, and non-commercial exchange.
+- The scores may not be sold, commercially distributed, used in paid performances, or otherwise commercially exploited.
+- A score may be a simplified transcription or arrangement of an existing musical work.
+- Copyright and other rights in the underlying musical works remain with their respective composers, authors, publishers, and other rights holders.
+- Distribution of a score does not mean that the GenshinPiano project owns or has obtained full authorization for the underlying musical work.
+- Distribution of a score does not grant users rights to reproduce, adapt, distribute, publicly perform, or commercially exploit the underlying work.
+- Users are responsible for ensuring that their downloading, use, modification, and sharing of score files comply with applicable laws and platform rules.
+
+The GenshinPiano source code is released under the MIT License. The MIT License applies only to software code and original materials that the project is legally entitled to license. It does not automatically apply to third-party musical works, score files, titles, or other materials in this directory.
+
+If you are a copyright owner or an authorized representative and believe that content in this directory infringes your rights, please contact the project through GitHub Issues:
+
+[https://github.com/tozyx/GenshinPiano/issues](https://github.com/tozyx/GenshinPiano/issues)
+
 This project is licensed under the [MIT License](LICENSE).
