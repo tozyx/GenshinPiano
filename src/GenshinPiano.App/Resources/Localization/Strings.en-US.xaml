@@ -52,7 +52,24 @@
     <system:String x:Key="Editor_PitchNumbersWithKey">Numbers + keys</system:String>
     <system:String x:Key="Editor_PitchLettersOnly">Letters</system:String>
     <system:String x:Key="Editor_PitchNumbersOnly">Numbers</system:String>
-    <system:String x:Key="Editor_Hint">Click the top ruler to set the cursor · Double-click create · Ctrl-click/box select · Ctrl-drag copy · Right-click duration · [ shorter · ] longer</system:String>
+    <system:String x:Key="Editor_Hint">View piano-roll controls and shortcuts</system:String>
+    <system:String x:Key="Editor_HelpCreateTitle">Create and select</system:String>
+    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• Double-click empty space: create a note
+• Click a note: select and drag
+• Ctrl + click: add to or remove from the selection
+• Drag empty space: box-select; Ctrl + box-select: add to the selection
+• Ctrl + drag a note: copy
+• Delete / Backspace: delete; Ctrl + Z / Ctrl + Y: undo / redo</system:String>
+    <system:String x:Key="Editor_HelpRhythmTitle">Rhythm and duration</system:String>
+    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• Right-click a note: set its rhythmic value and key-hold ratio
+• [: shorten selected notes; ]: lengthen selected notes
+• With no note selected, [ / ] changes the snap grid</system:String>
+    <system:String x:Key="Editor_HelpNavigationTitle">Navigation and audition</system:String>
+    <system:String x:Key="Editor_HelpNavigationBody" xml:space="preserve">• Click or drag the top ruler: set the playback cursor
+• Space: play / pause local audition
+• Select notes, then enable Loop: audition the selection repeatedly
+• Ctrl + wheel: horizontal zoom; Shift + wheel: horizontal scroll
+• Ctrl + Shift + wheel: vertical zoom</system:String>
     <system:String x:Key="Editor_ZoomIn">Zoom in on the timeline</system:String>
     <system:String x:Key="Editor_ZoomOut">Zoom out on the timeline</system:String>
     <system:String x:Key="Editor_VerticalZoomIn">Increase key height</system:String>

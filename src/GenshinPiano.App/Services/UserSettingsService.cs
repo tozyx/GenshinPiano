@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.IO;
+using System.Security;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace GenshinPiano.App.Services;
 
@@ -84,7 +87,12 @@ public sealed class UserSettingsService : IUserSettingsService
             AppContext.BaseDirectory,
             "config",
             "settings.json");
+        var isFirstRun = !File.Exists(_settingsPath);
         Current = Load();
+        if (isFirstRun)
+        {
+            Save();
+        }
     }
 
     public UserSettings Current { get; private set; }
@@ -178,7 +186,7 @@ public sealed class UserSettingsService : IUserSettingsService
         {
             if (!File.Exists(_settingsPath))
             {
-                return new UserSettings();
+                return CreateFirstRunSettings();
             }
 
             var json = File.ReadAllText(_settingsPath, Encoding.UTF8);
@@ -267,6 +275,59 @@ public sealed class UserSettingsService : IUserSettingsService
                 ScoreFolder = Directory.Exists(library.ScoreFolder) ? library.ScoreFolder : string.Empty,
             },
         };
+    }
+
+    private static UserSettings CreateFirstRunSettings()
+    {
+        var language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals(
+            "zh",
+            StringComparison.OrdinalIgnoreCase)
+            ? AppLanguage.SimplifiedChinese
+            : AppLanguage.English;
+        var bundledSongsDirectory = Path.Combine(AppContext.BaseDirectory, "songs");
+
+        return new UserSettings
+        {
+            Appearance = new AppearanceUserSettings
+            {
+                Theme = GetWindowsAppTheme().ToString(),
+                Language = language.ToString(),
+            },
+            Library = new LibraryUserSettings
+            {
+                ScoreFolder = Directory.Exists(bundledSongsDirectory)
+                    ? bundledSongsDirectory
+                    : string.Empty,
+            },
+        };
+    }
+
+    private static AppTheme GetWindowsAppTheme()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return AppTheme.Dark;
+        }
+
+        try
+        {
+            const string personalizeKey =
+                @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+            var value = Registry.GetValue(personalizeKey, "AppsUseLightTheme", 0);
+            return value is int and not 0 ? AppTheme.Light : AppTheme.Dark;
+        }
+        catch (IOException)
+        {
+            return AppTheme.Dark;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return AppTheme.Dark;
+        }
+        catch (SecurityException)
+        {
+            return AppTheme.Dark;
+        }
     }
 
     private static bool IsValidArticulation(string? value) => value is

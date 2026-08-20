@@ -541,28 +541,30 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <ToggleButton x:Name="EditorHelpButton"
-                          Panel.ZIndex="5"
-                          Grid.Column="0"
-                          Width="72" Height="34"
-                          HorizontalAlignment="Left" VerticalAlignment="Top"
-                          Content="?" FontWeight="SemiBold"
-                          Background="{DynamicResource PanelBackgroundBrush}"
-                          BorderBrush="{DynamicResource BorderBrush}"
-                          BorderThickness="0,0,1,1"
-                          Foreground="{DynamicResource AccentBrush}"
-                          Cursor="Hand"
-                          ToolTip="{DynamicResource Editor_Hint}" />
-
             <ScrollViewer x:Name="KeyboardScrollViewer"
                           Grid.Column="0"
                           VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled">
-                <local:PianoRollKeyboard x:Name="KeyboardLabels"
-                                         RowHeight="{Binding RowHeight, ElementName=Surface}"
-                                         Background="{DynamicResource PanelBackgroundBrush}"
-                                         Foreground="{DynamicResource PrimaryTextBrush}"
-                                         BorderBrush="{DynamicResource BorderBrush}" />
+                <Grid>
+                    <local:PianoRollKeyboard x:Name="KeyboardLabels"
+                                             RowHeight="{Binding RowHeight, ElementName=Surface}"
+                                             Background="{DynamicResource PanelBackgroundBrush}"
+                                             Foreground="{DynamicResource PrimaryTextBrush}"
+                                             BorderBrush="{DynamicResource BorderBrush}" />
+                    <ToggleButton x:Name="EditorHelpButton"
+                                  Panel.ZIndex="1"
+                                  Height="{x:Static local:PianoRollSurface.RulerHeight}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Top"
+                                  Content="?"
+                                  FontWeight="SemiBold"
+                                  Background="{DynamicResource PanelBackgroundBrush}"
+                                  BorderBrush="{DynamicResource BorderBrush}"
+                                  BorderThickness="0,0,1,1"
+                                  Foreground="{DynamicResource AccentBrush}"
+                                  Cursor="Hand"
+                                  ToolTip="{DynamicResource Editor_Hint}" />
+                </Grid>
             </ScrollViewer>
 
             <ScrollViewer x:Name="EditorScrollViewer"
@@ -717,7 +719,7 @@
                             ToolTip="{DynamicResource Audition_PlayPause}"
                             Click="AuditionPlayButton_OnClick">
                         <Grid Width="18" Height="18">
-                            <Path x:Name="AuditionPlayIcon" Fill="White" Stretch="Uniform"
+                            <Path x:Name="AuditionPlayIcon" Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform"
                                   Margin="2" Data="M2.5,0.7 Q1.5,0.2 1.5,1.8 L1.5,14.2 Q1.5,15.8 2.5,15.3 L13.8,8.8 Q15.2,8 13.8,7.2 Z"
                                   RenderTransformOrigin="0.5,0.5">
                                 <Path.RenderTransform>
@@ -729,8 +731,8 @@
                                 <Grid.RenderTransform>
                                     <ScaleTransform ScaleX="0.65" ScaleY="0.65" />
                                 </Grid.RenderTransform>
-                                <Rectangle Width="4.5" Height="16" Margin="0,0,8,0" RadiusX="1" Fill="White" />
-                                <Rectangle Width="4.5" Height="16" Margin="8,0,0,0" RadiusX="1" Fill="White" />
+                                <Rectangle Width="4.5" Height="16" Margin="0,0,8,0" RadiusX="1" Fill="{DynamicResource PrimaryTextBrush}" />
+                                <Rectangle Width="4.5" Height="16" Margin="8,0,0,0" RadiusX="1" Fill="{DynamicResource PrimaryTextBrush}" />
                             </Grid>
                         </Grid>
                     </Button>
@@ -748,7 +750,7 @@
                                        Height="10"
                                        RadiusX="1"
                                        RadiusY="1"
-                                       Fill="White" />
+                                       Fill="{DynamicResource PrimaryTextBrush}" />
                         </Viewbox>
                     </Button>
                     <TextBlock x:Name="AuditionPositionText"
@@ -767,13 +769,41 @@
                Placement="Right" HorizontalOffset="6"
                IsOpen="{Binding IsChecked, ElementName=EditorHelpButton, Mode=TwoWay}"
                AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False">
-            <Border MaxWidth="430" Padding="12,9"
+            <Border MaxWidth="560" Padding="18,15"
                     Background="{DynamicResource PanelBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="6">
-                <TextBlock Text="{DynamicResource Editor_Hint}"
-                           TextWrapping="Wrap"
-                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource Editor_HelpCreateTitle}"
+                               Margin="0,0,0,6"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <TextBlock Text="{DynamicResource Editor_HelpCreateBody}"
+                               LineHeight="22"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                    <TextBlock Text="{DynamicResource Editor_HelpRhythmTitle}"
+                               Margin="0,14,0,6"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <TextBlock Text="{DynamicResource Editor_HelpRhythmBody}"
+                               LineHeight="22"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+
+                    <TextBlock Text="{DynamicResource Editor_HelpNavigationTitle}"
+                               Margin="0,14,0,6"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}" />
+                    <TextBlock Text="{DynamicResource Editor_HelpNavigationBody}"
+                               LineHeight="22"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                </StackPanel>
             </Border>
         </Popup>
 

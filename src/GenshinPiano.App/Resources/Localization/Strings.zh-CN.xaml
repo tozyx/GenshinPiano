@@ -52,7 +52,24 @@
     <system:String x:Key="Editor_PitchNumbersWithKey">数字 + 按键</system:String>
     <system:String x:Key="Editor_PitchLettersOnly">字母</system:String>
     <system:String x:Key="Editor_PitchNumbersOnly">数字</system:String>
-    <system:String x:Key="Editor_Hint">单击顶部时间尺设置游标 · 双击创建 · Ctrl点选/框选 · Ctrl拖动复制 · 右键时长 · [ 缩短 · ] 延长</system:String>
+    <system:String x:Key="Editor_Hint">查看卷帘编辑器操作说明</system:String>
+    <system:String x:Key="Editor_HelpCreateTitle">创建与选择</system:String>
+    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• 双击空白处：创建音符
+• 单击音符：选择并拖动
+• Ctrl + 单击：追加或取消选择
+• 拖动空白处：框选；Ctrl + 框选：追加选择
+• Ctrl + 拖动音符：复制
+• Delete / Backspace：删除；Ctrl + Z / Ctrl + Y：撤销 / 重做</system:String>
+    <system:String x:Key="Editor_HelpRhythmTitle">节奏与时值</system:String>
+    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• 右键音符：设置节拍长度和按键持续比例
+• [：缩短选中音符；]：延长选中音符
+• 未选择音符时，[ / ] 调整吸附网格</system:String>
+    <system:String x:Key="Editor_HelpNavigationTitle">导航与试听</system:String>
+    <system:String x:Key="Editor_HelpNavigationBody" xml:space="preserve">• 单击或拖动顶部时间尺：设置播放游标
+• 空格：播放 / 暂停本地试听
+• 选择音符后启用循环按钮：循环试听选区
+• Ctrl + 滚轮：水平缩放；Shift + 滚轮：横向滚动
+• Ctrl + Shift + 滚轮：垂直缩放</system:String>
     <system:String x:Key="Editor_ZoomIn">放大时间轴</system:String>
     <system:String x:Key="Editor_ZoomOut">缩小时间轴</system:String>
     <system:String x:Key="Editor_VerticalZoomIn">放大键位高度</system:String>
