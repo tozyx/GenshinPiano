@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using GenshinPiano.App.Services;
+using GenshinPiano.App.ViewModels;
 using GenshinPiano.Application.Playback;
 using GenshinPiano.Core.Scores;
 
@@ -28,6 +29,8 @@ public partial class PianoRollEditor : UserControl
     private bool _continuousFollowActive;
     private long _lastFollowTick = -1;
 
+    public PianoRollViewModel EditorViewModel { get; } = new();
+
     public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
         nameof(Score),
         typeof(ScoreDocument),
@@ -40,6 +43,7 @@ public partial class PianoRollEditor : UserControl
     public PianoRollEditor()
     {
         InitializeComponent();
+        Surface.AttachViewModel(EditorViewModel);
         Surface.SelectedNoteChanged += Surface_OnSelectedNoteChanged;
         Surface.NoteEditRequested += Surface_OnNoteEditRequested;
         Surface.PlaybackSeekRequested += Surface_OnPlaybackSeekRequested;

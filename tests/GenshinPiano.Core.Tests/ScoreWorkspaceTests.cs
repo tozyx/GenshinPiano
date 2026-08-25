@@ -8,10 +8,18 @@ namespace GenshinPiano.Core.Tests;
 public sealed class ScoreWorkspaceTests
 {
     [Fact]
+    public void DefaultCreatedScore_UsesProvidedLocalizedTitle()
+    {
+        var workspace = new ScoreWorkspace(new MemorySerializer(), "Untitled score");
+
+        Assert.Equal("Untitled score", workspace.CurrentScore.Metadata.Title);
+    }
+
+    [Fact]
     public async Task EditingAndSaving_UpdatesDirtyState()
     {
         var serializer = new MemorySerializer();
-        var workspace = new ScoreWorkspace(serializer);
+        var workspace = new ScoreWorkspace(serializer, "Untitled score");
 
         workspace.CreateNew("Test");
         Assert.False(workspace.IsDirty);
@@ -31,9 +39,9 @@ public sealed class ScoreWorkspaceTests
     {
         var serializer = new MemorySerializer
         {
-            ScoreToLoad = ScoreDocument.CreateEmpty("Loaded"),
+            ScoreToLoad = ScoreDocument.CreateEmpty("loaded"),
         };
-        var workspace = new ScoreWorkspace(serializer);
+        var workspace = new ScoreWorkspace(serializer, "Untitled score");
 
         await workspace.LoadAsync("loaded.gpiano");
         Assert.False(workspace.IsDirty);
@@ -46,9 +54,24 @@ public sealed class ScoreWorkspaceTests
     }
 
     [Fact]
+    public async Task LoadedScore_WithDifferentInternalTitle_UsesFileNameAndBecomesDirty()
+    {
+        var serializer = new MemorySerializer
+        {
+            ScoreToLoad = ScoreDocument.CreateEmpty("Encoded title"),
+        };
+        var workspace = new ScoreWorkspace(serializer, "Untitled score");
+
+        await workspace.LoadAsync("File title.gpiano");
+
+        Assert.Equal("File title", workspace.CurrentScore.Metadata.Title);
+        Assert.True(workspace.IsDirty);
+    }
+
+    [Fact]
     public async Task ImportedScore_IsDirtyAndDoesNotReuseSourcePath()
     {
-        var workspace = new ScoreWorkspace(new MemorySerializer());
+        var workspace = new ScoreWorkspace(new MemorySerializer(), "Untitled score");
         await workspace.LoadAsync("source.gpiano");
 
         workspace.ImportScore(ScoreDocument.CreateEmpty("Imported MIDI"));

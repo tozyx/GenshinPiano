@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using GenshinPiano.App.ViewModels;
 using GenshinPiano.Core.Playback;
 using GenshinPiano.Core.Scores;
 
@@ -55,10 +56,7 @@ public sealed class PianoRollSurface : Control
         typeof(PianoRollSurface),
         new FrameworkPropertyMetadata(-1L));
 
-    private readonly Stack<ScoreDocument> _undo = new();
-    private readonly Stack<ScoreDocument> _redo = new();
-    private readonly HashSet<Guid> _selectedNoteIds = [];
-    private Guid? _primarySelectedNoteId;
+    private PianoRollViewModel _viewModel = new();
     private IReadOnlyList<NoteEvent> _dragOriginals = [];
     private IReadOnlyList<NoteEvent> _dragPreviews = [];
     private Point _dragStart;
@@ -94,6 +92,14 @@ public sealed class PianoRollSurface : Control
     public event EventHandler<NoteEditRequestedEventArgs>? NoteEditRequested;
 
     public event EventHandler<PlaybackSeekRequestedEventArgs>? PlaybackSeekRequested;
+
+    internal void AttachViewModel(PianoRollViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        _viewModel = viewModel;
+        _viewModel.LoadScore(Score);
+        InvalidateVisual();
+    }
 
     public ScoreDocument? Score
     {
@@ -183,14 +189,14 @@ public sealed class PianoRollSurface : Control
 
     public NoteArticulation? SelectedArticulation => Score?.Tracks
         .SelectMany(track => track.Notes)
-        .FirstOrDefault(note => note.Id == _primarySelectedNoteId)
+        .FirstOrDefault(note => note.Id == _viewModel.Selection.PrimaryId)
         ?.Articulation;
 
     public NoteEvent? SelectedNote => Score?.Tracks
         .SelectMany(track => track.Notes)
-        .FirstOrDefault(note => note.Id == _primarySelectedNoteId);
+        .FirstOrDefault(note => note.Id == _viewModel.Selection.PrimaryId);
 
-    public int SelectedNoteCount => _selectedNoteIds.Count;
+    public int SelectedNoteCount => _viewModel.Selection.Count;
 
     public bool TryGetSelectedTickRange(out long startTick, out long endTick)
     {
@@ -208,9 +214,9 @@ public sealed class PianoRollSurface : Control
         return endTick > startTick;
     }
 
-    public bool CanUndo => _undo.Count > 0;
+    public bool CanUndo => _viewModel.CanUndo;
 
-    public bool CanRedo => _redo.Count > 0;
+    public bool CanRedo => _viewModel.CanRedo;
 
     public int OptimizeAllNoteDurations()
     {
@@ -219,13 +225,13 @@ public sealed class PianoRollSurface : Control
             return 0;
         }
 
-        var noteCount = Score.Tracks.Sum(track => track.Notes.Count);
+        var noteCount = _viewModel.OptimizeAllNoteDurations();
         if (noteCount == 0)
         {
             return 0;
         }
 
-        Commit(NoteDurationCalculator.OptimizeAllDurations(Score));
+        SynchronizeViewModelScore();
         SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
         return noteCount;
     }
@@ -237,13 +243,13 @@ public sealed class PianoRollSurface : Control
             return 0;
         }
 
-        var noteCount = Score.Tracks.Sum(track => track.Notes.Count);
+        var noteCount = _viewModel.GenerateShortPressDurations();
         if (noteCount == 0)
         {
             return 0;
         }
 
-        Commit(NoteDurationCalculator.GenerateShortPressDurations(Score));
+        SynchronizeViewModelScore();
         SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
         return noteCount;
     }
@@ -276,12 +282,12 @@ public sealed class PianoRollSurface : Control
             return false;
         }
 
-        ReplaceNotes(notes.Select(note => note with
-            {
-                DurationMode = DurationMode.Auto,
-                Articulation = articulation,
-                GateRatio = NoteDurationCalculator.GetGateRatio(articulation),
-            }).ToArray());
+        if (!_viewModel.SetSelectedArticulation(articulation))
+        {
+            return false;
+        }
+
+        SynchronizeViewModelScore();
         SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -297,13 +303,12 @@ public sealed class PianoRollSurface : Control
         }
 
         var articulation = ResolveArticulation(gateRatio);
-        ReplaceNotes(notes.Select(note => note with
-            {
-                RhythmTick = rhythmTick,
-                DurationMode = DurationMode.Auto,
-                Articulation = articulation,
-                GateRatio = gateRatio,
-            }).ToArray());
+        if (!_viewModel.UpdateSelectedDuration(rhythmTick, gateRatio, articulation))
+        {
+            return false;
+        }
+
+        SynchronizeViewModelScore();
         SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -378,7 +383,7 @@ public sealed class PianoRollSurface : Control
             }
 
             _selectionBeforeMarquee = (Keyboard.Modifiers & ModifierKeys.Control) != 0
-                ? [.. _selectedNoteIds]
+                ? [.. _viewModel.Selection.Ids]
                 : [];
             if ((Keyboard.Modifiers & ModifierKeys.Control) == 0)
             {
@@ -396,18 +401,18 @@ public sealed class PianoRollSurface : Control
 
         var control = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         _clickedNoteId = hit.Value.Note.Id;
-        _clickedWasSelected = _selectedNoteIds.Contains(hit.Value.Note.Id);
+        _clickedWasSelected = _viewModel.Selection.Contains(hit.Value.Note.Id);
         if (!control && !_clickedWasSelected)
         {
-            _selectedNoteIds.Clear();
+            _viewModel.Selection.Clear();
         }
 
         if (!_clickedWasSelected)
         {
-            _selectedNoteIds.Add(hit.Value.Note.Id);
+            _viewModel.Selection.Add(hit.Value.Note.Id);
         }
 
-        _primarySelectedNoteId = hit.Value.Note.Id;
+        _viewModel.Selection.MakePrimary(hit.Value.Note.Id);
         RaiseSelectionChanged();
         _dragOriginals = GetSelectedNotes();
         _dragPreviews = _dragOriginals;
@@ -441,13 +446,14 @@ public sealed class PianoRollSurface : Control
             return;
         }
 
-        if (!_selectedNoteIds.Contains(hit.Value.Note.Id))
+        if (!_viewModel.Selection.Contains(hit.Value.Note.Id))
         {
-            _selectedNoteIds.Clear();
-            _selectedNoteIds.Add(hit.Value.Note.Id);
+            _viewModel.Selection.SetSingle(hit.Value.Note.Id);
         }
-
-        _primarySelectedNoteId = hit.Value.Note.Id;
+        else
+        {
+            _viewModel.Selection.MakePrimary(hit.Value.Note.Id);
+        }
         RaiseSelectionChanged();
         NoteEditRequested?.Invoke(
             this,
@@ -518,7 +524,7 @@ public sealed class PianoRollSurface : Control
             }
 
             _dragHasMoved = true;
-            var anchor = _dragOriginals.First(note => note.Id == _primarySelectedNoteId);
+            var anchor = _dragOriginals.First(note => note.Id == _viewModel.Selection.PrimaryId);
             var snap = GetSnapTick(Score);
             var rawDeltaTick = XToTick(point.X - _dragStart.X, Score.Timing.Ppq);
             var anchorStart = Math.Max(0, Snap(anchor.StartTick + rawDeltaTick, snap));
@@ -585,17 +591,16 @@ public sealed class PianoRollSurface : Control
             {
                 var primaryIndex = Math.Max(0, _dragOriginals
                     .Select((note, index) => (note, index))
-                    .FirstOrDefault(item => item.note.Id == _primarySelectedNoteId)
+                    .FirstOrDefault(item => item.note.Id == _viewModel.Selection.PrimaryId)
                     .index);
                 var copies = _dragPreviews.Select(note => note with { Id = Guid.NewGuid() }).ToArray();
-                _selectedNoteIds.Clear();
-                foreach (var copy in copies)
+                _viewModel.Selection.ReplaceWith(
+                    copies.Select(copy => copy.Id),
+                    copies[primaryIndex].Id);
+                if (_viewModel.AddNotes(copies))
                 {
-                    _selectedNoteIds.Add(copy.Id);
+                    SynchronizeViewModelScore();
                 }
-
-                _primarySelectedNoteId = copies[primaryIndex].Id;
-                Commit(ScoreEditor.AddNotes(Score, copies));
                 RaiseSelectionChanged();
             }
             else
@@ -603,18 +608,16 @@ public sealed class PianoRollSurface : Control
                 ReplaceNotes(_dragPreviews);
             }
         }
-        else if (_dragMode == DragMode.Copy && _clickedWasSelected && _primarySelectedNoteId is { } clickedId)
+        else if (_dragMode == DragMode.Copy && _clickedWasSelected &&
+                 _viewModel.Selection.PrimaryId is { } clickedId)
         {
-            _selectedNoteIds.Remove(clickedId);
-            _primarySelectedNoteId = _selectedNoteIds.Count > 0 ? _selectedNoteIds.First() : null;
+            _viewModel.Selection.Remove(clickedId);
             RaiseSelectionChanged();
         }
         else if (_dragMode == DragMode.Move && !_dragHasMoved && _clickedNoteId is { } clickedNoteId &&
-                 _selectedNoteIds.Count > 1)
+                 _viewModel.Selection.Count > 1)
         {
-            _selectedNoteIds.Clear();
-            _selectedNoteIds.Add(clickedNoteId);
-            _primarySelectedNoteId = clickedNoteId;
+            _viewModel.Selection.SetSingle(clickedNoteId);
             RaiseSelectionChanged();
         }
 
@@ -649,7 +652,7 @@ public sealed class PianoRollSurface : Control
         }
 
         var key = ShortcutKeyResolver.Resolve(e);
-        if (key is Key.Delete or Key.Back && _selectedNoteIds.Count > 0)
+        if (key is Key.Delete or Key.Back && _viewModel.Selection.Count > 0)
         {
             DeleteSelectedNotes();
             e.Handled = true;
@@ -808,7 +811,7 @@ public sealed class PianoRollSurface : Control
                 drawingContext,
                 movePreviews.GetValueOrDefault(note.Id) ?? note,
                 score.Timing.Ppq,
-                _selectedNoteIds.Contains(note.Id),
+                _viewModel.Selection.Contains(note.Id),
                 isCopyPreview: false);
         }
 
@@ -937,10 +940,11 @@ public sealed class PianoRollSurface : Control
                 rhythmTick * NoteDurationCalculator.GetGateRatio(DefaultArticulation))),
         };
 
-        _selectedNoteIds.Clear();
-        _selectedNoteIds.Add(note.Id);
-        _primarySelectedNoteId = note.Id;
-        Commit(ScoreEditor.AddNote(score, note));
+        _viewModel.Selection.SetSingle(note.Id);
+        if (_viewModel.AddNote(note))
+        {
+            SynchronizeViewModelScore();
+        }
         RaiseSelectionChanged();
     }
 
@@ -949,39 +953,37 @@ public sealed class PianoRollSurface : Control
 
     private void ReplaceNotes(IReadOnlyCollection<NoteEvent> replacements)
     {
-        var score = Score!;
-        Commit(ScoreEditor.ReplaceNotes(score, replacements));
+        if (_viewModel.ReplaceNotes(replacements))
+        {
+            SynchronizeViewModelScore();
+        }
     }
 
     private void DeleteSelectedNotes()
     {
         var score = Score;
-        if (score is null || _selectedNoteIds.Count == 0)
+        if (score is null || _viewModel.Selection.Count == 0)
         {
             return;
         }
 
-        var selectedIds = _selectedNoteIds.ToArray();
-        _selectedNoteIds.Clear();
-        _primarySelectedNoteId = null;
-        Commit(ScoreEditor.DeleteNotes(score, selectedIds));
+        if (_viewModel.DeleteSelectedNotes())
+        {
+            SynchronizeViewModelScore();
+        }
         RaiseSelectionChanged();
     }
 
-    private IReadOnlyList<NoteEvent> GetSelectedNotes() => Score?.Tracks
-        .SelectMany(track => track.Notes)
-        .Where(note => _selectedNoteIds.Contains(note.Id))
-        .ToArray() ?? [];
+    private IReadOnlyList<NoteEvent> GetSelectedNotes() => _viewModel.GetSelectedNotes();
 
     private void ClearSelection()
     {
-        if (_selectedNoteIds.Count == 0)
+        if (_viewModel.Selection.Count == 0)
         {
             return;
         }
 
-        _selectedNoteIds.Clear();
-        _primarySelectedNoteId = null;
+        _viewModel.Selection.Clear();
         RaiseSelectionChanged();
     }
 
@@ -998,52 +1000,47 @@ public sealed class PianoRollSurface : Control
             return;
         }
 
-        _selectedNoteIds.Clear();
-        _selectedNoteIds.UnionWith(_selectionBeforeMarquee);
+        var selectedIds = new HashSet<Guid>(_selectionBeforeMarquee);
         foreach (var note in Score.Tracks.SelectMany(track => track.Notes))
         {
             if (TryGetNoteBounds(note, Score.Timing.Ppq, out var bounds) && selectionRect.IntersectsWith(bounds))
             {
-                _selectedNoteIds.Add(note.Id);
+                selectedIds.Add(note.Id);
             }
         }
 
-        _primarySelectedNoteId = _selectedNoteIds.Count > 0 ? _selectedNoteIds.First() : null;
+        _viewModel.Selection.ReplaceWith(selectedIds);
         RaiseSelectionChanged();
     }
 
-    private void Commit(ScoreDocument updatedScore)
+    private void SynchronizeViewModelScore()
     {
-        if (Score is null || updatedScore == Score)
+        if (_viewModel.Score is null)
         {
             return;
         }
 
-        _undo.Push(Score);
-        _redo.Clear();
-        SetScoreInternally(updatedScore);
+        SetScoreInternally(_viewModel.Score);
     }
 
     private void Undo()
     {
-        if (_undo.Count == 0 || Score is null)
+        if (!_viewModel.Undo() || _viewModel.Score is null)
         {
             return;
         }
 
-        _redo.Push(Score);
-        SetScoreInternally(_undo.Pop());
+        SetScoreInternally(_viewModel.Score);
     }
 
     private void Redo()
     {
-        if (_redo.Count == 0 || Score is null)
+        if (!_viewModel.Redo() || _viewModel.Score is null)
         {
             return;
         }
 
-        _undo.Push(Score);
-        SetScoreInternally(_redo.Pop());
+        SetScoreInternally(_viewModel.Score);
     }
 
     private void SetScoreInternally(ScoreDocument score)
@@ -1109,28 +1106,19 @@ public sealed class PianoRollSurface : Control
     private static void OnScoreChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
         var surface = (PianoRollSurface)dependencyObject;
+        var selectionChanged = false;
         if (!surface._internalScoreChange)
         {
-            surface._undo.Clear();
-            surface._redo.Clear();
+            selectionChanged = surface._viewModel.LoadScore(args.NewValue as ScoreDocument);
+        }
+        else if (args.NewValue is ScoreDocument internalScore)
+        {
+            selectionChanged = surface._viewModel.SynchronizeScore(internalScore);
         }
 
-        if (args.NewValue is ScoreDocument score)
+        if (selectionChanged)
         {
-            var existingIds = score.Tracks.SelectMany(track => track.Notes).Select(note => note.Id).ToHashSet();
-            var selectionChanged = surface._selectedNoteIds.RemoveWhere(id => !existingIds.Contains(id)) > 0;
-            if (surface._primarySelectedNoteId is { } primary && !existingIds.Contains(primary))
-            {
-                surface._primarySelectedNoteId = surface._selectedNoteIds.Count > 0
-                    ? surface._selectedNoteIds.First()
-                    : null;
-                selectionChanged = true;
-            }
-
-            if (selectionChanged)
-            {
-                surface.SelectedNoteChanged?.Invoke(surface, EventArgs.Empty);
-            }
+            surface.SelectedNoteChanged?.Invoke(surface, EventArgs.Empty);
         }
 
         surface.InvalidateMeasure();

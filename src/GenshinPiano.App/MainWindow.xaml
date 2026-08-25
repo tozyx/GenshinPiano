@@ -408,6 +408,9 @@
                                                Text="{Binding ScoreTitle}"
                                                Margin="0,5,8,0"
                                                FontSize="17" FontWeight="SemiBold"
+                                               LineHeight="22"
+                                               LineStackingStrategy="BlockLineHeight"
+                                               MaxHeight="66"
                                                Foreground="{DynamicResource AccentBrush}"
                                                Cursor="Hand"
                                                RenderTransformOrigin="0,0.5"
@@ -520,8 +523,17 @@
                                  SelectedValuePath="Path"
                                  SelectedValue="{Binding CurrentSourcePath, Mode=OneWay}"
                                  SelectionChanged="WorkspaceFileList_OnSelectionChanged"
+                                 PreviewMouseRightButtonDown="WorkspaceFileList_OnPreviewMouseRightButtonDown"
+                                 ContextMenuOpening="WorkspaceFileList_OnContextMenuOpening"
+                                 KeyDown="WorkspaceFileList_OnKeyDown"
                                  ScrollViewer.CanContentScroll="False"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="{DynamicResource Action_Rename}"
+                                              Click="RenameScoreMenuItem_OnClick" />
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Width="184">

@@ -161,6 +161,14 @@
     <system:String x:Key="Dialog_UnsavedChangesMessage">检测到当前曲谱存在尚未保存的改动。是否在关闭前保存？</system:String>
     <system:String x:Key="Dialog_LegacySourceTitle">选择包含旧版 .GenshinPiano 曲谱的文件夹</system:String>
     <system:String x:Key="Dialog_LegacyOutputTitle">选择转换后的 .gpiano 输出文件夹</system:String>
+    <system:String x:Key="Dialog_RenameScoreTitle">重命名曲谱</system:String>
+    <system:String x:Key="Dialog_RenameScoreLabel">新的曲谱名称</system:String>
+    <system:String x:Key="Dialog_RenameScoreInvalid">名称中包含无效字符。</system:String>
+    <system:String x:Key="Action_Rename">重命名</system:String>
+    <system:String x:Key="Common_Cancel">取消</system:String>
+    <system:String x:Key="Status_ScoreRenamed">曲谱已重命名为“{0}”</system:String>
+    <system:String x:Key="Status_RenameScoreExists">无法重命名：文件“{0}”已存在</system:String>
+    <system:String x:Key="Status_RenameScoreFailed">重命名失败：{0}</system:String>
     <system:String x:Key="MidiBatch_Title">批量转换 MIDI</system:String>
     <system:String x:Key="MidiBatch_Hint">将所选文件夹当前层的 .mid 和 .midi 文件转换为 .gpiano；子文件夹会被自动忽略，已有同名文件不会覆盖。批量转换会自动识别并合并 MIDI 音轨；如需手动选择音轨，请使用“打开文件”单独打开 MIDI 文件进行自定义转换。</system:String>
     <system:String x:Key="MidiBatch_Source">导入文件夹</system:String>

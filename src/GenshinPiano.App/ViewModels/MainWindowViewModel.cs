@@ -306,7 +306,12 @@ public sealed class MainWindowViewModel : ObservableObject
                 }
 
                 var result = await _midiScoreImporter.ImportAsync(path, importDialog.Options);
-                _workspace.ImportScore(result.Score);
+                var fileTitle = Path.GetFileNameWithoutExtension(path);
+                var score = result.Score with
+                {
+                    Metadata = result.Score.Metadata with { Title = fileTitle },
+                };
+                _workspace.ImportScore(score);
                 CurrentSourcePath = path;
                 RefreshFromWorkspace();
                 SetStatus(
@@ -373,6 +378,94 @@ public sealed class MainWindowViewModel : ObservableObject
                 Path.GetExtension(path).TrimStart('.').ToUpperInvariant()))
             .ToArray());
         ApplyScoreFolderFilter();
+    }
+
+    public async Task<bool> RenameScoreFileAsync(ScoreFolderFile file, string newTitle)
+    {
+        newTitle = newTitle.Trim();
+        if (newTitle.Length == 0)
+        {
+            return false;
+        }
+
+        var sourcePath = Path.GetFullPath(file.Path);
+        var extension = Path.GetExtension(sourcePath);
+        var destinationPath = Path.Combine(Path.GetDirectoryName(sourcePath)!, newTitle + extension);
+        if (!string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase) &&
+            File.Exists(destinationPath))
+        {
+            SetStatus("Status_RenameScoreExists", Path.GetFileName(destinationPath));
+            return false;
+        }
+
+        try
+        {
+            var isCurrent = string.Equals(
+                sourcePath,
+                CurrentSourcePath,
+                StringComparison.OrdinalIgnoreCase);
+            if (extension.Equals(".gpiano", StringComparison.OrdinalIgnoreCase) ||
+                extension.Equals(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                await _workspace.RenameStoredScoreAsync(sourcePath, destinationPath, newTitle);
+            }
+            else
+            {
+                MoveFileAllowingCaseOnlyRename(sourcePath, destinationPath);
+                if (isCurrent)
+                {
+                    _workspace.RelabelCurrentScore(newTitle);
+                }
+            }
+
+            if (isCurrent)
+            {
+                CurrentSourcePath = destinationPath;
+                RefreshFromWorkspace();
+            }
+
+            await RefreshScoreFolderAsync();
+            SetStatus("Status_ScoreRenamed", newTitle);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Error($"Failed to rename score '{sourcePath}'.", exception);
+            SetStatus("Status_RenameScoreFailed", exception.Message);
+            return false;
+        }
+    }
+
+    private static void MoveFileAllowingCaseOnlyRename(string sourcePath, string destinationPath)
+    {
+        if (string.Equals(sourcePath, destinationPath, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (!string.Equals(sourcePath, destinationPath, StringComparison.OrdinalIgnoreCase))
+        {
+            File.Move(sourcePath, destinationPath);
+            return;
+        }
+
+        var temporaryPath = Path.Combine(
+            Path.GetDirectoryName(sourcePath)!,
+            $".{Guid.NewGuid():N}{Path.GetExtension(sourcePath)}");
+        File.Move(sourcePath, temporaryPath);
+        try
+        {
+            File.Move(temporaryPath, destinationPath);
+        }
+        catch
+        {
+            if (File.Exists(temporaryPath) && !File.Exists(sourcePath))
+            {
+                File.Move(temporaryPath, sourcePath);
+            }
+
+            throw;
+        }
     }
 
     private void ApplyScoreFolderFilter()

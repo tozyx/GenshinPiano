@@ -31,3 +31,6 @@ Desktop.ini
 # Local application data
 *.gpiano.autosave
 appsettings.local.json
+
+# Local score library
+/samples/songs/

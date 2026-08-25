@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedViewModel;
     private PlaybackMonitorWindow? _playbackMonitorWindow;
     private bool _workspaceFileSelectionBusy;
+    private bool _suppressWorkspaceFileOpen;
     private bool _scoreSearchClosing;
     private readonly DispatcherTimer _scoreSearchCloseTimer;
 
@@ -117,6 +118,7 @@ public partial class MainWindow : Window
     private async void WorkspaceFileList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_workspaceFileSelectionBusy ||
+            _suppressWorkspaceFileOpen ||
             e.AddedItems.OfType<ScoreFolderFile>().FirstOrDefault() is not { } file ||
             DataContext is not MainWindowViewModel viewModel ||
             string.Equals(file.Path, viewModel.CurrentSourcePath, StringComparison.OrdinalIgnoreCase))
@@ -127,6 +129,12 @@ public partial class MainWindow : Window
         _workspaceFileSelectionBusy = true;
         try
         {
+            // A ListBox changes its selection on mouse-down. Opening immediately can
+            // change the wrapped current-title height while the same click is still
+            // in progress, moving the library underneath the pointer. Keep the item
+            // captured above and defer the layout-changing open until mouse-up.
+            await WaitForLeftMouseButtonReleaseAsync();
+
             if (viewModel.IsDirty)
             {
                 var dialog = new UnsavedChangesDialog { Owner = this };
@@ -157,6 +165,99 @@ public partial class MainWindow : Window
         {
             _workspaceFileSelectionBusy = false;
         }
+    }
+
+    private static Task WaitForLeftMouseButtonReleaseAsync()
+    {
+        if (Mouse.LeftButton != MouseButtonState.Pressed)
+        {
+            return Task.CompletedTask;
+        }
+
+        var completion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        PreProcessInputEventHandler? inputHandler = null;
+        inputHandler = (_, args) =>
+        {
+            if (args.StagingItem.Input is not MouseButtonEventArgs
+                {
+                    ChangedButton: MouseButton.Left,
+                    ButtonState: MouseButtonState.Released,
+                })
+            {
+                return;
+            }
+
+            InputManager.Current.PreProcessInput -= inputHandler;
+            completion.TrySetResult();
+        };
+        InputManager.Current.PreProcessInput += inputHandler;
+        return completion.Task;
+    }
+
+    private void WorkspaceFileList_OnPreviewMouseRightButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject) is not { } item)
+        {
+            return;
+        }
+
+        _suppressWorkspaceFileOpen = true;
+        try
+        {
+            item.IsSelected = true;
+            item.Focus();
+        }
+        finally
+        {
+            _suppressWorkspaceFileOpen = false;
+        }
+    }
+
+    private void WorkspaceFileList_OnContextMenuOpening(
+        object sender,
+        ContextMenuEventArgs e)
+    {
+        if (FindAncestor<ListBoxItem>(Mouse.DirectlyOver as DependencyObject) is null)
+        {
+            e.Handled = true;
+        }
+    }
+
+    private async void RenameScoreMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        await RenameSelectedScoreAsync();
+
+    private async void WorkspaceFileList_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F2)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        await RenameSelectedScoreAsync();
+    }
+
+    private async Task RenameSelectedScoreAsync()
+    {
+        if (WorkspaceFileList.SelectedItem is not ScoreFolderFile file ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var dialog = new RenameScoreDialog(file.DisplayName)
+        {
+            Owner = this,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        await viewModel.RenameScoreFileAsync(file, dialog.NewTitle);
     }
 
     private void CurrentScoreTitle_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -705,6 +806,22 @@ public partial class MainWindow : Window
             {
                 return match;
             }
+        }
+
+        return null;
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? child)
+        where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T match)
+            {
+                return match;
+            }
+
+            child = VisualTreeHelper.GetParent(child);
         }
 
         return null;

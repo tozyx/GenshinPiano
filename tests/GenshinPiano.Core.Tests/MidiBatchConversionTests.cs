@@ -39,6 +39,11 @@ public sealed class MidiBatchConversionTests
 
     private sealed class StubImporter : IMidiScoreImporter
     {
+        public Task<MidiFileInfo> AnalyzeAsync(
+            string path,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new MidiFileInfo(Path.GetFileName(path), []));
+
         public Task<MidiImportResult> ImportAsync(
             string path,
             MidiImportOptions? options = null,

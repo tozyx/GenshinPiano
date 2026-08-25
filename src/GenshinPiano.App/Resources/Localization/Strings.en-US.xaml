@@ -161,6 +161,14 @@
     <system:String x:Key="Dialog_UnsavedChangesMessage">The current score has unsaved changes. Save them before closing?</system:String>
     <system:String x:Key="Dialog_LegacySourceTitle">Select the folder containing legacy .GenshinPiano scores</system:String>
     <system:String x:Key="Dialog_LegacyOutputTitle">Select the output folder for converted .gpiano scores</system:String>
+    <system:String x:Key="Dialog_RenameScoreTitle">Rename score</system:String>
+    <system:String x:Key="Dialog_RenameScoreLabel">New score name</system:String>
+    <system:String x:Key="Dialog_RenameScoreInvalid">The name contains invalid characters.</system:String>
+    <system:String x:Key="Action_Rename">Rename</system:String>
+    <system:String x:Key="Common_Cancel">Cancel</system:String>
+    <system:String x:Key="Status_ScoreRenamed">Score renamed to “{0}”</system:String>
+    <system:String x:Key="Status_RenameScoreExists">Cannot rename: “{0}” already exists</system:String>
+    <system:String x:Key="Status_RenameScoreFailed">Rename failed: {0}</system:String>
     <system:String x:Key="MidiBatch_Title">Batch convert MIDI</system:String>
     <system:String x:Key="MidiBatch_Hint">Converts .mid and .midi files in the selected folder to .gpiano. Subfolders are ignored and existing files are not overwritten. Batch conversion automatically detects and merges MIDI tracks. To select tracks manually, open a MIDI file individually and customize its import.</system:String>
     <system:String x:Key="MidiBatch_Source">Input folder</system:String>

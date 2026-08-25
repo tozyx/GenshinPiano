@@ -44,7 +44,6 @@ public partial class App : System.Windows.Application
         AppLogger.Info("Application startup began.");
 
         var serializer = new JsonScoreDocumentSerializer();
-        var workspace = new ScoreWorkspace(serializer);
         var recoveryService = new ScoreRecoveryService(serializer);
         UserSettingsService = new UserSettingsService();
         var themeService = new ThemeService();
@@ -58,6 +57,9 @@ public partial class App : System.Windows.Application
         {
             localizationService.Apply(configuredLanguage);
         }
+        var workspace = new ScoreWorkspace(
+            serializer,
+            localizationService.GetString("Score_Untitled"));
         try
         {
             _midiOutput = new WindowsMidiOutput();
