@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>GenshinPiano.Updater</AssemblyName>
+    <RootNamespace>GenshinPiano.Updater</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" /></ItemGroup>
+</Project>

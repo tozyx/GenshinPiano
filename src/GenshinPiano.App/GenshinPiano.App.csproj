@@ -8,6 +8,7 @@
     <RootNamespace>GenshinPiano.App</RootNamespace>
     <ApplicationIcon>Assets\Icons\GenshinPiano.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>3.0.1-preview.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
@@ -15,5 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\Icons\GenshinPiano.ico" />
+    <AssemblyMetadata Include="GenshinPianoSelfContained" Value="$(SelfContained)" />
   </ItemGroup>
 </Project>

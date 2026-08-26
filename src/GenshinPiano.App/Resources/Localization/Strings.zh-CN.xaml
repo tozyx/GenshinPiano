@@ -21,6 +21,21 @@
     <system:String x:Key="Menu_Language">语言</system:String>
     <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
     <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+    <system:String x:Key="Menu_AllowNetwork">允许应用联网</system:String>
+    <system:String x:Key="Menu_AutomaticUpdates">自动检查并下载更新</system:String>
+    <system:String x:Key="Menu_CheckForUpdates">检查更新</system:String>
+    <system:String x:Key="Update_StatusIdle">当前已是最新版本</system:String>
+    <system:String x:Key="Update_StatusDisabled">应用联网已关闭</system:String>
+    <system:String x:Key="Update_StatusChecking">正在检查更新</system:String>
+    <system:String x:Key="Update_StatusAvailable">发现新版本 {0}</system:String>
+    <system:String x:Key="Update_StatusDownloading">正在下载更新：{0}%</system:String>
+    <system:String x:Key="Update_StatusVerifying">正在验证更新包</system:String>
+    <system:String x:Key="Update_StatusReady">版本 {0} 已准备好，等待重启安装</system:String>
+    <system:String x:Key="Update_StatusFailed">更新失败：{0}</system:String>
+    <system:String x:Key="Update_ReadyTitle">更新已准备完成</system:String>
+    <system:String x:Key="Update_ReadyMessage">版本 {0} 已下载并验证。重启后将自动安装；配置、曲谱和日志不会被覆盖。</system:String>
+    <system:String x:Key="Update_Later">稍后</system:String>
+    <system:String x:Key="Update_Restart">重启并更新</system:String>
 
     <system:String x:Key="App_DevelopmentPreview">v3 开发预览</system:String>
     <system:String x:Key="Window_Minimize">最小化</system:String>
@@ -42,6 +57,7 @@
     <system:String x:Key="Hero_Title">WPF 项目框架已建立</system:String>
     <system:String x:Key="Hero_Description">当前版本已经具备统一曲谱模型和 .gpiano JSON 的打开、校验与保存能力。下一阶段将在这里实现钢琴卷帘和 21 键预览。</system:String>
     <system:String x:Key="Editor_Grid">吸附网格</system:String>
+    <system:String x:Key="Editor_NewNoteLength">新建长度</system:String>
     <system:String x:Key="Editor_Articulation">演奏法</system:String>
     <system:String x:Key="Editor_Legato">连奏</system:String>
     <system:String x:Key="Editor_Natural">自然</system:String>
@@ -54,14 +70,17 @@
     <system:String x:Key="Editor_PitchNumbersOnly">数字</system:String>
     <system:String x:Key="Editor_Hint">查看卷帘编辑器操作说明</system:String>
     <system:String x:Key="Editor_HelpCreateTitle">创建与选择</system:String>
-    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• 双击空白处：创建音符
+    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• 单击空白处：按“新建长度”创建音符并试听音高
 • 单击音符：选择并拖动
 • Ctrl + 单击：追加或取消选择
 • 拖动空白处：框选；Ctrl + 框选：追加选择
+• 右键空白处：取消全部选择
 • Ctrl + 拖动音符：复制
 • Delete / Backspace：删除；Ctrl + Z / Ctrl + Y：撤销 / 重做</system:String>
     <system:String x:Key="Editor_HelpRhythmTitle">节奏与时值</system:String>
-    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• 右键音符：设置节拍长度和按键持续比例
+    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• 吸附网格控制位置步进，与新建音符长度相互独立
+• 拖动音符右边缘：按吸附网格调整节拍长度
+• 右键音符：精确设置节拍长度和按键持续比例
 • [：缩短选中音符；]：延长选中音符
 • 未选择音符时，[ / ] 调整吸附网格</system:String>
     <system:String x:Key="Editor_HelpNavigationTitle">导航与试听</system:String>
@@ -93,6 +112,7 @@
     <system:String x:Key="Editor_NoteDurationTitle">音符时长设置</system:String>
     <system:String x:Key="Editor_RhythmLength">节奏时值</system:String>
     <system:String x:Key="Editor_GateRatio">按键持续比例</system:String>
+    <system:String x:Key="Editor_GatePreview">按下时间预览（实心为按下时间，空心为剩余节拍）</system:String>
     <system:String x:Key="Editor_Staccato30">跳音 30%</system:String>
     <system:String x:Key="Editor_Detached50">断奏 50%</system:String>
     <system:String x:Key="Editor_Natural80">自然 80%</system:String>

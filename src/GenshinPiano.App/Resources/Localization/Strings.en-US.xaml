@@ -21,6 +21,21 @@
     <system:String x:Key="Menu_Language">Language</system:String>
     <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
     <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+    <system:String x:Key="Menu_AllowNetwork">Allow network access</system:String>
+    <system:String x:Key="Menu_AutomaticUpdates">Automatically check and download updates</system:String>
+    <system:String x:Key="Menu_CheckForUpdates">Check for updates</system:String>
+    <system:String x:Key="Update_StatusIdle">GenshinPiano is up to date</system:String>
+    <system:String x:Key="Update_StatusDisabled">Network access is disabled</system:String>
+    <system:String x:Key="Update_StatusChecking">Checking for updates</system:String>
+    <system:String x:Key="Update_StatusAvailable">Version {0} is available</system:String>
+    <system:String x:Key="Update_StatusDownloading">Downloading update: {0}%</system:String>
+    <system:String x:Key="Update_StatusVerifying">Verifying update package</system:String>
+    <system:String x:Key="Update_StatusReady">Version {0} is ready to install on restart</system:String>
+    <system:String x:Key="Update_StatusFailed">Update failed: {0}</system:String>
+    <system:String x:Key="Update_ReadyTitle">Update ready</system:String>
+    <system:String x:Key="Update_ReadyMessage">Version {0} has been downloaded and verified. Restart to install it. Settings, songs, and logs will be preserved.</system:String>
+    <system:String x:Key="Update_Later">Later</system:String>
+    <system:String x:Key="Update_Restart">Restart and update</system:String>
 
     <system:String x:Key="App_DevelopmentPreview">v3 development preview</system:String>
     <system:String x:Key="Window_Minimize">Minimize</system:String>
@@ -42,6 +57,7 @@
     <system:String x:Key="Hero_Title">WPF application shell is ready</system:String>
     <system:String x:Key="Hero_Description">This version provides a unified score model and can open, validate, and save .gpiano JSON files. The piano roll and 21-key preview will be implemented here next.</system:String>
     <system:String x:Key="Editor_Grid">Snap grid</system:String>
+    <system:String x:Key="Editor_NewNoteLength">New note</system:String>
     <system:String x:Key="Editor_Articulation">Articulation</system:String>
     <system:String x:Key="Editor_Legato">Legato</system:String>
     <system:String x:Key="Editor_Natural">Natural</system:String>
@@ -54,14 +70,17 @@
     <system:String x:Key="Editor_PitchNumbersOnly">Numbers</system:String>
     <system:String x:Key="Editor_Hint">View piano-roll controls and shortcuts</system:String>
     <system:String x:Key="Editor_HelpCreateTitle">Create and select</system:String>
-    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• Double-click empty space: create a note
+    <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• Click empty space: create a note at the New note length and audition it
 • Click a note: select and drag
 • Ctrl + click: add to or remove from the selection
 • Drag empty space: box-select; Ctrl + box-select: add to the selection
+• Right-click empty space: clear the selection
 • Ctrl + drag a note: copy
 • Delete / Backspace: delete; Ctrl + Z / Ctrl + Y: undo / redo</system:String>
     <system:String x:Key="Editor_HelpRhythmTitle">Rhythm and duration</system:String>
-    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• Right-click a note: set its rhythmic value and key-hold ratio
+    <system:String x:Key="Editor_HelpRhythmBody" xml:space="preserve">• Snap grid controls position steps independently of new-note length
+• Drag a note's right edge: resize it using the snap grid
+• Right-click a note: precisely set its rhythmic value and key-hold ratio
 • [: shorten selected notes; ]: lengthen selected notes
 • With no note selected, [ / ] changes the snap grid</system:String>
     <system:String x:Key="Editor_HelpNavigationTitle">Navigation and audition</system:String>
@@ -93,6 +112,7 @@
     <system:String x:Key="Editor_NoteDurationTitle">Note duration</system:String>
     <system:String x:Key="Editor_RhythmLength">Rhythmic value</system:String>
     <system:String x:Key="Editor_GateRatio">Key hold ratio</system:String>
+    <system:String x:Key="Editor_GatePreview">Hold preview (solid: key down, outline: remaining beat)</system:String>
     <system:String x:Key="Editor_Staccato30">Staccato 30%</system:String>
     <system:String x:Key="Editor_Detached50">Detached 50%</system:String>
     <system:String x:Key="Editor_Natural80">Natural 80%</system:String>

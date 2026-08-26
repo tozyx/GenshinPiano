@@ -10,6 +10,7 @@ using System.Windows.Interop;
 using GenshinPiano.App.Dialogs;
 using GenshinPiano.App.Controls;
 using GenshinPiano.App.ViewModels;
+using GenshinPiano.App.Services;
 
 namespace GenshinPiano.App;
 
@@ -505,6 +506,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void EditMenuItem_OnSubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        MenuItem_OnSubmenuOpened(sender, e);
+        if (sender is MenuItem menuItem && ReferenceEquals(e.OriginalSource, menuItem))
+        {
+            UpdatePitchLabelMenuChecks();
+        }
+    }
+
+    private void PitchLabelMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string tag } &&
+            Enum.TryParse<PitchLabelMode>(tag, out var mode))
+        {
+            PianoRollEditor.SetPitchLabelMode(mode);
+            UpdatePitchLabelMenuChecks();
+        }
+    }
+
+    private void UpdatePitchLabelMenuChecks()
+    {
+        var mode = PianoRollEditor.PitchLabelMode;
+        PitchLettersWithKeyMenuItem.IsChecked = mode == PitchLabelMode.LetterWithKey;
+        PitchNumbersWithKeyMenuItem.IsChecked = mode == PitchLabelMode.NumberedWithKey;
+        PitchLettersOnlyMenuItem.IsChecked = mode == PitchLabelMode.LetterOnly;
+        PitchNumbersOnlyMenuItem.IsChecked = mode == PitchLabelMode.NumberedOnly;
+    }
+
     private void ImportMidiBatchMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
         if (System.Windows.Application.Current is not App app)
@@ -684,11 +713,39 @@ public partial class MainWindow : Window
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.Dispose();
             _subscribedViewModel = null;
         }
 
         _playbackMonitorWindow?.CloseWithoutRestoringEditor();
         _playbackMonitorWindow = null;
+
+        if (!string.IsNullOrWhiteSpace(_pendingUpdatePlanPath))
+        {
+            UpdateInstallerService.Launch(_pendingUpdatePlanPath);
+        }
+    }
+
+    private string? _pendingUpdatePlanPath;
+
+    private async void UpdateStatus_OnClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel || !viewModel.UpdateStatus.CanInstall)
+            return;
+        var state = viewModel.UpdateStatus.CurrentState;
+        var dialog = new Dialogs.UpdateReadyDialog(state.AvailableVersion?.ToString() ?? string.Empty) { Owner = this };
+        dialog.ShowDialog();
+        if (!dialog.RestartRequested) return;
+        try
+        {
+            _pendingUpdatePlanPath = await new UpdateInstallerService().PrepareAsync(state);
+            Close();
+        }
+        catch (Exception exception)
+        {
+            _pendingUpdatePlanPath = null;
+            AppLogger.Warning($"Could not prepare update installation: {exception}");
+        }
     }
 
     private void MinimizeButton_OnClick(object sender, RoutedEventArgs e) =>
@@ -739,12 +796,14 @@ public partial class MainWindow : Window
 
             if (dialog.Choice == UnsavedChangesChoice.Cancel)
             {
+                _pendingUpdatePlanPath = null;
                 return;
             }
 
             if (dialog.Choice == UnsavedChangesChoice.Save &&
                 !await viewModel.SavePendingChangesAsync())
             {
+                _pendingUpdatePlanPath = null;
                 return;
             }
 

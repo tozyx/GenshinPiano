@@ -9,7 +9,7 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 5;
 
     public int Version { get; init; } = CurrentVersion;
 
@@ -18,6 +18,17 @@ public sealed record UserSettings
     public AppearanceUserSettings Appearance { get; init; } = new();
 
     public LibraryUserSettings Library { get; init; } = new();
+
+    public UpdateUserSettings Update { get; init; } = new();
+}
+
+public sealed record UpdateUserSettings
+{
+    public bool NetworkAccessEnabled { get; init; } = true;
+
+    public bool AutomaticUpdatesEnabled { get; init; } = true;
+
+    public string Channel { get; init; } = "preview";
 }
 
 public sealed record LibraryUserSettings
@@ -36,6 +47,8 @@ public sealed record EditorUserSettings
 {
     public int SnapDivision { get; init; } = 4;
 
+    public double NewNoteLengthFactor { get; init; } = 0.25;
+
     public string DefaultArticulation { get; init; } = "Natural";
 
     public string PitchLabelMode { get; init; } = "LetterWithKey";
@@ -53,6 +66,8 @@ public interface IUserSettingsService
 
     void SetSnapDivision(int value);
 
+    void SetNewNoteLengthFactor(double value);
+
     void SetDefaultArticulation(string value);
 
     void SetPitchLabelMode(string value);
@@ -68,6 +83,10 @@ public interface IUserSettingsService
     void SetAuditionVolume(int value);
 
     void SetScoreFolder(string? path);
+
+    void SetNetworkAccessEnabled(bool value);
+
+    void SetAutomaticUpdatesEnabled(bool value);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -105,6 +124,20 @@ public sealed class UserSettingsService : IUserSettingsService
         }
 
         Update(Current with { Editor = Current.Editor with { SnapDivision = value } });
+    }
+
+    public void SetNewNoteLengthFactor(double value)
+    {
+        if (!double.IsFinite(value) || value is <= 0 or > 64 ||
+            Math.Abs(Current.Editor.NewNoteLengthFactor - value) < 0.000001)
+        {
+            return;
+        }
+
+        Update(Current with
+        {
+            Editor = Current.Editor with { NewNoteLengthFactor = value },
+        });
     }
 
     public void SetDefaultArticulation(string value)
@@ -180,6 +213,28 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
+    public void SetNetworkAccessEnabled(bool value)
+    {
+        if (Current.Update.NetworkAccessEnabled != value)
+        {
+            Update(Current with
+            {
+                Update = Current.Update with { NetworkAccessEnabled = value },
+            });
+        }
+    }
+
+    public void SetAutomaticUpdatesEnabled(bool value)
+    {
+        if (Current.Update.AutomaticUpdatesEnabled != value)
+        {
+            Update(Current with
+            {
+                Update = Current.Update with { AutomaticUpdatesEnabled = value },
+            });
+        }
+    }
+
     private UserSettings Load()
     {
         try
@@ -244,6 +299,8 @@ public sealed class UserSettingsService : IUserSettingsService
         var appearanceDefaults = new AppearanceUserSettings();
         var appearance = settings?.Appearance ?? appearanceDefaults;
         var library = settings?.Library ?? new LibraryUserSettings();
+        var updateDefaults = new UpdateUserSettings();
+        var update = settings?.Update ?? updateDefaults;
         return new UserSettings
         {
             Version = UserSettings.CurrentVersion,
@@ -252,6 +309,10 @@ public sealed class UserSettingsService : IUserSettingsService
                 SnapDivision = editor.SnapDivision is 1 or 2 or 4 or 8
                     ? editor.SnapDivision
                     : defaults.SnapDivision,
+                NewNoteLengthFactor = double.IsFinite(editor.NewNoteLengthFactor) &&
+                                      editor.NewNoteLengthFactor is > 0 and <= 64
+                    ? editor.NewNoteLengthFactor
+                    : defaults.NewNoteLengthFactor,
                 DefaultArticulation = IsValidArticulation(editor.DefaultArticulation)
                     ? editor.DefaultArticulation
                     : defaults.DefaultArticulation,
@@ -273,6 +334,12 @@ public sealed class UserSettingsService : IUserSettingsService
             Library = library with
             {
                 ScoreFolder = Directory.Exists(library.ScoreFolder) ? library.ScoreFolder : string.Empty,
+            },
+            Update = update with
+            {
+                Channel = update.Channel is "stable" or "preview"
+                    ? update.Channel
+                    : updateDefaults.Channel,
             },
         };
     }

@@ -17,6 +17,7 @@ TestResults/
 coverage/
 *.coverage
 *.coveragexml
+/.build-check/
 
 # Packages and publish output
 packages/
@@ -31,6 +32,8 @@ Desktop.ini
 # Local application data
 *.gpiano.autosave
 appsettings.local.json
+/update-cache/
+/update-test-sandbox/
 
 # Local score library
 /samples/songs/

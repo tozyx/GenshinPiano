@@ -46,7 +46,8 @@ public sealed class MainWindowViewModel : ObservableObject
         ScorePlaybackService playbackService,
         LegacyBatchConversionService legacyConversionService,
         IMidiScoreImporter midiScoreImporter,
-        ScoreRecoveryService recoveryService)
+        ScoreRecoveryService recoveryService,
+        UpdateStatusViewModel updateStatus)
     {
         _workspace = workspace;
         _themeService = themeService;
@@ -56,6 +57,7 @@ public sealed class MainWindowViewModel : ObservableObject
         _legacyConversionService = legacyConversionService;
         _midiScoreImporter = midiScoreImporter;
         _recoveryService = recoveryService;
+        UpdateStatus = updateStatus;
         _scoreTitle = workspace.CurrentScore.Metadata.Title;
 
         _themeService.ThemeChanged += OnThemeChanged;
@@ -98,6 +100,8 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     public string StatusText => _localizationService.GetString(_statusKey, _statusArguments);
+
+    public UpdateStatusViewModel UpdateStatus { get; }
 
     public ScoreDocument CurrentScore
     {
