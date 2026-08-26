@@ -14,11 +14,16 @@ public partial class PianoRollEditor : UserControl
     private static readonly double[] RhythmFactors = [4, 2, 1, 0.5, 0.25, 0.125];
 
     private bool _updatingArticulation;
+    private bool _updatingNewNoteLength;
     private bool _updatingNoteEditor;
+    private bool _isDraggingGateRatioPreview;
+    private double _gateRatioPercentage = 80;
     private bool _loadingSettings;
     private IUserSettingsService? _settingsService;
     private ScoreAuditionService? _auditionService;
     private CancellationTokenSource? _auditionCancellation;
+    private CancellationTokenSource? _notePreviewCancellation;
+    private Task _notePreviewTask = Task.CompletedTask;
     private bool _auditionIsPlaying;
     private bool _auditionPauseRequested;
     private bool _isDraggingAuditionVolume;
@@ -28,6 +33,7 @@ public partial class PianoRollEditor : UserControl
     private long _auditionTick;
     private bool _continuousFollowActive;
     private long _lastFollowTick = -1;
+    private ComboBoxItem? _customNewNoteLengthItem;
 
     public PianoRollViewModel EditorViewModel { get; } = new();
 
@@ -47,6 +53,8 @@ public partial class PianoRollEditor : UserControl
         Surface.SelectedNoteChanged += Surface_OnSelectedNoteChanged;
         Surface.NoteEditRequested += Surface_OnNoteEditRequested;
         Surface.PlaybackSeekRequested += Surface_OnPlaybackSeekRequested;
+        Surface.NoteCreated += Surface_OnNoteCreated;
+        Surface.NoteRhythmPreviewChanged += Surface_OnNoteRhythmPreviewChanged;
         Loaded += PianoRollEditor_OnLoaded;
         Unloaded += PianoRollEditor_OnUnloaded;
     }
@@ -62,6 +70,17 @@ public partial class PianoRollEditor : UserControl
     public int OptimizeAllNoteDurations() => Surface.OptimizeAllNoteDurations();
 
     public int GenerateShortPressDurations() => Surface.GenerateShortPressDurations();
+
+    public PitchLabelMode PitchLabelMode => KeyboardLabels.LabelMode;
+
+    public void SetPitchLabelMode(PitchLabelMode mode)
+    {
+        KeyboardLabels.LabelMode = mode;
+        if (!_loadingSettings)
+        {
+            _settingsService?.SetPitchLabelMode(mode.ToString());
+        }
+    }
 
     public void SetGamePlaybackActive(bool isActive)
     {
@@ -94,6 +113,140 @@ public partial class PianoRollEditor : UserControl
         {
             _settingsService?.SetSnapDivision(division);
         }
+    }
+
+    private void NewNoteLengthComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_updatingNewNoteLength || Surface is null ||
+            NewNoteLengthComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !double.TryParse(
+                tag,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var factor))
+        {
+            return;
+        }
+
+        Surface.NewNoteLengthFactor = factor;
+        if (!_loadingSettings && !_updatingNewNoteLength)
+        {
+            _settingsService?.SetNewNoteLengthFactor(factor);
+        }
+    }
+
+    private void SetNewNoteLength(long rhythmTick, int ppq) =>
+        SetNewNoteLength(rhythmTick / (double)Math.Max(1, ppq), commit: true);
+
+    private void SetNewNoteLength(double factor) => SetNewNoteLength(factor, commit: true);
+
+    private void SetNewNoteLength(double factor, bool commit)
+    {
+        if (!double.IsFinite(factor) || factor <= 0)
+        {
+            return;
+        }
+
+        _updatingNewNoteLength = true;
+        try
+        {
+            var matchingItem = NewNoteLengthComboBox.Items
+                .OfType<ComboBoxItem>()
+                .Where(item => !ReferenceEquals(item, _customNewNoteLengthItem))
+                .FirstOrDefault(item =>
+                    item.Tag is string tag &&
+                    double.TryParse(
+                        tag,
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var itemFactor) &&
+                    Math.Abs(itemFactor - factor) < 0.000001);
+
+            if (matchingItem is null)
+            {
+                if (_customNewNoteLengthItem is not null)
+                {
+                    NewNoteLengthComboBox.Items.Remove(_customNewNoteLengthItem);
+                }
+
+                _customNewNoteLengthItem = new ComboBoxItem
+                {
+                    Content = FormatMusicalLength(factor),
+                    Tag = factor.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+                };
+                NewNoteLengthComboBox.Items.Add(_customNewNoteLengthItem);
+                matchingItem = _customNewNoteLengthItem;
+            }
+            else if (_customNewNoteLengthItem is not null)
+            {
+                NewNoteLengthComboBox.Items.Remove(_customNewNoteLengthItem);
+                _customNewNoteLengthItem = null;
+            }
+
+            NewNoteLengthComboBox.SelectedItem = matchingItem;
+            if (commit)
+            {
+                Surface.NewNoteLengthFactor = factor;
+            }
+        }
+        finally
+        {
+            _updatingNewNoteLength = false;
+        }
+
+        if (commit && !_loadingSettings)
+        {
+            _settingsService?.SetNewNoteLengthFactor(factor);
+        }
+    }
+
+    private void Surface_OnNoteRhythmPreviewChanged(
+        object? sender,
+        NoteRhythmPreviewChangedEventArgs e)
+    {
+        if (Score is null)
+        {
+            return;
+        }
+
+        SetNewNoteLength(
+            e.RhythmTick / (double)Math.Max(1, Score.Timing.Ppq),
+            commit: e.IsCommitted);
+    }
+
+    private static string FormatMusicalLength(double factor)
+    {
+        var wholeNoteFraction = factor / 4d;
+        var bestDenominator = 1;
+        var bestNumerator = Math.Max(1, (int)Math.Round(wholeNoteFraction));
+        var bestError = double.MaxValue;
+        for (var denominator = 1; denominator <= 128; denominator++)
+        {
+            var numerator = Math.Max(1, (int)Math.Round(wholeNoteFraction * denominator));
+            var error = Math.Abs(numerator / (double)denominator - wholeNoteFraction);
+            if (error < bestError)
+            {
+                bestNumerator = numerator;
+                bestDenominator = denominator;
+                bestError = error;
+            }
+            if (error < 0.000001)
+            {
+                break;
+            }
+        }
+
+        var divisor = GreatestCommonDivisor(bestNumerator, bestDenominator);
+        return $"{bestNumerator / divisor}/{bestDenominator / divisor}";
+    }
+
+    private static int GreatestCommonDivisor(int left, int right)
+    {
+        while (right != 0)
+        {
+            (left, right) = (right, left % right);
+        }
+        return Math.Max(1, Math.Abs(left));
     }
 
     private void EditorScrollViewer_OnScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -131,6 +284,15 @@ public partial class PianoRollEditor : UserControl
             return;
         }
 
+        if (Surface.SelectedNoteCount == 1 &&
+            Surface.SelectedNote is { } selectedNote &&
+            Score is { } selectedScore)
+        {
+            SetNewNoteLength(
+                Math.Max(1, selectedNote.RhythmTick ?? selectedNote.DurationTick),
+                selectedScore.Timing.Ppq);
+        }
+
         var articulation = Surface.SelectedArticulation;
         if (articulation is null)
         {
@@ -153,22 +315,6 @@ public partial class PianoRollEditor : UserControl
         if (NoteEditorPopup.IsOpen && Surface.SelectedNote is { } note && Score is { } score)
         {
             SelectRhythmOption(note.RhythmTick ?? note.DurationTick, score.Timing.Ppq);
-        }
-    }
-
-    private void PitchLabelComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (KeyboardLabels is null ||
-            PitchLabelComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
-            !Enum.TryParse<PitchLabelMode>(tag, out var mode))
-        {
-            return;
-        }
-
-        KeyboardLabels.LabelMode = mode;
-        if (!_loadingSettings)
-        {
-            _settingsService?.SetPitchLabelMode(mode.ToString());
         }
     }
 
@@ -200,16 +346,17 @@ public partial class PianoRollEditor : UserControl
             SelectComboItem(SnapComboBox, editor.SnapDivision.ToString());
             Surface.SnapDivision = editor.SnapDivision;
 
+            SetNewNoteLength(editor.NewNoteLengthFactor);
+
             SelectComboItem(ArticulationComboBox, editor.DefaultArticulation);
             if (Enum.TryParse<NoteArticulation>(editor.DefaultArticulation, out var articulation))
             {
                 Surface.DefaultArticulation = articulation;
             }
 
-            SelectComboItem(PitchLabelComboBox, editor.PitchLabelMode);
             if (Enum.TryParse<PitchLabelMode>(editor.PitchLabelMode, out var pitchLabelMode))
             {
-                KeyboardLabels.LabelMode = pitchLabelMode;
+                SetPitchLabelMode(pitchLabelMode);
             }
 
             NaturalSustainCheckBox.IsChecked = editor.NaturalSustain;
@@ -227,6 +374,7 @@ public partial class PianoRollEditor : UserControl
     {
         _auditionPauseRequested = false;
         _auditionCancellation?.Cancel();
+        _notePreviewCancellation?.Cancel();
         AuditionVolumePopup.IsOpen = false;
         if (_ownerWindow is not null)
         {
@@ -259,6 +407,41 @@ public partial class PianoRollEditor : UserControl
             ? TimeSpan.Zero
             : GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(e.Tick, Score.Timing);
         UpdateAuditionPosition(e.Tick, position);
+    }
+
+    private async void Surface_OnNoteCreated(object? sender, NoteCreatedEventArgs e)
+    {
+        if (_auditionService is null)
+        {
+            return;
+        }
+
+        _notePreviewCancellation?.Cancel();
+        try
+        {
+            await _notePreviewTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        _notePreviewCancellation?.Dispose();
+        _notePreviewCancellation = new CancellationTokenSource();
+        var instrument = AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
+                         int.TryParse(tag, out var parsedInstrument)
+            ? parsedInstrument
+            : 0;
+        _notePreviewTask = _auditionService.PreviewNoteAsync(
+            e.Pitch,
+            instrument,
+            cancellationToken: _notePreviewCancellation.Token);
+        try
+        {
+            await _notePreviewTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private async void AuditionPlayButton_OnClick(object sender, RoutedEventArgs e) =>
@@ -491,12 +674,29 @@ public partial class PianoRollEditor : UserControl
 
     private void OwnerWindow_OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
+        var dismissedTransientEditor = false;
+
+        if (NoteEditorPopup.IsOpen && !IsPointerOverPopup(NoteEditorPopup))
+        {
+            NoteEditorPopup.IsOpen = false;
+            dismissedTransientEditor = true;
+        }
+
+        if (EditorHelpPopup.IsOpen &&
+            !EditorHelpButton.IsMouseOver &&
+            !IsPointerOverPopup(EditorHelpPopup))
+        {
+            EditorHelpButton.IsChecked = false;
+            dismissedTransientEditor = true;
+        }
+
         if (BpmEditPanel.Visibility == Visibility.Visible &&
             !BpmControlHost.IsMouseOver)
         {
             Keyboard.ClearFocus();
             ApplyBpm();
             BeginCloseBpmEditor();
+            dismissedTransientEditor = true;
         }
 
         if (AuditionVolumePopup.IsOpen &&
@@ -504,6 +704,14 @@ public partial class PianoRollEditor : UserControl
             !IsPointerOverAuditionVolumePopup())
         {
             BeginCloseAuditionVolumePopup();
+            dismissedTransientEditor = true;
+        }
+
+        // A click whose first purpose is dismissing a transient editor must not
+        // fall through to the piano roll and create a note at the same position.
+        if (dismissedTransientEditor && e.ChangedButton == MouseButton.Left && Surface.IsMouseOver)
+        {
+            e.Handled = true;
         }
     }
 
@@ -511,6 +719,16 @@ public partial class PianoRollEditor : UserControl
     {
         Dispatcher.BeginInvoke(() =>
         {
+            NoteEditorPopup.IsOpen = false;
+            EditorHelpButton.IsChecked = false;
+
+            if (BpmEditPanel.Visibility == Visibility.Visible)
+            {
+                Keyboard.ClearFocus();
+                ApplyBpm();
+                BeginCloseBpmEditor();
+            }
+
             if (!IsPointerOverAuditionVolumePopup() &&
                 !AuditionVolumeSlider.IsMouseCaptureWithin &&
                 !_isDraggingAuditionVolume)
@@ -577,8 +795,11 @@ public partial class PianoRollEditor : UserControl
     }
 
     private bool IsPointerOverAuditionVolumePopup()
+        => IsPointerOverPopup(AuditionVolumePopup);
+
+    private static bool IsPointerOverPopup(System.Windows.Controls.Primitives.Popup popup)
     {
-        if (AuditionVolumePopup.Child is not FrameworkElement
+        if (popup.Child is not FrameworkElement
             {
                 IsVisible: true,
                 ActualWidth: > 0,
@@ -987,7 +1208,7 @@ public partial class PianoRollEditor : UserControl
             var gateRatio = e.Note.GateRatio ?? (e.Note.DurationMode == DurationMode.Auto
                 ? NoteDurationCalculator.GetGateRatio(e.Note.Articulation)
                 : e.Note.DurationTick / (double)Math.Max(1, rhythmTick));
-            GateRatioSlider.Value = Math.Clamp(
+            _gateRatioPercentage = Math.Clamp(
                 gateRatio * 100,
                 NoteDurationCalculator.MinimumGateRatio * 100,
                 NoteDurationCalculator.MaximumGateRatio * 100);
@@ -1000,25 +1221,15 @@ public partial class PianoRollEditor : UserControl
         NoteEditorPopup.HorizontalOffset = e.Anchor.X;
         NoteEditorPopup.VerticalOffset = e.Anchor.Y;
         NoteEditorPopup.IsOpen = true;
-        UpdateGateRatioDescription(GateRatioSlider.Value);
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => GateRatioSlider.Focus());
-    }
-
-    private void GateRatioSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (GateRatioText is null || GateRatioDescription is null)
-        {
-            return;
-        }
-
-        UpdateGateRatioDescription(e.NewValue);
-        ApplyNoteEditorValue();
+        UpdateGateRatioDescription(_gateRatioPercentage);
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => GateRatioPreviewTrack.Focus());
     }
 
     private void UpdateGateRatioDescription(double value)
     {
         var percentage = (int)Math.Round(value);
         GateRatioText.Text = $"{percentage}%";
+        UpdateGateRatioPreview(value);
         var descriptionKey = percentage switch
         {
             <= 35 => "Editor_GateHintStaccato",
@@ -1030,20 +1241,117 @@ public partial class PianoRollEditor : UserControl
             ?? string.Empty;
     }
 
+    private void GateRatioPreviewTrack_OnSizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateGateRatioPreview(_gateRatioPercentage);
+
+    private void GateRatioPreviewTrack_OnPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        var x = e.GetPosition(GateRatioPreviewTrack).X;
+        var fillEdge = GetGateRatioPreviewFillEdge();
+        if (Math.Abs(x - fillEdge) > 10)
+        {
+            return;
+        }
+
+        _isDraggingGateRatioPreview = true;
+        GateRatioPreviewTrack.CaptureMouse();
+        UpdateGateRatioFromPreviewPointer(e);
+        e.Handled = true;
+    }
+
+    private void GateRatioPreviewTrack_OnPreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        var x = e.GetPosition(GateRatioPreviewTrack).X;
+        GateRatioPreviewTrack.Cursor = _isDraggingGateRatioPreview ||
+                                       Math.Abs(x - GetGateRatioPreviewFillEdge()) <= 10
+            ? Cursors.SizeWE
+            : Cursors.Arrow;
+        if (_isDraggingGateRatioPreview)
+        {
+            UpdateGateRatioFromPreviewPointer(e);
+            e.Handled = true;
+        }
+    }
+
+    private void GateRatioPreviewTrack_OnPreviewMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (!_isDraggingGateRatioPreview)
+        {
+            return;
+        }
+
+        UpdateGateRatioFromPreviewPointer(e);
+        _isDraggingGateRatioPreview = false;
+        ApplySelectedGateRatio();
+        GateRatioPreviewTrack.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+
+    private void GateRatioPreviewTrack_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingGateRatioPreview)
+        {
+            GateRatioPreviewTrack.Cursor = Cursors.Arrow;
+        }
+    }
+
+    private void GateRatioPreviewTrack_OnLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        var shouldCommit = _isDraggingGateRatioPreview;
+        _isDraggingGateRatioPreview = false;
+        GateRatioPreviewTrack.Cursor = Cursors.Arrow;
+        if (shouldCommit)
+        {
+            ApplySelectedGateRatio();
+        }
+    }
+
+    private void UpdateGateRatioFromPreviewPointer(MouseEventArgs e)
+    {
+        var availableWidth = Math.Max(1, GateRatioPreviewTrack.ActualWidth - 2);
+        var x = e.GetPosition(GateRatioPreviewTrack).X - 1;
+        SetGateRatioPercentage(Math.Round(Math.Clamp(x / availableWidth * 100, 10, 95)));
+    }
+
+    private double GetGateRatioPreviewFillEdge() =>
+        1 + Math.Max(0, GateRatioPreviewTrack.ActualWidth - 2) * _gateRatioPercentage / 100d;
+
+    private void SetGateRatioPercentage(double percentage)
+    {
+        _gateRatioPercentage = Math.Clamp(percentage, 10, 95);
+        UpdateGateRatioDescription(_gateRatioPercentage);
+    }
+
+    private void UpdateGateRatioPreview(double value)
+    {
+        if (GateRatioPreviewTrack is null || GateRatioPreviewFill is null)
+        {
+            return;
+        }
+
+        var availableWidth = Math.Max(0, GateRatioPreviewTrack.ActualWidth - 2);
+        GateRatioPreviewFill.Width = availableWidth * Math.Clamp(value / 100d, 0.1, 0.95);
+    }
+
     private void GatePreset_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string tag } &&
             double.TryParse(tag, System.Globalization.NumberStyles.Number,
                 System.Globalization.CultureInfo.InvariantCulture, out var percentage))
         {
-            GateRatioSlider.Value = percentage;
+            SetGateRatioPercentage(percentage);
+            ApplySelectedGateRatio();
         }
     }
 
     private void RhythmLengthListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e) =>
-        ApplyNoteEditorValue();
+        ApplySelectedRhythm();
 
-    private void ApplyNoteEditorValue()
+    private void ApplySelectedRhythm()
     {
         if (_updatingNoteEditor || !NoteEditorPopup.IsOpen ||
             Score is null || RhythmLengthListBox.SelectedItem is not ListBoxItem item)
@@ -1052,8 +1360,17 @@ public partial class PianoRollEditor : UserControl
         }
 
         var rhythmTick = GetRhythmTick(item, Score.Timing.Ppq);
-        var gateRatio = GateRatioSlider.Value / 100d;
-        Surface.UpdateSelectedDuration(rhythmTick, gateRatio);
+        Surface.UpdateSelectedRhythm(rhythmTick);
+    }
+
+    private void ApplySelectedGateRatio()
+    {
+        if (_updatingNoteEditor || !NoteEditorPopup.IsOpen)
+        {
+            return;
+        }
+
+        Surface.UpdateSelectedGateRatio(_gateRatioPercentage / 100d);
     }
 
     private void NoteEditorPopup_OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -1134,23 +1451,12 @@ public partial class PianoRollEditor : UserControl
     {
         if (Surface.SelectedNote is { } note && Score is { } score)
         {
-            var currentTick = note.RhythmTick ?? note.DurationTick;
-            var currentIndex = FindClosestRhythmIndex(currentTick, score.Timing.Ppq);
-            var nextIndex = Math.Clamp(currentIndex + step, 0, RhythmFactors.Length - 1);
-            var gateRatio = note.GateRatio ?? (note.DurationMode == DurationMode.Auto
-                ? NoteDurationCalculator.GetGateRatio(note.Articulation)
-                : note.DurationTick / (double)Math.Max(1, currentTick));
-            gateRatio = Math.Clamp(
-                gateRatio,
-                NoteDurationCalculator.MinimumGateRatio,
-                NoteDurationCalculator.MaximumGateRatio);
-
-            if (nextIndex != currentIndex)
+            if (Surface.ShiftSelectedRhythms(step, RhythmFactors) &&
+                Surface.SelectedNote is { } updatedNote)
             {
-                Surface.UpdateSelectedDuration(
-                    FactorToTick(RhythmFactors[nextIndex], score.Timing.Ppq),
-                    gateRatio);
-                SelectRhythmOption(nextIndex);
+                SelectRhythmOption(
+                    updatedNote.RhythmTick ?? updatedNote.DurationTick,
+                    score.Timing.Ppq);
             }
         }
         else

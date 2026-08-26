@@ -107,20 +107,87 @@ public sealed class PianoRollViewModel
         }).ToArray());
     }
 
-    public bool UpdateSelectedDuration(
-        long rhythmTick,
-        double gateRatio,
-        NoteArticulation articulation)
+    public bool UpdateSelectedRhythm(long rhythmTick)
     {
         var notes = GetSelectedNotes();
         return notes.Count > 0 && ReplaceNotes(notes.Select(note => note with
         {
             RhythmTick = rhythmTick,
             DurationMode = DurationMode.Auto,
-            Articulation = articulation,
-            GateRatio = gateRatio,
+            DurationTick = Math.Max(1, (long)Math.Round(rhythmTick * ResolveGateRatio(note))),
         }).ToArray());
     }
+
+    public bool UpdateSelectedGateRatio(double gateRatio, NoteArticulation articulation)
+    {
+        var notes = GetSelectedNotes();
+        return notes.Count > 0 && ReplaceNotes(notes.Select(note =>
+        {
+            var rhythmTick = Math.Max(1, note.RhythmTick ?? note.DurationTick);
+            return note with
+            {
+                RhythmTick = rhythmTick,
+                DurationTick = Math.Max(1, (long)Math.Round(rhythmTick * gateRatio)),
+                DurationMode = DurationMode.Auto,
+                Articulation = articulation,
+                GateRatio = gateRatio,
+            };
+        }).ToArray());
+    }
+
+    public bool ShiftSelectedRhythms(int step, IReadOnlyList<double> rhythmFactors)
+    {
+        if (Score is null || step == 0 || rhythmFactors.Count == 0)
+        {
+            return false;
+        }
+
+        var ppq = Score.Timing.Ppq;
+        var changed = false;
+        var replacements = GetSelectedNotes().Select(note =>
+        {
+            var currentTick = Math.Max(1, note.RhythmTick ?? note.DurationTick);
+            var currentIndex = Enumerable.Range(0, rhythmFactors.Count)
+                .MinBy(index => Math.Abs(FactorToTick(rhythmFactors[index], ppq) - currentTick));
+            var nextIndex = Math.Clamp(currentIndex + step, 0, rhythmFactors.Count - 1);
+            if (nextIndex == currentIndex)
+            {
+                return note;
+            }
+
+            changed = true;
+            var rhythmTick = FactorToTick(rhythmFactors[nextIndex], ppq);
+            var gateRatio = ResolveGateRatio(note);
+            return note with
+            {
+                RhythmTick = rhythmTick,
+                DurationTick = Math.Max(1, (long)Math.Round(rhythmTick * gateRatio)),
+                DurationMode = DurationMode.Auto,
+                GateRatio = gateRatio,
+            };
+        }).ToArray();
+        return changed && ReplaceNotes(replacements);
+    }
+
+    private static double ResolveGateRatio(NoteEvent note)
+    {
+        if (note.GateRatio is double ratio)
+        {
+            return Math.Clamp(
+                ratio,
+                NoteDurationCalculator.MinimumGateRatio,
+                NoteDurationCalculator.MaximumGateRatio);
+        }
+
+        var rhythmTick = Math.Max(1, note.RhythmTick ?? note.DurationTick);
+        return Math.Clamp(
+            note.DurationTick / (double)rhythmTick,
+            NoteDurationCalculator.MinimumGateRatio,
+            NoteDurationCalculator.MaximumGateRatio);
+    }
+
+    private static long FactorToTick(double factor, int ppq) =>
+        Math.Max(1, checked((long)Math.Round(ppq * factor)));
 
     public int OptimizeAllNoteDurations()
     {

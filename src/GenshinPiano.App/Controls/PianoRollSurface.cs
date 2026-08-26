@@ -69,6 +69,7 @@ public sealed class PianoRollSurface : Control
     private bool _internalScoreChange;
     private double _pixelsPerBeat = 112;
     private int _snapDivision = 4;
+    private double _newNoteLengthFactor = 0.25;
     private double _rulerHoverX = double.NaN;
     private Rect _viewport = Rect.Empty;
     private bool _isDraggingPlaybackCursor;
@@ -92,6 +93,10 @@ public sealed class PianoRollSurface : Control
     public event EventHandler<NoteEditRequestedEventArgs>? NoteEditRequested;
 
     public event EventHandler<PlaybackSeekRequestedEventArgs>? PlaybackSeekRequested;
+
+    public event EventHandler<NoteCreatedEventArgs>? NoteCreated;
+
+    public event EventHandler<NoteRhythmPreviewChangedEventArgs>? NoteRhythmPreviewChanged;
 
     internal void AttachViewModel(PianoRollViewModel viewModel)
     {
@@ -160,6 +165,20 @@ public sealed class PianoRollSurface : Control
 
             _snapDivision = value;
             InvalidateVisual();
+        }
+    }
+
+    public double NewNoteLengthFactor
+    {
+        get => _newNoteLengthFactor;
+        set
+        {
+            if (!double.IsFinite(value) || value is <= 0 or > 64)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
+            _newNoteLengthFactor = value;
         }
     }
 
@@ -292,22 +311,53 @@ public sealed class PianoRollSurface : Control
         return true;
     }
 
-    public bool UpdateSelectedDuration(long rhythmTick, double gateRatio)
+    public bool UpdateSelectedRhythm(long rhythmTick)
     {
         var notes = GetSelectedNotes();
-        if (!IsEditingEnabled || notes.Count == 0 || rhythmTick <= 0 ||
+        if (!IsEditingEnabled || notes.Count == 0 || rhythmTick <= 0)
+        {
+            return false;
+        }
+
+        if (!_viewModel.UpdateSelectedRhythm(rhythmTick))
+        {
+            return false;
+        }
+
+        return CompleteSelectedNoteEdit();
+    }
+
+    public bool UpdateSelectedGateRatio(double gateRatio)
+    {
+        var notes = GetSelectedNotes();
+        if (!IsEditingEnabled || notes.Count == 0 ||
             gateRatio is < NoteDurationCalculator.MinimumGateRatio or
                 > NoteDurationCalculator.MaximumGateRatio)
         {
             return false;
         }
 
-        var articulation = ResolveArticulation(gateRatio);
-        if (!_viewModel.UpdateSelectedDuration(rhythmTick, gateRatio, articulation))
+        if (!_viewModel.UpdateSelectedGateRatio(gateRatio, ResolveArticulation(gateRatio)))
         {
             return false;
         }
 
+        return CompleteSelectedNoteEdit();
+    }
+
+    public bool ShiftSelectedRhythms(int step, IReadOnlyList<double> rhythmFactors)
+    {
+        if (!IsEditingEnabled || GetSelectedNotes().Count == 0 ||
+            !_viewModel.ShiftSelectedRhythms(step, rhythmFactors))
+        {
+            return false;
+        }
+
+        return CompleteSelectedNoteEdit();
+    }
+
+    private bool CompleteSelectedNoteEdit()
+    {
         SynchronizeViewModelScore();
         SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
         return true;
@@ -374,14 +424,6 @@ public sealed class PianoRollSurface : Control
         var hit = HitTestNote(point);
         if (hit is null)
         {
-            if (e.ClickCount == 2)
-            {
-                ClearSelection();
-                CreateNote(point);
-                e.Handled = true;
-                return;
-            }
-
             _selectionBeforeMarquee = (Keyboard.Modifiers & ModifierKeys.Control) != 0
                 ? [.. _viewModel.Selection.Ids]
                 : [];
@@ -392,6 +434,7 @@ public sealed class PianoRollSurface : Control
 
             _dragStart = point;
             _selectionRect = new Rect(point, point);
+            _dragHasMoved = false;
             _dragMode = DragMode.Marquee;
             CaptureMouse();
             InvalidateVisual();
@@ -418,9 +461,15 @@ public sealed class PianoRollSurface : Control
         _dragPreviews = _dragOriginals;
         _dragStart = point;
         _dragHasMoved = false;
-        _dragMode = control
-            ? DragMode.Copy
-            : DragMode.Move;
+        _dragMode = IsNearRightEdge(point, hit.Value.Bounds)
+            ? DragMode.ResizeRhythm
+            : control ? DragMode.Copy : DragMode.Move;
+        if (_dragMode == DragMode.ResizeRhythm)
+        {
+            _dragOriginals = [hit.Value.Note];
+            _dragPreviews = _dragOriginals;
+            Cursor = Cursors.SizeWE;
+        }
         CaptureMouse();
         InvalidateVisual();
         e.Handled = true;
@@ -443,6 +492,8 @@ public sealed class PianoRollSurface : Control
             : null;
         if (hit is null)
         {
+            ClearSelection();
+            e.Handled = true;
             return;
         }
 
@@ -497,7 +548,9 @@ public sealed class PianoRollSurface : Control
             {
                 _suppressPlaybackResizeCursorUntilExit = false;
             }
-            Cursor = isNearPlaybackCursor && !_suppressPlaybackResizeCursorUntilExit
+            var noteHit = !isOverRuler && IsEditingEnabled ? HitTestNote(point) : null;
+            var isNearNoteEdge = noteHit is { } edgeHit && IsNearRightEdge(point, edgeHit.Bounds);
+            Cursor = isNearPlaybackCursor && !_suppressPlaybackResizeCursorUntilExit || isNearNoteEdge
                 ? Cursors.SizeWE
                 : isOverRuler ? Cursors.Hand : Cursors.Arrow;
             var hoverX = isOverRuler
@@ -513,8 +566,41 @@ public sealed class PianoRollSurface : Control
 
         if (_dragMode == DragMode.Marquee)
         {
+            if (!_dragHasMoved && (point - _dragStart).Length < 3)
+            {
+                return;
+            }
+
+            _dragHasMoved = true;
             _selectionRect = NormalizeRect(_dragStart, point);
             UpdateMarqueeSelection(_selectionRect.Value);
+        }
+        else if (_dragMode == DragMode.ResizeRhythm && _dragOriginals.Count == 1)
+        {
+            if (!_dragHasMoved && Math.Abs(point.X - _dragStart.X) < 2)
+            {
+                return;
+            }
+
+            _dragHasMoved = true;
+            var original = _dragOriginals[0];
+            var snap = GetSnapTick(Score);
+            var rawRhythmTick = XToTick(point.X, Score.Timing.Ppq) - original.StartTick;
+            var rhythmTick = Math.Max(snap, Snap(rawRhythmTick, snap));
+            var gateRatio = ResolveGateRatio(original);
+            _dragPreviews =
+            [
+                original with
+                {
+                    RhythmTick = rhythmTick,
+                    DurationTick = Math.Max(1, (long)Math.Round(rhythmTick * gateRatio)),
+                    DurationMode = DurationMode.Auto,
+                    GateRatio = gateRatio,
+                },
+            ];
+            NoteRhythmPreviewChanged?.Invoke(
+                this,
+                new NoteRhythmPreviewChangedEventArgs(rhythmTick, false));
         }
         else if (_dragMode is DragMode.Move or DragMode.Copy && _dragOriginals.Count > 0)
         {
@@ -583,7 +669,26 @@ public sealed class PianoRollSurface : Control
         if (_dragMode == DragMode.Marquee)
         {
             _selectionRect = null;
+            if (_dragHasMoved)
+            {
+                RaiseSelectionChanged();
+            }
+            else
+            {
+                CreateNote(_dragStart);
+            }
+        }
+        else if (_dragMode == DragMode.ResizeRhythm && _dragHasMoved &&
+                 !_dragPreviews.SequenceEqual(_dragOriginals))
+        {
+            var rhythmTick = Math.Max(
+                1,
+                _dragPreviews[0].RhythmTick ?? _dragPreviews[0].DurationTick);
+            ReplaceNotes(_dragPreviews);
             RaiseSelectionChanged();
+            NoteRhythmPreviewChanged?.Invoke(
+                this,
+                new NoteRhythmPreviewChangedEventArgs(rhythmTick, true));
         }
         else if (_dragHasMoved && !_dragPreviews.SequenceEqual(_dragOriginals) && Score is not null)
         {
@@ -627,6 +732,7 @@ public sealed class PianoRollSurface : Control
         _dragMode = DragMode.None;
         _dragHasMoved = false;
         _clickedNoteId = null;
+        Cursor = Cursors.Arrow;
         ReleaseMouseCapture();
         InvalidateVisual();
     }
@@ -789,7 +895,7 @@ public sealed class PianoRollSurface : Control
 
     private void DrawNotes(DrawingContext drawingContext, ScoreDocument score)
     {
-        var movePreviews = _dragMode == DragMode.Move
+        var movePreviews = _dragMode is DragMode.Move or DragMode.ResizeRhythm
             ? _dragPreviews.ToDictionary(note => note.Id)
             : new Dictionary<Guid, NoteEvent>();
         var visibleLeft = _viewport.IsEmpty ? 0 : _viewport.Left - 4;
@@ -799,7 +905,7 @@ public sealed class PianoRollSurface : Control
         foreach (var note in score.Tracks.Where(track => !track.IsMuted).SelectMany(track => track.Notes))
         {
             var noteX = TickToX(note.StartTick, score.Timing.Ppq);
-            var noteWidth = Math.Max(3, TickToX(Math.Max(1, note.DurationTick), score.Timing.Ppq));
+            var noteWidth = Math.Max(3, TickToX(GetVisualRhythmTick(note), score.Timing.Ppq));
             var noteY = RulerHeight + PitchToRow(note.Pitch) * RowHeight;
             if (noteX + noteWidth < visibleLeft || noteX > visibleRight ||
                 noteY + RowHeight < visibleTop || noteY > visibleBottom)
@@ -842,21 +948,6 @@ public sealed class PianoRollSurface : Control
         if (!TryGetNoteBounds(note, ppq, out var bounds))
         {
             return;
-        }
-
-        if (note.DurationMode == DurationMode.Auto && note.RhythmTick is > 0)
-        {
-            var rhythmBounds = new Rect(
-                bounds.X,
-                bounds.Y,
-                Math.Max(2, TickToX(note.RhythmTick.Value, ppq)),
-                bounds.Height);
-            drawingContext.DrawRoundedRectangle(
-                null,
-                new Pen(WithOpacity(NoteBrush, isCopyPreview ? 0.38 : 0.55), 1),
-                rhythmBounds,
-                3,
-                3);
         }
 
         drawingContext.DrawRoundedRectangle(
@@ -918,7 +1009,7 @@ public sealed class PianoRollSurface : Control
         bounds = new Rect(
             TickToX(note.StartTick, ppq),
             RulerHeight + row * RowHeight + 3,
-            Math.Max(5, TickToX(note.DurationTick, ppq)),
+            Math.Max(5, TickToX(GetVisualRhythmTick(note), ppq)),
             RowHeight - 6);
         return true;
     }
@@ -927,7 +1018,9 @@ public sealed class PianoRollSurface : Control
     {
         var score = Score!;
         var snap = GetSnapTick(score);
-        var rhythmTick = snap;
+        var rhythmTick = Math.Max(
+            1,
+            checked((long)Math.Round(score.Timing.Ppq * NewNoteLengthFactor)));
         var note = new NoteEvent
         {
             Pitch = Rows[PointToRow(point.Y)].Pitch,
@@ -944,6 +1037,7 @@ public sealed class PianoRollSurface : Control
         if (_viewModel.AddNote(note))
         {
             SynchronizeViewModelScore();
+            NoteCreated?.Invoke(this, new NoteCreatedEventArgs(note.Pitch));
         }
         RaiseSelectionChanged();
     }
@@ -1052,6 +1146,32 @@ public sealed class PianoRollSurface : Control
 
     private long GetSnapTick(ScoreDocument score) => Math.Max(1, score.Timing.Ppq / SnapDivision);
 
+    private static long GetVisualRhythmTick(NoteEvent note) =>
+        Math.Max(1, note.RhythmTick ?? note.DurationTick);
+
+    private static bool IsNearRightEdge(Point point, Rect bounds)
+    {
+        var handleWidth = Math.Clamp(bounds.Width * 0.28, 2, 6);
+        return point.Y >= bounds.Top - 2 && point.Y <= bounds.Bottom + 2 &&
+               point.X >= bounds.Right - handleWidth && point.X <= bounds.Right;
+    }
+
+    private static double ResolveGateRatio(NoteEvent note)
+    {
+        if (note.GateRatio is double ratio &&
+            ratio is >= NoteDurationCalculator.MinimumGateRatio and
+                <= NoteDurationCalculator.MaximumGateRatio)
+        {
+            return ratio;
+        }
+
+        var rhythmTick = GetVisualRhythmTick(note);
+        return Math.Clamp(
+            note.DurationTick / (double)rhythmTick,
+            NoteDurationCalculator.MinimumGateRatio,
+            NoteDurationCalculator.MaximumGateRatio);
+    }
+
     private double TickToX(long tick, int ppq) => tick * PixelsPerBeat / ppq;
 
     private long XToTick(double x, int ppq) => checked((long)Math.Round(x * ppq / PixelsPerBeat));
@@ -1131,6 +1251,7 @@ public sealed class PianoRollSurface : Control
         Move,
         Copy,
         Marquee,
+        ResizeRhythm,
     }
 
     private readonly record struct NoteHit(NoteEvent Note, Rect Bounds);
@@ -1146,4 +1267,16 @@ public sealed class NoteEditRequestedEventArgs(NoteEvent note, Point anchor) : E
 public sealed class PlaybackSeekRequestedEventArgs(long tick) : EventArgs
 {
     public long Tick { get; } = tick;
+}
+
+public sealed class NoteCreatedEventArgs(int pitch) : EventArgs
+{
+    public int Pitch { get; } = pitch;
+}
+
+public sealed class NoteRhythmPreviewChangedEventArgs(long rhythmTick, bool isCommitted) : EventArgs
+{
+    public long RhythmTick { get; } = rhythmTick;
+
+    public bool IsCommitted { get; } = isCommitted;
 }

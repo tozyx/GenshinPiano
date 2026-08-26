@@ -76,6 +76,29 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         }
     }
 
+    public async Task PreviewNoteAsync(
+        int pitch,
+        int instrument,
+        int velocity = 96,
+        TimeSpan? duration = null,
+        CancellationToken cancellationToken = default)
+    {
+        pitch = Math.Clamp(pitch, 0, 127);
+        output.SetInstrument(Math.Clamp(instrument, 0, 127));
+        var adjustedVelocity = (int)Math.Round(
+            Math.Clamp(velocity, 1, 127) * Volatile.Read(ref _velocityGain));
+        output.NoteOn(pitch, Math.Clamp(adjustedVelocity, 1, 127));
+        try
+        {
+            await Task.Delay(duration ?? TimeSpan.FromMilliseconds(220), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            output.NoteOff(pitch);
+        }
+    }
+
     private static long TimeToTick(TimeSpan time, TimingDefinition timing, long maximumTick)
     {
         long low = 0;

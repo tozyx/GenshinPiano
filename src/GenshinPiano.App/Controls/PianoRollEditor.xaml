@@ -431,36 +431,52 @@
 
         <Border x:Name="EditingToolbar"
                 Grid.Row="0"
-                Padding="12,8"
+                Padding="10,5"
                 Background="{DynamicResource PanelBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="↶"
+                            Width="28"
+                            Height="28"
+                            Padding="0"
+                            ToolTip="{DynamicResource Editor_Undo}"
+                            Click="Undo_OnClick" />
+                    <Button Content="↷"
+                            Width="28"
+                            Height="28"
+                            Margin="4,0,0,0"
+                            Padding="0"
+                            ToolTip="{DynamicResource Editor_Redo}"
+                            Click="Redo_OnClick" />
+                    <Border Width="1" Height="20" Margin="10,0,10,0"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource BorderBrush}" />
                     <Button Content="−"
-                            Width="30"
-                            Height="30"
+                            Width="28"
+                            Height="28"
                             Padding="0"
                             ToolTip="{DynamicResource Editor_ZoomOut}"
                             Click="ZoomOut_OnClick" />
                     <Button Content="+"
-                            Width="30"
-                            Height="30"
-                            Margin="6,0,0,0"
+                            Width="28"
+                            Height="28"
+                            Margin="4,0,0,0"
                             Padding="0"
                             ToolTip="{DynamicResource Editor_ZoomIn}"
                             Click="ZoomIn_OnClick" />
                     <Button Content="↕−"
-                            Width="34"
-                            Height="30"
-                            Margin="10,0,0,0"
+                            Width="30"
+                            Height="28"
+                            Margin="8,0,0,0"
                             Padding="0"
                             ToolTip="{DynamicResource Editor_VerticalZoomOut}"
                             Click="VerticalZoomOut_OnClick" />
                     <Button Content="↕+"
-                            Width="34"
-                            Height="30"
-                            Margin="6,0,0,0"
+                            Width="30"
+                            Height="28"
+                            Margin="4,0,0,0"
                             Padding="0"
                             ToolTip="{DynamicResource Editor_VerticalZoomIn}"
                             Click="VerticalZoomIn_OnClick" />
@@ -468,11 +484,13 @@
 
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <TextBlock Text="{DynamicResource Editor_Grid}"
-                               Margin="0,0,8,0"
+                               Margin="0,0,6,0"
                                VerticalAlignment="Center"
+                               FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="SnapComboBox"
-                              Width="78"
+                              Width="88"
+                              Height="30"
                               SelectedIndex="2"
                               SelectionChanged="SnapComboBox_OnSelectionChanged">
                         <ComboBoxItem Content="1/4" Tag="1" />
@@ -480,12 +498,34 @@
                         <ComboBoxItem Content="1/16" Tag="4" />
                         <ComboBoxItem Content="1/32" Tag="8" />
                     </ComboBox>
-                    <TextBlock Text="{DynamicResource Editor_Articulation}"
-                               Margin="16,0,8,0"
+                    <TextBlock Text="{DynamicResource Editor_NewNoteLength}"
+                               Margin="12,0,6,0"
                                VerticalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <ComboBox x:Name="NewNoteLengthComboBox"
+                              Width="96"
+                              Height="30"
+                              SelectedIndex="4"
+                              SelectionChanged="NewNoteLengthComboBox_OnSelectionChanged">
+                        <ComboBoxItem Content="1/1" Tag="4" />
+                        <ComboBoxItem Content="1/2" Tag="2" />
+                        <ComboBoxItem Content="1/4" Tag="1" />
+                        <ComboBoxItem Content="1/8" Tag="0.5" />
+                        <ComboBoxItem Content="1/16" Tag="0.25" />
+                        <ComboBoxItem Content="1/32" Tag="0.125" />
+                    </ComboBox>
+                    <Border Width="1" Height="20" Margin="12,0,12,0"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource BorderBrush}" />
+                    <TextBlock Text="{DynamicResource Editor_Articulation}"
+                               Margin="0,0,6,0"
+                               VerticalAlignment="Center"
+                               FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="ArticulationComboBox"
-                              Width="86"
+                              Width="84"
+                              Height="30"
                               SelectedIndex="1"
                               SelectionChanged="ArticulationComboBox_OnSelectionChanged">
                         <ComboBoxItem Content="{DynamicResource Editor_Legato}" Tag="Legato" />
@@ -493,21 +533,9 @@
                         <ComboBoxItem Content="{DynamicResource Editor_Detached}" Tag="Detached" />
                         <ComboBoxItem Content="{DynamicResource Editor_Staccato}" Tag="Staccato" />
                     </ComboBox>
-                    <TextBlock Text="{DynamicResource Editor_PitchLabels}"
-                               Margin="16,0,8,0"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
-                    <ComboBox x:Name="PitchLabelComboBox"
-                              Width="136"
-                              SelectedIndex="0"
-                              SelectionChanged="PitchLabelComboBox_OnSelectionChanged">
-                        <ComboBoxItem Content="{DynamicResource Editor_PitchLettersWithKey}" Tag="LetterWithKey" />
-                        <ComboBoxItem Content="{DynamicResource Editor_PitchNumbersWithKey}" Tag="NumberedWithKey" />
-                        <ComboBoxItem Content="{DynamicResource Editor_PitchLettersOnly}" Tag="LetterOnly" />
-                        <ComboBoxItem Content="{DynamicResource Editor_PitchNumbersOnly}" Tag="NumberedOnly" />
-                    </ComboBox>
                     <ComboBox x:Name="AuditionInstrumentComboBox"
-                              Width="94"
+                              Width="88"
+                              Height="30"
                               Margin="12,0,0,0"
                               SelectedIndex="0"
                               SelectionChanged="AuditionInstrumentComboBox_OnSelectionChanged">
@@ -517,21 +545,6 @@
                     </ComboBox>
                 </StackPanel>
 
-                <StackPanel Margin="18,0,0,0" Orientation="Horizontal">
-                    <Button Content="↶"
-                            Width="34"
-                            Height="30"
-                            Padding="0"
-                            ToolTip="{DynamicResource Editor_Undo}"
-                            Click="Undo_OnClick" />
-                    <Button Content="↷"
-                            Width="34"
-                            Height="30"
-                            Margin="6,0,0,0"
-                            Padding="0"
-                            ToolTip="{DynamicResource Editor_Redo}"
-                            Click="Redo_OnClick" />
-                </StackPanel>
             </DockPanel>
         </Border>
 
@@ -768,7 +781,7 @@
                PlacementTarget="{Binding ElementName=EditorHelpButton}"
                Placement="Right" HorizontalOffset="6"
                IsOpen="{Binding IsChecked, ElementName=EditorHelpButton, Mode=TwoWay}"
-               AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="False">
+               AllowsTransparency="True" PopupAnimation="Fade" StaysOpen="True">
             <Border MaxWidth="560" Padding="18,15"
                     Background="{DynamicResource PanelBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}"
@@ -861,7 +874,7 @@
                Placement="Relative"
                AllowsTransparency="True"
                PopupAnimation="Fade"
-               StaysOpen="False">
+                StaysOpen="True">
             <Border MinWidth="330"
                     MaxWidth="500"
                     Padding="16"
@@ -930,7 +943,7 @@
                         <ListBoxItem Content="1/32" Tag="0.125" />
                     </ListBox>
 
-                    <DockPanel Margin="0,16,0,6">
+                    <DockPanel Margin="0,16,0,7">
                         <TextBlock DockPanel.Dock="Right"
                                    x:Name="GateRatioText"
                                    FontWeight="SemiBold"
@@ -938,12 +951,29 @@
                         <TextBlock Text="{DynamicResource Editor_GateRatio}"
                                    Foreground="{DynamicResource SecondaryTextBrush}" />
                     </DockPanel>
-                    <Slider x:Name="GateRatioSlider"
-                            Minimum="10"
-                            Maximum="95"
-                            TickFrequency="1"
-                            IsSnapToTickEnabled="True"
-                            ValueChanged="GateRatioSlider_OnValueChanged" />
+                    <Border x:Name="GateRatioPreviewTrack"
+                            Height="24"
+                            Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            ClipToBounds="True"
+                            Focusable="True"
+                            ToolTip="{DynamicResource Editor_GatePreview}"
+                            SizeChanged="GateRatioPreviewTrack_OnSizeChanged"
+                            PreviewMouseLeftButtonDown="GateRatioPreviewTrack_OnPreviewMouseLeftButtonDown"
+                            PreviewMouseMove="GateRatioPreviewTrack_OnPreviewMouseMove"
+                            PreviewMouseLeftButtonUp="GateRatioPreviewTrack_OnPreviewMouseLeftButtonUp"
+                            LostMouseCapture="GateRatioPreviewTrack_OnLostMouseCapture"
+                            MouseLeave="GateRatioPreviewTrack_OnMouseLeave">
+                        <Grid>
+                            <Border x:Name="GateRatioPreviewFill"
+                                    HorizontalAlignment="Left"
+                                    IsHitTestVisible="False"
+                                    Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="4" />
+                        </Grid>
+                    </Border>
                     <TextBlock x:Name="GateRatioDescription"
                                Margin="0,7,0,0"
                                MinHeight="34"
