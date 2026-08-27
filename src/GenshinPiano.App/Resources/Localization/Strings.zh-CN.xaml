@@ -202,7 +202,7 @@
     <system:String x:Key="Status_FileAssociationRegisterFailed">文件关联失败：{0}</system:String>
     <system:String x:Key="Status_FileAssociationUnregisterFailed">取消文件关联失败：{0}</system:String>
     <system:String x:Key="Status_FileAssociationRepairSkipped">已暂不修复 .gpiano 文件关联</system:String>
-    <system:String x:Key="Status_GitHubOpened">已打开 GitHub 项目页</system:String>
+    <system:String x:Key="Status_GitHubOpened">已打开 GitHub Issues 反馈页</system:String>
     <system:String x:Key="Status_OpenLinkFailed">打开链接失败：{0}</system:String>
     <system:String x:Key="SingleInstance_Title">GenshinPiano 已在运行</system:String>
     <system:String x:Key="SingleInstance_ElevationConflict">当前已有普通权限实例。若需要以管理员身份运行，请先关闭现有实例，再右键选择“以管理员身份运行”。</system:String>

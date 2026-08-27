@@ -19,7 +19,7 @@ namespace GenshinPiano.App;
 
 public partial class MainWindow : Window
 {
-    private const string ProjectUrl = "https://github.com/tozyx/GenshinPiano/";
+    private const string FeedbackUrl = "https://github.com/tozyx/GenshinPiano/issues";
     private static readonly DependencyProperty AnimatedVerticalOffsetProperty =
         DependencyProperty.RegisterAttached(
             "AnimatedVerticalOffset",
@@ -957,7 +957,9 @@ public partial class MainWindow : Window
 
     private void AboutMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
-        new AboutDialog
+        var displayVersion = (DataContext as MainWindowViewModel)?
+            .UpdateStatus.CurrentVersionText ?? "unknown";
+        new AboutDialog(displayVersion)
         {
             Owner = this,
         }.ShowDialog();
@@ -979,13 +981,13 @@ public partial class MainWindow : Window
 
     private void GitHubFeedbackMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
-        if (ExternalLinkService.TryOpen(ProjectUrl, out var exception))
+        if (ExternalLinkService.TryOpen(FeedbackUrl, out var exception))
         {
             NotifyStatus("Status_GitHubOpened");
             return;
         }
 
-        AppLogger.Warning($"Could not open GitHub project page: {exception?.Message}");
+        AppLogger.Warning($"Could not open GitHub issues page: {exception?.Message}");
         NotifyStatus("Status_OpenLinkFailed", exception?.Message ?? string.Empty);
     }
 

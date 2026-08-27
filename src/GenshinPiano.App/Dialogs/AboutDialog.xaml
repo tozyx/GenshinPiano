@@ -19,29 +19,29 @@
         <StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Image Width="48"
+                <Image x:Name="AboutIcon"
+                       Width="48"
                        Height="48"
-                       Source="/Assets/Icons/GenshinPiano.ico"
-                       Stretch="Uniform" />
+                       Stretch="Uniform"/>
                 <StackPanel Grid.Column="1"
                             Margin="14,0,0,0"
                             VerticalAlignment="Center">
                     <TextBlock Text="GenshinPiano"
                                FontSize="21"
-                               FontWeight="SemiBold" />
+                               FontWeight="SemiBold"/>
                     <TextBlock x:Name="VersionText"
                                Margin="0,5,0,0"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
                 </StackPanel>
             </Grid>
 
             <TextBlock Margin="0,18,0,0"
                        Text="{DynamicResource About_Description}"
                        TextWrapping="Wrap"
-                       Foreground="{DynamicResource SecondaryTextBrush}" />
+                       Foreground="{DynamicResource SecondaryTextBrush}"/>
 
             <Border Margin="0,18,0,0"
                     Padding="14"
@@ -51,14 +51,14 @@
                     CornerRadius="7">
                 <StackPanel>
                     <TextBlock Text="{DynamicResource About_License}"
-                               FontWeight="SemiBold" />
+                               FontWeight="SemiBold"/>
                     <TextBlock Margin="0,8,0,0"
                                Text="{DynamicResource About_SourceAndFeedback}"
                                TextWrapping="Wrap"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                               Foreground="{DynamicResource SecondaryTextBrush}"/>
                     <TextBlock Margin="0,8,0,0"
                                Text="github.com/tozyx/GenshinPiano"
-                               Foreground="{DynamicResource AccentBrush}" />
+                               Foreground="{DynamicResource AccentBrush}"/>
                 </StackPanel>
             </Border>
 
@@ -69,13 +69,13 @@
                         Height="36"
                         Content="{DynamicResource About_OpenGitHub}"
                         Style="{StaticResource AppButtonStyle}"
-                        Click="OpenGitHub_OnClick" />
+                        Click="OpenGitHub_OnClick"/>
                 <Button Width="100"
                         Height="36"
                         Margin="8,0,0,0"
                         Content="{DynamicResource Update_Close}"
                         Style="{StaticResource PrimaryButtonStyle}"
-                        Click="Close_OnClick" />
+                        Click="Close_OnClick"/>
             </StackPanel>
         </StackPanel>
     </Border>

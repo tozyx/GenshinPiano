@@ -202,7 +202,7 @@
     <system:String x:Key="Status_FileAssociationRegisterFailed">File association failed: {0}</system:String>
     <system:String x:Key="Status_FileAssociationUnregisterFailed">Could not remove file association: {0}</system:String>
     <system:String x:Key="Status_FileAssociationRepairSkipped">Skipped repairing the .gpiano file association</system:String>
-    <system:String x:Key="Status_GitHubOpened">Opened the GitHub project page</system:String>
+    <system:String x:Key="Status_GitHubOpened">Opened the GitHub Issues page</system:String>
     <system:String x:Key="Status_OpenLinkFailed">Could not open link: {0}</system:String>
     <system:String x:Key="SingleInstance_Title">GenshinPiano is already running</system:String>
     <system:String x:Key="SingleInstance_ElevationConflict">A non-elevated instance is already running. Close it first, then choose Run as administrator if elevated access is required.</system:String>
