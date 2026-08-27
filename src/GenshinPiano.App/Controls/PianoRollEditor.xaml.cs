@@ -945,13 +945,7 @@ public partial class PianoRollEditor : UserControl
         BpmDisplayButton.Visibility = Visibility.Collapsed;
         BpmEditPanel.Visibility = Visibility.Visible;
         BpmEditPanel.BeginAnimation(OpacityProperty, null);
-        BpmEditPanel.Opacity = 0;
-        BpmEditPanel.BeginAnimation(
-            OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(
-                0,
-                1,
-                TimeSpan.FromMilliseconds(150)));
+        BpmEditPanel.Opacity = 1;
         BpmControlHost.BeginAnimation(WidthProperty, null);
         BpmControlHost.Width = 68;
         BpmControlHost.BeginAnimation(
@@ -1186,6 +1180,18 @@ public partial class PianoRollEditor : UserControl
         {
             EditorScrollViewer.ScrollToHorizontalOffset(
                 Math.Max(0, EditorScrollViewer.HorizontalOffset - e.Delta));
+            e.Handled = true;
+            return;
+        }
+
+        // The keyboard-label column is a synchronized view of the piano roll, not an
+        // independently scrollable pane. Forward a plain wheel gesture to the main
+        // scroll viewer; its ScrollChanged handler then moves both panes together.
+        if (KeyboardScrollViewer.IsMouseOver &&
+            modifiers == System.Windows.Input.ModifierKeys.None)
+        {
+            EditorScrollViewer.ScrollToVerticalOffset(
+                Math.Max(0, EditorScrollViewer.VerticalOffset - e.Delta));
             e.Handled = true;
         }
     }

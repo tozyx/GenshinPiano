@@ -13,6 +13,9 @@ using GenshinPiano.Infrastructure.Updates;
 using System.Reflection;
 using System.IO;
 using System.Net.Http;
+using System.Security.Principal;
+using System.Text.Json;
+using System.Windows.Threading;
 
 namespace GenshinPiano.App;
 
@@ -22,6 +25,7 @@ public partial class App : System.Windows.Application
     private WindowsMidiOutput? _midiOutput;
     private HttpClient? _updateMetadataHttpClient;
     private HttpClient? _updateDownloadHttpClient;
+    private SingleInstanceCoordinator? _singleInstance;
 
     public IUserSettingsService UserSettingsService { get; private set; } = null!;
 
@@ -31,7 +35,6 @@ public partial class App : System.Windows.Application
 
     public App()
     {
-        AppLogger.Initialize();
         DispatcherUnhandledException += (_, args) =>
             AppLogger.WriteCrashReport("WPF dispatcher", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -47,8 +50,39 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        _singleInstance = new SingleInstanceCoordinator();
+        var startupScorePath = FindSupportedStartupPath(e.Args);
+        if (!_singleInstance.TryAcquire())
+        {
+            var signaled = SingleInstanceCoordinator.SignalActivationRequest();
+            var forwarded = false;
+            try
+            {
+                forwarded = _singleInstance.Forward(new SingleInstanceRequest(
+                    startupScorePath,
+                    IsCurrentProcessElevated()));
+            }
+            catch
+            {
+                forwarded = false;
+            }
+
+            if (!signaled && !forwarded)
+            {
+                SingleInstanceCoordinator.TryActivateExistingInstance();
+            }
+
+            _singleInstance.Dispose();
+            _singleInstance = null;
+            Shutdown(0);
+            Environment.Exit(0);
+            return;
+        }
+
         base.OnStartup(e);
-        AppLogger.Info("Application startup began.");
+
+        AppLogger.Initialize();
+        AppLogger.Info("Application startup began; primary single-instance lock acquired.");
 
         var serializer = new JsonScoreDocumentSerializer();
         var recoveryService = new ScoreRecoveryService(serializer);
@@ -136,7 +170,7 @@ public partial class App : System.Windows.Application
                     new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"),
                     isFrameworkDependent,
                     currentVersion),
-            ]);
+            ], diagnostic: AppLogger.Info);
             updateDownloader = new ResumableUpdatePackageDownloader(
                 _updateDownloadHttpClient,
                 Path.Combine(AppContext.BaseDirectory, "update-cache", "downloads"));
@@ -169,13 +203,18 @@ public partial class App : System.Windows.Application
 
         MainWindow = mainWindow;
         mainWindow.Show();
+        _singleInstance.StartListening(request =>
+            Dispatcher.BeginInvoke(new Action(async () =>
+                await mainWindow.HandleSingleInstanceRequestAsync(request))));
+        ShowCompletedUpdateNotes(mainWindow);
 
         _ = StartAutomaticUpdateCheckAsync(updateStatus);
 
-        if (recoveryService.HasRecovery)
-        {
-            _ = RestorePreviousSessionAsync(mainWindow, viewModel, recoveryService);
-        }
+        _ = CompleteStartupDocumentFlowAsync(
+            mainWindow,
+            viewModel,
+            recoveryService,
+            startupScorePath);
 
         try
         {
@@ -193,6 +232,31 @@ public partial class App : System.Windows.Application
         AppLogger.Info("Application startup completed.");
     }
 
+    private static string? FindSupportedStartupPath(IEnumerable<string> arguments)
+    {
+        foreach (var argument in arguments)
+        {
+            try
+            {
+                var path = Path.GetFullPath(argument);
+                if (MainWindowViewModel.IsSupportedScorePath(path)) return path;
+            }
+            catch (Exception exception) when (
+                exception is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                AppLogger.Warning($"Ignored invalid startup path '{argument}': {exception.Message}");
+            }
+        }
+        return null;
+    }
+
+    private static bool IsCurrentProcessElevated()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        return new WindowsPrincipal(identity)
+            .IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
     private static async Task StartAutomaticUpdateCheckAsync(UpdateStatusViewModel updateStatus)
     {
         try
@@ -203,6 +267,90 @@ public partial class App : System.Windows.Application
         catch (Exception exception)
         {
             AppLogger.Warning($"Automatic update check failed: {exception.Message}");
+        }
+    }
+
+    private static void ShowCompletedUpdateNotes(MainWindow owner)
+    {
+        var markerPath = Path.Combine(AppContext.BaseDirectory, "update-cache", "update-completed.json");
+        if (!File.Exists(markerPath)) return;
+        try
+        {
+            using var json = JsonDocument.Parse(File.ReadAllText(markerPath));
+            var version = json.RootElement.TryGetProperty("version", out var versionElement)
+                ? versionElement.GetString() ?? string.Empty : string.Empty;
+            var notes = json.RootElement.TryGetProperty("releaseNotes", out var notesElement)
+                ? notesElement.GetString() : null;
+            ReleaseNotesCacheService.Save(version, notes);
+            File.Delete(markerPath);
+            new Dialogs.ReleaseNotesDialog(version, notes) { Owner = owner }.ShowDialog();
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Could not display update release notes: {exception.Message}");
+        }
+    }
+
+    private static async Task CompleteStartupDocumentFlowAsync(
+        MainWindow owner,
+        MainWindowViewModel viewModel,
+        ScoreRecoveryService recoveryService,
+        string? startupScorePath)
+    {
+        if (startupScorePath is not null)
+        {
+            await viewModel.OpenPathAsync(startupScorePath);
+        }
+        else if (recoveryService.HasRecovery)
+        {
+            await RestorePreviousSessionAsync(owner, viewModel, recoveryService);
+        }
+
+        await ShowFileAssociationRepairPromptIfNeededAsync(owner, viewModel);
+    }
+
+    private static async Task ShowFileAssociationRepairPromptIfNeededAsync(
+        MainWindow owner,
+        MainWindowViewModel viewModel)
+    {
+        try
+        {
+            await owner.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (owner.Dispatcher.HasShutdownStarted || !owner.IsVisible)
+            {
+                return;
+            }
+
+            var state = FileAssociationService.GetState();
+            if (!state.ExtensionPointsToGenshinPiano || state.OpensWithCurrentExecutable)
+            {
+                return;
+            }
+
+            var dialog = new Dialogs.UpdateReadyDialog(
+                "FileAssociationRepair_Title",
+                "FileAssociationRepair_Message",
+                "FileAssociationRepair_Action")
+            {
+                Owner = owner,
+            };
+            dialog.ShowDialog();
+
+            if (!dialog.RestartRequested)
+            {
+                viewModel.NotifyStatus("Status_FileAssociationRepairSkipped");
+                return;
+            }
+
+            FileAssociationService.RegisterGpianoAssociation();
+            viewModel.NotifyStatus("Status_FileAssociationRegistered");
+            AppLogger.Info(
+                ".gpiano file association pointed to a different executable and was repaired on startup.");
+        }
+        catch (Exception exception)
+        {
+            viewModel.NotifyStatus("Status_FileAssociationRegisterFailed", exception.Message);
+            AppLogger.Warning($"Startup file association repair check failed: {exception.Message}");
         }
     }
 
@@ -244,6 +392,7 @@ public partial class App : System.Windows.Application
         _midiOutput?.Dispose();
         _updateMetadataHttpClient?.Dispose();
         _updateDownloadHttpClient?.Dispose();
+        _singleInstance?.Dispose();
         base.OnExit(e);
     }
 }

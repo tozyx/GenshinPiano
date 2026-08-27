@@ -110,6 +110,38 @@ public sealed class UpdateCoordinatorTests
         Assert.Same(expected, manifest);
     }
 
+    [Fact]
+    public async Task RacingSource_SelectsHigherVersionThatArrivesInsideGraceWindow()
+    {
+        var slowerNewer = CreateManifest("3.2.0");
+        var fasterOlder = CreateManifest("3.1.0");
+        var source = new RacingUpdateSource(
+        [
+            new DelayedStubSource(slowerNewer, TimeSpan.FromMilliseconds(250)),
+            new DelayedStubSource(fasterOlder, TimeSpan.FromMilliseconds(10)),
+        ]);
+
+        var manifest = await source.GetLatestAsync("preview", CancellationToken.None);
+
+        Assert.Same(slowerNewer, manifest);
+    }
+
+    [Fact]
+    public async Task RacingSource_UsesFirstValidManifestWhenOtherSourceMissesGraceWindow()
+    {
+        var slowerNewer = CreateManifest("3.2.0");
+        var fasterOlder = CreateManifest("3.1.0");
+        var source = new RacingUpdateSource(
+        [
+            new DelayedStubSource(slowerNewer, TimeSpan.FromMilliseconds(200)),
+            new DelayedStubSource(fasterOlder, TimeSpan.FromMilliseconds(5)),
+        ], gracePeriod: TimeSpan.FromMilliseconds(25));
+
+        var manifest = await source.GetLatestAsync("preview", CancellationToken.None);
+
+        Assert.Same(fasterOlder, manifest);
+    }
+
     private static UpdateCoordinator CreateCoordinator(
         IUpdateSource source,
         IUpdatePackageDownloader downloader) =>
@@ -148,6 +180,19 @@ public sealed class UpdateCoordinatorTests
             return exception is null
                 ? Task.FromResult(manifest)
                 : Task.FromException<UpdateManifest?>(exception);
+        }
+    }
+
+    private sealed class DelayedStubSource(
+        UpdateManifest manifest,
+        TimeSpan delay) : IUpdateSource
+    {
+        public async Task<UpdateManifest?> GetLatestAsync(
+            string channel,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(delay, cancellationToken);
+            return manifest;
         }
     }
 

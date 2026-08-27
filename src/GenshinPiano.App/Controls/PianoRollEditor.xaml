@@ -379,12 +379,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="1" />
                                 <Setter TargetName="ButtonRoot" Property="RenderTransform">
                                     <Setter.Value><ScaleTransform ScaleX="1.1" ScaleY="1.1" /></Setter.Value>
                                 </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="0.78" />
+                                <Setter TargetName="ButtonRoot" Property="Opacity" Value="1" />
                                 <Setter TargetName="ButtonRoot" Property="RenderTransform">
                                     <Setter.Value><ScaleTransform ScaleX="1.1" ScaleY="1.1" /></Setter.Value>
                                 </Setter>
@@ -524,7 +525,7 @@
                                FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="ArticulationComboBox"
-                              Width="84"
+                              Width="108"
                               Height="30"
                               SelectedIndex="1"
                               SelectionChanged="ArticulationComboBox_OnSelectionChanged">
@@ -571,12 +572,28 @@
                                   VerticalAlignment="Top"
                                   Content="?"
                                   FontWeight="SemiBold"
-                                  Background="{DynamicResource PanelBackgroundBrush}"
-                                  BorderBrush="{DynamicResource BorderBrush}"
-                                  BorderThickness="0,0,1,1"
                                   Foreground="{DynamicResource AccentBrush}"
                                   Cursor="Hand"
-                                  ToolTip="{DynamicResource Editor_Hint}" />
+                                  ToolTip="{DynamicResource Editor_Hint}">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Grid Background="Transparent">
+                                    <ContentPresenter x:Name="HelpIcon"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      RecognizesAccessKey="False" />
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="HelpIcon" Property="Opacity" Value="0.72" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="HelpIcon" Property="Opacity" Value="0.5" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
                 </Grid>
             </ScrollViewer>
 
@@ -641,7 +658,7 @@
                             </TextBlock>
                         </Button>
                         <Grid x:Name="BpmEditPanel" Visibility="Collapsed">
-                            <TextBlock x:Name="BpmEditLabel" Text="BPM" Margin="5,0,0,0"
+                            <TextBlock x:Name="BpmEditLabel" Text="BPM" Margin="0"
                                        HorizontalAlignment="Left" VerticalAlignment="Center"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        RenderTransformOrigin="0,0.5">
@@ -650,7 +667,7 @@
                                 </TextBlock.RenderTransform>
                             </TextBlock>
                             <TextBox x:Name="BpmTextBox"
-                                     Width="64" Height="28" Margin="40,0,0,0"
+                                     Width="64" Height="28" Margin="36,0,0,0"
                                      HorizontalAlignment="Left"
                                      RenderTransformOrigin="0,0.5"
                                      Style="{StaticResource BpmTextBoxStyle}"

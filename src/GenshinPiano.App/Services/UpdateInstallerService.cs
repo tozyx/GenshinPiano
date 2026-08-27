@@ -10,7 +10,12 @@ public sealed class UpdateInstallerService
 {
     private static readonly string[] PreservedEntries = ["config", "songs", "logs", "update-cache"];
 
-    public async Task<string> PrepareAsync(UpdateState state, CancellationToken cancellationToken = default)
+    public static bool HasRollback => FindLatestRollback() is not null;
+
+    public async Task<string> PrepareAsync(
+        UpdateState state,
+        bool restartAfterInstall = true,
+        CancellationToken cancellationToken = default)
     {
         if (state.Stage != UpdateStage.Ready || string.IsNullOrWhiteSpace(state.DownloadedPath) ||
             !File.Exists(state.DownloadedPath))
@@ -33,11 +38,21 @@ public sealed class UpdateInstallerService
         var plan = new UpdateInstallationPlan(
             Environment.ProcessId, install, staging,
             Path.Combine(cache, "rollback", token), "GenshinPiano.exe",
-            state.AvailableVersion?.ToString() ?? "unknown", PreservedEntries);
+            state.AvailableVersion?.ToString() ?? "unknown", PreservedEntries,
+            state.ReleaseNotes, restartAfterInstall);
         var planPath = Path.Combine(cache, "plans", $"update-{token}.json");
         Directory.CreateDirectory(Path.GetDirectoryName(planPath)!);
         await File.WriteAllTextAsync(planPath, JsonSerializer.Serialize(plan), cancellationToken);
         return planPath;
+    }
+
+    public async Task<string> PrepareRollbackAsync(CancellationToken cancellationToken = default)
+    {
+        var staging = FindLatestRollback() ??
+            throw new InvalidOperationException("No rollback backup is available.");
+        var completedMarker = Path.Combine(AppContext.BaseDirectory, "update-cache", "update-completed.json");
+        if (File.Exists(completedMarker)) File.Delete(completedMarker);
+        return await CreatePlanAsync(staging, "rollback", cancellationToken);
     }
 
     public static void Launch(string planPath)
@@ -65,5 +80,38 @@ public sealed class UpdateInstallerService
             await using var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
             await input.CopyToAsync(output, cancellationToken);
         }
+    }
+
+    private static string? FindLatestRollback()
+    {
+        var root = Path.Combine(AppContext.BaseDirectory, "update-cache", "rollback");
+        if (!Directory.Exists(root)) return null;
+        return new DirectoryInfo(root).EnumerateDirectories()
+            .Where(directory => directory.EnumerateFileSystemInfos().Any())
+            .OrderByDescending(directory => directory.LastWriteTimeUtc)
+            .Select(directory => directory.FullName)
+            .FirstOrDefault();
+    }
+
+    private static async Task<string> CreatePlanAsync(
+        string staging, string version, CancellationToken cancellationToken)
+    {
+        var install = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+        var cache = Path.Combine(install, "update-cache");
+        var token = Guid.NewGuid().ToString("N");
+        var sourceUpdater = Path.Combine(install, "GenshinPiano.Updater.exe");
+        if (!File.Exists(sourceUpdater))
+            throw new FileNotFoundException("GenshinPiano.Updater.exe is missing from the installation.", sourceUpdater);
+        var runner = Path.Combine(cache, "updater", token, "GenshinPiano.Updater.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(runner)!);
+        File.Copy(sourceUpdater, runner, true);
+        var plan = new UpdateInstallationPlan(
+            Environment.ProcessId, install, staging,
+            Path.Combine(cache, "rollback", token), "GenshinPiano.exe",
+            version, PreservedEntries);
+        var planPath = Path.Combine(cache, "plans", $"update-{token}.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(planPath)!);
+        await File.WriteAllTextAsync(planPath, JsonSerializer.Serialize(plan), cancellationToken);
+        return planPath;
     }
 }

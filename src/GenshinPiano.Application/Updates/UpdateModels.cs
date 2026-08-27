@@ -34,7 +34,8 @@ public sealed record UpdateManifest(
     SemanticVersion Version,
     DateTimeOffset PublishedAt,
     IReadOnlyList<UpdatePackage> Packages,
-    string SourceName);
+    string SourceName,
+    string? ReleaseNotes = null);
 
 public sealed record UpdateState(
     UpdateStage Stage,
@@ -42,7 +43,8 @@ public sealed record UpdateState(
     SemanticVersion? AvailableVersion = null,
     string? SourceName = null,
     string? DownloadedPath = null,
-    string? ErrorMessage = null)
+    string? ErrorMessage = null,
+    string? ReleaseNotes = null)
 {
     public static UpdateState Idle { get; } = new(UpdateStage.Idle);
 }
@@ -50,6 +52,11 @@ public sealed record UpdateState(
 public interface IUpdateSource
 {
     Task<UpdateManifest?> GetLatestAsync(string channel, CancellationToken cancellationToken);
+}
+
+public interface INamedUpdateSource
+{
+    string SourceName { get; }
 }
 
 public interface IUpdatePackageDownloader

@@ -8,6 +8,8 @@ public sealed class UpdateCoordinator(
 {
     private readonly SemaphoreSlim _operationLock = new(1, 1);
 
+    public SemanticVersion CurrentVersion => currentVersion;
+
     public UpdateState State { get; private set; } = UpdateState.Idle;
 
     public event EventHandler<UpdateState>? StateChanged;
@@ -24,10 +26,7 @@ public sealed class UpdateCoordinator(
             return;
         }
 
-        if (!await _operationLock.WaitAsync(0, cancellationToken))
-        {
-            return;
-        }
+        await _operationLock.WaitAsync(cancellationToken);
 
         try
         {
@@ -84,7 +83,8 @@ public sealed class UpdateCoordinator(
                 1,
                 manifest.Version,
                 manifest.SourceName,
-                downloadedPath));
+                downloadedPath,
+                ReleaseNotes: manifest.ReleaseNotes));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

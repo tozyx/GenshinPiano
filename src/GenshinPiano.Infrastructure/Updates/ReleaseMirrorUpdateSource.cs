@@ -9,8 +9,10 @@ public sealed class ReleaseMirrorUpdateSource(
     string sourceName,
     Uri releasesEndpoint,
     bool frameworkDependent,
-    SemanticVersion currentVersion) : IUpdateSource
+    SemanticVersion currentVersion) : IUpdateSource, INamedUpdateSource
 {
+    public string SourceName => sourceName;
+
     public async Task<UpdateManifest?> GetLatestAsync(
         string channel,
         CancellationToken cancellationToken)
@@ -56,7 +58,7 @@ public sealed class ReleaseMirrorUpdateSource(
             }
 
             var assets = ParseAssets(release);
-            candidates.Add(new ReleaseCandidate(version, assets));
+            candidates.Add(new ReleaseCandidate(version, assets, GetString(release, "body")));
         }
 
         foreach (var candidate in candidates.OrderByDescending(item => item.Version))
@@ -93,7 +95,8 @@ public sealed class ReleaseMirrorUpdateSource(
                     packageAsset.Size,
                     sha256,
                     packageAsset.DownloadUri)],
-                sourceName);
+                sourceName,
+                candidate.ReleaseNotes);
         }
 
         return null;
@@ -154,7 +157,8 @@ public sealed class ReleaseMirrorUpdateSource(
 
     private sealed record ReleaseCandidate(
         SemanticVersion Version,
-        IReadOnlyList<ReleaseAsset> Assets);
+        IReadOnlyList<ReleaseAsset> Assets,
+        string ReleaseNotes);
 
     private sealed record ReleaseAsset(string Name, Uri DownloadUri, long Size);
 }

@@ -47,7 +47,7 @@ if errorlevel 1 (
 )
 
 echo Publishing standalone updater...
-dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
+dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained true -p:PublishAot=true -p:StripSymbols=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
   echo Updater publish failed.
   pause

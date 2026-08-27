@@ -1,10 +1,13 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Interop;
 using GenshinPiano.App.Dialogs;
@@ -16,6 +19,7 @@ namespace GenshinPiano.App;
 
 public partial class MainWindow : Window
 {
+    private const string ProjectUrl = "https://github.com/tozyx/GenshinPiano/";
     private static readonly DependencyProperty AnimatedVerticalOffsetProperty =
         DependencyProperty.RegisterAttached(
             "AnimatedVerticalOffset",
@@ -42,6 +46,7 @@ public partial class MainWindow : Window
     private bool _suppressWorkspaceFileOpen;
     private bool _scoreSearchClosing;
     private readonly DispatcherTimer _scoreSearchCloseTimer;
+    private HwndSource? _hwndSource;
 
     public MainWindow()
     {
@@ -58,6 +63,7 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         EnableNativeWindowAnimations();
+        InstallSingleInstanceWindowMessageHook();
     }
 
     private void EnableNativeWindowAnimations()
@@ -83,6 +89,55 @@ public partial class MainWindow : Window
             0,
             0,
             NoSize | NoMove | NoZOrder | NoActivate | FrameChanged);
+    }
+
+    private void InstallSingleInstanceWindowMessageHook()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        AllowSingleInstanceActivationMessage(handle);
+        _hwndSource = HwndSource.FromHwnd(handle);
+        _hwndSource?.AddHook(MainWindowWindowProc);
+    }
+
+    private IntPtr MainWindowWindowProc(
+        IntPtr hwnd,
+        int message,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        if ((uint)message != SingleInstanceCoordinator.ActivationMessage)
+        {
+            return IntPtr.Zero;
+        }
+
+        handled = true;
+        Dispatcher.BeginInvoke(RestoreAndActivateFromSecondInstance, DispatcherPriority.Normal);
+        return IntPtr.Zero;
+    }
+
+    private static void AllowSingleInstanceActivationMessage(IntPtr handle)
+    {
+        var message = SingleInstanceCoordinator.ActivationMessage;
+        if (message == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var filter = new ChangeFilterStruct { Size = (uint)Marshal.SizeOf<ChangeFilterStruct>() };
+            ChangeWindowMessageFilterEx(handle, message, MessageFilterAllow, ref filter);
+        }
+        catch (Exception exception) when (
+            exception is EntryPointNotFoundException or DllNotFoundException)
+        {
+        }
     }
 
     private void MainWindow_OnPreviewDragOver(object sender, DragEventArgs e)
@@ -340,15 +395,51 @@ public partial class MainWindow : Window
 
     private void ScoreFolderSearchButton_OnMouseEnter(object sender, MouseEventArgs e)
     {
-        _scoreSearchCloseTimer.Stop();
-        _scoreSearchClosing = false;
-        ScoreFolderSearchPopup.IsOpen = true;
+        OpenScoreFolderSearchPopup();
     }
 
     private void ScoreFolderSearchButton_OnClick(object sender, RoutedEventArgs e)
     {
+        OpenScoreFolderSearchPopup();
+    }
+
+    private void OpenScoreFolderSearchPopup()
+    {
         _scoreSearchCloseTimer.Stop();
-        ScoreFolderSearchPopup.IsOpen = true;
+        var wasOpen = IsScoreFolderSearchOpen && !_scoreSearchClosing;
+        _scoreSearchClosing = false;
+        ScoreFolderSearchTextBox.Visibility = Visibility.Visible;
+        if (wasOpen)
+        {
+            return;
+        }
+
+        ScoreFolderSearchTextBox.BeginAnimation(OpacityProperty, null);
+        ScoreFolderSearchTextBox.Opacity = 0.82;
+        ScoreFolderSearchTextBox.BeginAnimation(
+            OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(
+                0.82,
+                1,
+                TimeSpan.FromMilliseconds(160)));
+
+        if (ScoreFolderSearchTextBox.RenderTransform is ScaleTransform transform)
+        {
+            transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            transform.ScaleX = 0.05;
+            transform.BeginAnimation(
+                ScaleTransform.ScaleXProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(
+                    0.05,
+                    1,
+                    TimeSpan.FromMilliseconds(190))
+                {
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase
+                    {
+                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
+                    },
+                });
+        }
     }
 
     private void RefreshScoreFolderButton_OnClick(object sender, RoutedEventArgs e)
@@ -389,8 +480,7 @@ public partial class MainWindow : Window
     private void ScoreSearchCloseTimer_OnTick(object? sender, EventArgs e)
     {
         _scoreSearchCloseTimer.Stop();
-        if (!ScoreFolderSearchButton.IsMouseOver &&
-            !ScoreFolderSearchPopupContent.IsMouseOver)
+        if (!IsPointerOverScoreFolderSearch())
         {
             BeginCloseScoreFolderSearch();
         }
@@ -398,7 +488,7 @@ public partial class MainWindow : Window
 
     private void BeginCloseScoreFolderSearch()
     {
-        if (!ScoreFolderSearchPopup.IsOpen || _scoreSearchClosing)
+        if (!IsScoreFolderSearchOpen || _scoreSearchClosing)
         {
             return;
         }
@@ -406,7 +496,7 @@ public partial class MainWindow : Window
         _scoreSearchClosing = true;
         if (ScoreFolderSearchTextBox.RenderTransform is not ScaleTransform transform)
         {
-            ScoreFolderSearchPopup.IsOpen = false;
+            ScoreFolderSearchTextBox.Visibility = Visibility.Collapsed;
             _scoreSearchClosing = false;
             return;
         }
@@ -425,7 +515,9 @@ public partial class MainWindow : Window
         {
             if (_scoreSearchClosing)
             {
-                ScoreFolderSearchPopup.IsOpen = false;
+                ScoreFolderSearchTextBox.Visibility = Visibility.Collapsed;
+                ScoreFolderSearchTextBox.Opacity = 0.82;
+                transform.ScaleX = 0.05;
                 _scoreSearchClosing = false;
             }
         };
@@ -438,36 +530,12 @@ public partial class MainWindow : Window
                 TimeSpan.FromMilliseconds(125)));
     }
 
-    private void ScoreFolderSearchPopup_OnOpened(object? sender, EventArgs e)
-    {
-        _scoreSearchClosing = false;
-        ScoreFolderSearchTextBox.BeginAnimation(OpacityProperty, null);
-        ScoreFolderSearchTextBox.Opacity = 0.82;
-        ScoreFolderSearchTextBox.BeginAnimation(
-            OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(
-                0.82,
-                1,
-                TimeSpan.FromMilliseconds(160)));
+    private bool IsScoreFolderSearchOpen =>
+        ScoreFolderSearchTextBox.Visibility == Visibility.Visible;
 
-        if (ScoreFolderSearchTextBox.RenderTransform is ScaleTransform transform)
-        {
-            transform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-            transform.ScaleX = 0.05;
-            transform.BeginAnimation(
-                ScaleTransform.ScaleXProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(
-                    0.05,
-                    1,
-                    TimeSpan.FromMilliseconds(190))
-                {
-                    EasingFunction = new System.Windows.Media.Animation.CubicEase
-                    {
-                        EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut,
-                    },
-                });
-        }
-    }
+    private bool IsPointerOverScoreFolderSearch() =>
+        ScoreFolderSearchButton.IsMouseOver ||
+        ScoreFolderSearchTextBox.IsMouseOver;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int GetWindowLong(IntPtr windowHandle, int index);
@@ -485,6 +553,155 @@ public partial class MainWindow : Window
         int width,
         int height,
         uint flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ChangeWindowMessageFilterEx(
+        IntPtr windowHandle,
+        uint message,
+        uint action,
+        ref ChangeFilterStruct filter);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    [DllImport("user32.dll")]
+    private static extern void SwitchToThisWindow(IntPtr windowHandle, bool altTab);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FlashWindowEx(ref FlashWindowInfo info);
+
+    private const int ShowWindowRestore = 9;
+    private const uint FlashAll = 0x00000003;
+    private const uint FlashTimerNoForeground = 0x0000000C;
+    private const uint MessageFilterAllow = 1;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FlashWindowInfo
+    {
+        public uint Size;
+        public IntPtr Window;
+        public uint Flags;
+        public uint Count;
+        public uint Timeout;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ChangeFilterStruct
+    {
+        public uint Size;
+        public uint ExtStatus;
+    }
+
+    public async Task HandleSingleInstanceRequestAsync(SingleInstanceRequest request)
+    {
+        RestoreAndActivateFromSecondInstance();
+
+        if (request.IsElevated && !IsCurrentProcessElevated())
+        {
+            MessageBox.Show(
+                this,
+                (string)FindResource("SingleInstance_ElevationConflict"),
+                (string)FindResource("SingleInstance_Title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FilePath) ||
+            !MainWindowViewModel.IsSupportedScorePath(request.FilePath) ||
+            DataContext is not MainWindowViewModel viewModel ||
+            viewModel.IsPlaying ||
+            _isLocalAuditionPlaying)
+        {
+            return;
+        }
+
+        if (viewModel.CurrentSourcePath is not null && string.Equals(
+                Path.GetFullPath(viewModel.CurrentSourcePath),
+                Path.GetFullPath(request.FilePath),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (viewModel.IsDirty)
+        {
+            var dialog = new UnsavedChangesDialog { Owner = this };
+            dialog.ShowDialog();
+            if (dialog.Choice == UnsavedChangesChoice.Cancel) return;
+            if (dialog.Choice == UnsavedChangesChoice.Save &&
+                !await viewModel.SavePendingChangesAsync()) return;
+            if (dialog.Choice == UnsavedChangesChoice.DontSave)
+                viewModel.DiscardRecovery();
+        }
+
+        await viewModel.OpenPathAsync(request.FilePath);
+    }
+
+    private void RestoreAndActivateFromSecondInstance()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+
+        ShowWindow(handle, ShowWindowRestore);
+        var activated = Activate();
+        Focus();
+        var foregroundSet = SetForegroundWindow(handle);
+        if (!foregroundSet)
+        {
+            var wasTopmost = Topmost;
+            Topmost = true;
+            Topmost = wasTopmost;
+            activated = Activate();
+            foregroundSet = SetForegroundWindow(handle);
+        }
+
+        if (!foregroundSet && !activated)
+        {
+            SwitchToThisWindow(handle, true);
+        }
+
+        if (!activated && !IsActive)
+        {
+            FlashTaskbar(handle);
+        }
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            () => { if (!IsActive) FlashTaskbar(handle); });
+        AppLogger.Info($"Restored main window for a second-instance request; foreground={IsActive}.");
+    }
+
+    private static void FlashTaskbar(IntPtr handle)
+    {
+        var flash = new FlashWindowInfo
+        {
+            Size = (uint)Marshal.SizeOf<FlashWindowInfo>(),
+            Window = handle,
+            Flags = FlashAll | FlashTimerNoForeground,
+            Count = 3,
+        };
+        FlashWindowEx(ref flash);
+    }
+
+    private static bool IsCurrentProcessElevated()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        return new WindowsPrincipal(identity)
+            .IsInRole(WindowsBuiltInRole.Administrator);
+    }
 
     private void ExitMenuItem_OnClick(object sender, RoutedEventArgs e) => Close();
 
@@ -513,6 +730,263 @@ public partial class MainWindow : Window
         {
             UpdatePitchLabelMenuChecks();
         }
+    }
+
+    private void SettingsMenuItem_OnSubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        MenuItem_OnSubmenuOpened(sender, e);
+        if (sender is MenuItem menuItem && ReferenceEquals(e.OriginalSource, menuItem))
+        {
+            UpdateNetworkDependentUpdateMenuItems(animate: false);
+            UpdateFileAssociationMenuState();
+        }
+    }
+
+    private void UpdatesMenuItem_OnSubmenuOpened(object sender, RoutedEventArgs e)
+    {
+        MenuItem_OnSubmenuOpened(sender, e);
+        if (sender is MenuItem menuItem && ReferenceEquals(e.OriginalSource, menuItem))
+        {
+            UpdateNetworkDependentUpdateMenuItems(animate: false);
+        }
+    }
+
+    private void AnimatedCheckableMenuItem_OnCheckStateChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem || !ReferenceEquals(sender, e.OriginalSource))
+        {
+            return;
+        }
+
+        menuItem.BeginAnimation(OpacityProperty, null);
+        menuItem.Opacity = 0.88;
+        menuItem.BeginAnimation(
+            OpacityProperty,
+            new DoubleAnimation(0.88, 1, TimeSpan.FromMilliseconds(120)));
+    }
+
+    private void UpdateNetworkDependentUpdateMenuItems(bool animate)
+    {
+        var networkEnabled = DataContext is MainWindowViewModel
+        {
+            UpdateStatus.NetworkAccessEnabled: true,
+        };
+        var hasRollback = UpdateInstallerService.HasRollback;
+        RollbackMenuItem.IsEnabled = hasRollback;
+
+        SetUpdateMenuElementVisibility(UpdateNetworkSeparator, networkEnabled, animate);
+        SetUpdateMenuElementVisibility(AutomaticUpdatesMenuItem, networkEnabled, animate);
+        SetUpdateMenuElementVisibility(PreviewUpdatesMenuItem, networkEnabled, animate);
+        SetUpdateMenuElementVisibility(CheckForUpdatesMenuItem, networkEnabled, animate);
+        SetUpdateMenuElementVisibility(RollbackMenuItem, networkEnabled && hasRollback, animate);
+    }
+
+    private void SetUpdateMenuElementVisibility(FrameworkElement element, bool shouldShow, bool animate)
+    {
+        element.BeginAnimation(OpacityProperty, null);
+        var transform = EnsureMenuTransitionTransform(element);
+        transform.BeginAnimation(TranslateTransform.XProperty, null);
+
+        if (!animate)
+        {
+            element.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+            element.Opacity = 1;
+            transform.X = 0;
+            return;
+        }
+
+        if (shouldShow)
+        {
+            if (element.Visibility == Visibility.Visible && element.Opacity >= 0.98)
+            {
+                transform.X = 0;
+                return;
+            }
+
+            element.Visibility = Visibility.Visible;
+            element.Opacity = 0;
+            transform.X = -8;
+            element.BeginAnimation(
+                OpacityProperty,
+                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(165)));
+            transform.BeginAnimation(
+                TranslateTransform.XProperty,
+                new DoubleAnimation(-8, 0, TimeSpan.FromMilliseconds(180))
+                {
+                    EasingFunction = CreateMenuTransitionEase(),
+                });
+            return;
+        }
+
+        if (element.Visibility != Visibility.Visible)
+        {
+            element.Visibility = Visibility.Collapsed;
+            element.Opacity = 1;
+            transform.X = 0;
+            return;
+        }
+
+        var fadeOut = new DoubleAnimation(
+            Math.Clamp(element.Opacity, 0, 1),
+            0,
+            TimeSpan.FromMilliseconds(130));
+        fadeOut.Completed += (_, _) =>
+        {
+            if (!ShouldShowUpdateMenuElement(element))
+            {
+                element.Visibility = Visibility.Collapsed;
+                element.Opacity = 1;
+                transform.X = 0;
+            }
+
+        };
+        element.BeginAnimation(OpacityProperty, fadeOut);
+        transform.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation(transform.X, -8, TimeSpan.FromMilliseconds(130))
+            {
+                EasingFunction = CreateMenuTransitionEase(),
+            });
+    }
+
+    private bool ShouldShowUpdateMenuElement(FrameworkElement element)
+    {
+        if (DataContext is not MainWindowViewModel
+            {
+                UpdateStatus.NetworkAccessEnabled: true,
+            })
+        {
+            return false;
+        }
+
+        return !ReferenceEquals(element, RollbackMenuItem) ||
+               UpdateInstallerService.HasRollback;
+    }
+
+    private static TranslateTransform EnsureMenuTransitionTransform(FrameworkElement element)
+    {
+        if (element.RenderTransform is TranslateTransform transform)
+        {
+            return transform;
+        }
+
+        transform = new TranslateTransform();
+        element.RenderTransform = transform;
+        return transform;
+    }
+
+    private static IEasingFunction CreateMenuTransitionEase() => new CubicEase
+    {
+        EasingMode = EasingMode.EaseOut,
+    };
+
+    private void UpdateFileAssociationMenuState()
+    {
+        try
+        {
+            var state = FileAssociationService.GetState();
+            RegisterGpianoAssociationMenuItem.IsEnabled = !state.OpensWithCurrentExecutable;
+            UnregisterGpianoAssociationMenuItem.IsEnabled = state.CanUnregister;
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Could not read .gpiano file association state: {exception.Message}");
+            RegisterGpianoAssociationMenuItem.IsEnabled = true;
+            UnregisterGpianoAssociationMenuItem.IsEnabled = false;
+        }
+    }
+
+    private void RegisterGpianoAssociationMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            FileAssociationService.RegisterGpianoAssociation();
+            UpdateFileAssociationMenuState();
+            NotifyStatus("Status_FileAssociationRegistered");
+            AppLogger.Info(".gpiano file association registered for the current executable.");
+        }
+        catch (Exception exception)
+        {
+            NotifyStatus("Status_FileAssociationRegisterFailed", exception.Message);
+            AppLogger.Error("Failed to register .gpiano file association.", exception);
+        }
+    }
+
+    private void UnregisterGpianoAssociationMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            FileAssociationService.UnregisterGpianoAssociation();
+            UpdateFileAssociationMenuState();
+            NotifyStatus("Status_FileAssociationUnregistered");
+            AppLogger.Info(".gpiano file association unregistered.");
+        }
+        catch (Exception exception)
+        {
+            NotifyStatus("Status_FileAssociationUnregisterFailed", exception.Message);
+            AppLogger.Error("Failed to unregister .gpiano file association.", exception);
+        }
+    }
+
+    private void NotifyStatus(string key, params object?[] arguments)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            viewModel.NotifyStatus(key, arguments);
+        }
+    }
+
+    private async void RollbackMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!UpdateInstallerService.HasRollback) return;
+        var dialog = new UpdateReadyDialog(
+            "Rollback_Title", "Rollback_Message", "Rollback_Restart") { Owner = this };
+        dialog.ShowDialog();
+        if (!dialog.RestartRequested) return;
+        try
+        {
+            _pendingUpdatePlanPath = await new UpdateInstallerService().PrepareRollbackAsync();
+            Close();
+        }
+        catch (Exception exception)
+        {
+            _pendingUpdatePlanPath = null;
+            AppLogger.Warning($"Could not prepare application rollback: {exception}");
+        }
+    }
+
+    private void AboutMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        new AboutDialog
+        {
+            Owner = this,
+        }.ShowDialog();
+    }
+
+    private void ViewReleaseNotesMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        var cached = ReleaseNotesCacheService.Load();
+        var currentState = (DataContext as MainWindowViewModel)?.UpdateStatus.CurrentState;
+        var version = cached?.Version ??
+                      currentState?.AvailableVersion?.ToString() ??
+                      string.Empty;
+        var notes = cached?.ReleaseNotes ?? currentState?.ReleaseNotes;
+        new ReleaseNotesDialog("Update_ReleaseNotesTitle", version, notes)
+        {
+            Owner = this,
+        }.ShowDialog();
+    }
+
+    private void GitHubFeedbackMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (ExternalLinkService.TryOpen(ProjectUrl, out var exception))
+        {
+            NotifyStatus("Status_GitHubOpened");
+            return;
+        }
+
+        AppLogger.Warning($"Could not open GitHub project page: {exception?.Message}");
+        NotifyStatus("Status_OpenLinkFailed", exception?.Message ?? string.Empty);
     }
 
     private void PitchLabelMenuItem_OnClick(object sender, RoutedEventArgs e)
@@ -566,9 +1040,8 @@ public partial class MainWindow : Window
             } &&
             mouseEvent == Mouse.PreviewMouseDownEvent)
         {
-            if (ScoreFolderSearchPopup.IsOpen &&
-                !ScoreFolderSearchButton.IsMouseOver &&
-                !ScoreFolderSearchPopupContent.IsMouseOver)
+            if (IsScoreFolderSearchOpen &&
+                !IsPointerOverScoreFolderSearch())
             {
                 BeginCloseScoreFolderSearch();
             }
@@ -646,12 +1119,39 @@ public partial class MainWindow : Window
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.PropertyChanged -= UpdateStatus_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested -=
+                UpdateStatus_OnReadyUpdateRequested;
         }
 
         _subscribedViewModel = e.NewValue as MainWindowViewModel;
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.PropertyChanged += ViewModel_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.PropertyChanged += UpdateStatus_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested +=
+                UpdateStatus_OnReadyUpdateRequested;
+            UpdateNetworkDependentUpdateMenuItems(animate: false);
+        }
+    }
+
+    private void UpdateStatus_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(UpdateStatusViewModel.NetworkAccessEnabled))
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.Loaded,
+            () => UpdateNetworkDependentUpdateMenuItems(animate: UpdatesMenuItem.IsSubmenuOpen));
+    }
+
+    private async void UpdateStatus_OnReadyUpdateRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+        {
+            await ShowReadyUpdateDialogAsync(viewModel);
         }
     }
 
@@ -709,10 +1209,15 @@ public partial class MainWindow : Window
     private void MainWindow_OnClosed(object? sender, EventArgs e)
     {
         InputManager.Current.PreProcessInput -= InputManager_OnPreProcessInput;
+        _hwndSource?.RemoveHook(MainWindowWindowProc);
+        _hwndSource = null;
 
         if (_subscribedViewModel is not null)
         {
             _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.PropertyChanged -= UpdateStatus_OnPropertyChanged;
+            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested -=
+                UpdateStatus_OnReadyUpdateRequested;
             _subscribedViewModel.UpdateStatus.Dispose();
             _subscribedViewModel = null;
         }
@@ -730,8 +1235,27 @@ public partial class MainWindow : Window
 
     private async void UpdateStatus_OnClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (DataContext is not MainWindowViewModel viewModel || !viewModel.UpdateStatus.CanInstall)
+        if (DataContext is not MainWindowViewModel viewModel) return;
+        e.Handled = true;
+        if (viewModel.UpdateStatus.Stage == GenshinPiano.Application.Updates.UpdateStage.Available)
+        {
+            var downloadDialog = new UpdateReadyDialog(
+                "Update_DownloadTitle", "Update_DownloadMessage", "Update_DownloadAction")
+            { Owner = this };
+            downloadDialog.ShowDialog();
+            if (downloadDialog.RestartRequested)
+            {
+                await viewModel.UpdateStatus.DownloadAvailableUpdateAsync();
+            }
             return;
+        }
+        if (!viewModel.UpdateStatus.CanInstall) return;
+        await ShowReadyUpdateDialogAsync(viewModel);
+    }
+
+    private async Task ShowReadyUpdateDialogAsync(MainWindowViewModel viewModel)
+    {
+        if (!viewModel.UpdateStatus.CanInstall) return;
         var state = viewModel.UpdateStatus.CurrentState;
         var dialog = new Dialogs.UpdateReadyDialog(state.AvailableVersion?.ToString() ?? string.Empty) { Owner = this };
         dialog.ShowDialog();
@@ -777,8 +1301,26 @@ public partial class MainWindow : Window
 
     private async void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {
-        if (_allowClose || DataContext is not MainWindowViewModel viewModel || !viewModel.IsDirty)
+        if (_allowClose || DataContext is not MainWindowViewModel viewModel)
         {
+            return;
+        }
+
+        if (!viewModel.IsDirty)
+        {
+            if (!viewModel.UpdateStatus.CanInstall || _closePromptActive) return;
+            e.Cancel = true;
+            _closePromptActive = true;
+            try
+            {
+                await PrepareReadyUpdateIfNeededAsync(viewModel);
+                _allowClose = true;
+                _ = Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(Close));
+            }
+            finally
+            {
+                _closePromptActive = false;
+            }
             return;
         }
 
@@ -812,6 +1354,7 @@ public partial class MainWindow : Window
                 viewModel.DiscardRecovery();
             }
 
+            await PrepareReadyUpdateIfNeededAsync(viewModel);
             _allowClose = true;
             _ = Dispatcher.BeginInvoke(
                 DispatcherPriority.Normal,
@@ -820,6 +1363,20 @@ public partial class MainWindow : Window
         finally
         {
             _closePromptActive = false;
+        }
+    }
+
+    private async Task PrepareReadyUpdateIfNeededAsync(MainWindowViewModel viewModel)
+    {
+        if (_pendingUpdatePlanPath is not null || !viewModel.UpdateStatus.CanInstall) return;
+        try
+        {
+            _pendingUpdatePlanPath = await new UpdateInstallerService()
+                .PrepareAsync(viewModel.UpdateStatus.CurrentState, restartAfterInstall: false);
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Could not prepare background update on exit: {exception}");
         }
     }
 

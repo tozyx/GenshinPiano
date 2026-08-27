@@ -102,6 +102,47 @@ public sealed class UpdateInfrastructureTests
     }
 
     [Fact]
+    public async Task Downloader_RestartsFullDownloadWhenServerRejectsCachedRange()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "GenshinPianoTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var partialPath = Path.Combine(directory, "app.zip.partial");
+            await File.WriteAllBytesAsync(partialPath, [1, 2, 3]);
+            var requestCount = 0;
+            using var client = new HttpClient(new StubHttpHandler(request =>
+            {
+                requestCount++;
+                if (requestCount == 1)
+                {
+                    Assert.NotNull(request.Headers.Range);
+                    return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable);
+                }
+
+                Assert.Null(request.Headers.Range);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent([7, 8, 9, 10, 11, 12]),
+                };
+            }));
+            var downloader = new ResumableUpdatePackageDownloader(client, directory);
+
+            var path = await downloader.DownloadAsync(
+                CreatePackage(6),
+                new Progress<double>(),
+                CancellationToken.None);
+
+            Assert.Equal(2, requestCount);
+            Assert.Equal([7, 8, 9, 10, 11, 12], await File.ReadAllBytesAsync(path));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Verifier_ValidatesSha256()
     {
         var path = Path.GetTempFileName();

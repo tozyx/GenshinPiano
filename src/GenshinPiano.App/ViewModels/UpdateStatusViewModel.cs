@@ -12,6 +12,7 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     private readonly ILocalizationService _localization;
     private CancellationTokenSource? _operationCancellation;
     private UpdateState _state;
+    private bool _manualCheckStarted;
 
     public UpdateStatusViewModel(
         UpdateCoordinator coordinator,
@@ -30,6 +31,8 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     }
 
     public AsyncRelayCommand CheckForUpdatesCommand { get; }
+
+    public event EventHandler? ReadyUpdateRequested;
 
     public bool NetworkAccessEnabled
     {
@@ -75,7 +78,20 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
         }
     }
 
+    public bool PreviewUpdatesEnabled
+    {
+        get => string.Equals(_settings.Current.Update.Channel, "preview", StringComparison.Ordinal);
+        set
+        {
+            if (value == PreviewUpdatesEnabled) return;
+            _settings.SetUpdateChannel(value ? "preview" : "stable");
+            OnPropertyChanged();
+        }
+    }
+
     public UpdateStage Stage => _state.Stage;
+
+    public string CurrentVersionText => $"v{_coordinator.CurrentVersion}";
 
     public double Progress => _state.Progress;
 
@@ -106,7 +122,7 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
 
     public async Task StartAutomaticCheckAsync(CancellationToken cancellationToken = default)
     {
-        if (!NetworkAccessEnabled || !AutomaticUpdatesEnabled)
+        if (_manualCheckStarted || !NetworkAccessEnabled || !AutomaticUpdatesEnabled)
         {
             return;
         }
@@ -114,28 +130,46 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
         await RunCheckAsync(automaticallyDownload: true, cancellationToken);
     }
 
-    private Task CheckForUpdatesAsync() =>
-        RunCheckAsync(AutomaticUpdatesEnabled, CancellationToken.None);
+    private Task CheckForUpdatesAsync()
+    {
+        _manualCheckStarted = true;
+        if (CanInstall)
+        {
+            ReadyUpdateRequested?.Invoke(this, EventArgs.Empty);
+            return Task.CompletedTask;
+        }
+        return RunCheckAsync(AutomaticUpdatesEnabled, CancellationToken.None);
+    }
+
+    public Task DownloadAvailableUpdateAsync()
+    {
+        _manualCheckStarted = true;
+        return RunCheckAsync(automaticallyDownload: true, CancellationToken.None);
+    }
 
     private async Task RunCheckAsync(bool automaticallyDownload, CancellationToken cancellationToken)
     {
         CancelActiveOperation();
-        _operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _operationCancellation = operationCancellation;
         try
         {
             await _coordinator.CheckAsync(
                 NetworkAccessEnabled,
                 automaticallyDownload,
                 _settings.Current.Update.Channel,
-                _operationCancellation.Token);
+                operationCancellation.Token);
         }
         catch (OperationCanceledException)
         {
         }
         finally
         {
-            _operationCancellation.Dispose();
-            _operationCancellation = null;
+            if (ReferenceEquals(_operationCancellation, operationCancellation))
+            {
+                _operationCancellation = null;
+            }
+            operationCancellation.Dispose();
         }
     }
 

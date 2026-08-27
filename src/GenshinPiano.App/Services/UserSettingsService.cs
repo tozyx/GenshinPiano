@@ -87,6 +87,8 @@ public interface IUserSettingsService
     void SetNetworkAccessEnabled(bool value);
 
     void SetAutomaticUpdatesEnabled(bool value);
+
+    void SetUpdateChannel(string value);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -233,6 +235,12 @@ public sealed class UserSettingsService : IUserSettingsService
                 Update = Current.Update with { AutomaticUpdatesEnabled = value },
             });
         }
+    }
+
+    public void SetUpdateChannel(string value)
+    {
+        if (value is not ("stable" or "preview") || Current.Update.Channel == value) return;
+        Update(Current with { Update = Current.Update with { Channel = value } });
     }
 
     private UserSettings Load()

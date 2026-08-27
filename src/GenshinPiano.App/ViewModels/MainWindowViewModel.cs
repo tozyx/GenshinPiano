@@ -239,6 +239,9 @@ public sealed class MainWindowViewModel : ObservableObject
     public void NotifyShortPressDurationsGenerated(int noteCount) =>
         SetStatus("Status_ShortPressDurationsGenerated", noteCount);
 
+    public void NotifyStatus(string key, params object?[] arguments) =>
+        SetStatus(key, arguments);
+
     private void CreateNew()
     {
         CancelAutosave();
@@ -477,13 +480,22 @@ public sealed class MainWindowViewModel : ObservableObject
         var query = ScoreFolderSearch.Trim();
         var files = query.Length == 0
             ? _allScoreFolderFiles
-            : _allScoreFolderFiles.Where(file =>
-                file.DisplayName.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            : _allScoreFolderFiles.Where(file => ScoreFolderFileMatchesSearch(file, query));
         ScoreFolderFiles.Clear();
         foreach (var file in files)
         {
             ScoreFolderFiles.Add(file);
         }
+    }
+
+    private bool ScoreFolderFileMatchesSearch(ScoreFolderFile file, string query)
+    {
+        if (file.DisplayName.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+        {
+            return true;
+        }
+
+        return IsChinese && ChinesePinyinSearch.MatchesInitials(file.DisplayName, query);
     }
 
     private async Task SaveAsAsync()
@@ -851,6 +863,7 @@ public sealed class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsChinese));
         OnPropertyChanged(nameof(IsEnglish));
         OnPropertyChanged(nameof(ScoreFolderName));
+        ApplyScoreFolderFilter();
     }
 
     private void SetStatus(string key, params object?[] arguments)

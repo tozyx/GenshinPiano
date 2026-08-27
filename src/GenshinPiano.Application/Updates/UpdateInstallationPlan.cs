@@ -7,4 +7,6 @@ public sealed record UpdateInstallationPlan(
     string RollbackDirectory,
     string ApplicationExecutable,
     string Version,
-    string[] PreservedEntries);
+    string[] PreservedEntries,
+    string? ReleaseNotes = null,
+    bool RestartAfterInstall = true);

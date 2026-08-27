@@ -83,7 +83,12 @@ public sealed class UpdateProgressRing : FrameworkElement
         set => SetValue(StrokeThicknessProperty, value);
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(18, 18);
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        var width = double.IsNaN(Width) ? 18 : Width;
+        var height = double.IsNaN(Height) ? 18 : Height;
+        return new Size(width, height);
+    }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
