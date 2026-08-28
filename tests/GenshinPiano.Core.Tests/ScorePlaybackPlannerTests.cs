@@ -107,6 +107,53 @@ public sealed class ScorePlaybackPlannerTests
     }
 
     [Fact]
+    public async Task PlaybackService_AlwaysInvokesKeyboardSafetyReleaseAfterCompletion()
+    {
+        var keyboard = new SafetyRecordingKeyboardInput();
+        var service = new ScorePlaybackService(keyboard);
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Id = "main",
+                    Notes = [new NoteEvent { Pitch = 60, DurationTick = 24 }],
+                },
+            ],
+        };
+
+        await service.PlayAsync(score, countdownSeconds: 0);
+
+        Assert.Equal(1, keyboard.SafetyReleaseCount);
+        Assert.Empty(keyboard.PressedKeys);
+    }
+
+    [Fact]
+    public async Task PlaybackService_InvokesKeyboardSafetyReleaseWhenInputThrows()
+    {
+        var keyboard = new SafetyRecordingKeyboardInput { ThrowOnKeyDown = true };
+        var service = new ScorePlaybackService(keyboard);
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Id = "main",
+                    Notes = [new NoteEvent { Pitch = 60, DurationTick = 24 }],
+                },
+            ],
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.PlayAsync(score, countdownSeconds: 0));
+
+        Assert.Equal(1, keyboard.SafetyReleaseCount);
+        Assert.Empty(keyboard.PressedKeys);
+    }
+
+    [Fact]
     public async Task PlaybackService_WaitsWhileTargetProcessIsNotFocused()
     {
         var keyboard = new RecordingKeyboardInput();
@@ -274,6 +321,34 @@ public sealed class ScorePlaybackPlannerTests
 
         public void KeyUp(IReadOnlyList<GenshinKey> keys) =>
             Events.Add($"up:{string.Join(',', keys)}");
+    }
+
+    private sealed class SafetyRecordingKeyboardInput : IKeyboardInput, IKeyboardSafetyController
+    {
+        public HashSet<GenshinKey> PressedKeys { get; } = [];
+
+        public bool ThrowOnKeyDown { get; init; }
+
+        public int SafetyReleaseCount { get; private set; }
+
+        public void KeyDown(IReadOnlyList<GenshinKey> keys)
+        {
+            PressedKeys.UnionWith(keys);
+            if (ThrowOnKeyDown)
+            {
+                throw new InvalidOperationException("Simulated input failure.");
+            }
+        }
+
+        public void KeyUp(IReadOnlyList<GenshinKey> keys) => PressedKeys.ExceptWith(keys);
+
+        public void ReleasePressedKeys()
+        {
+            SafetyReleaseCount++;
+            PressedKeys.Clear();
+        }
+
+        public void EmergencyReleaseAllKeys() => PressedKeys.Clear();
     }
 
     private sealed class MutableFocusGuard : IPlaybackFocusGuard

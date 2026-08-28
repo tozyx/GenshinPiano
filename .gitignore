@@ -23,6 +23,8 @@ coverage/
 packages/
 publish/
 *.nupkg
+*update-signing-private*.xml
+*update-signing-private*.pem
 
 # OS-generated files
 Thumbs.db

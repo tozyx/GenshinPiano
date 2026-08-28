@@ -16,6 +16,8 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\Icons\GenshinPiano.ico" />
+    <Resource Include="Assets\Icons\GenshinPiano-256.png" />
+    <Resource Include="Assets\Security\UpdateSigningPublicKey.xml" />
     <AssemblyMetadata Include="GenshinPianoSelfContained" Value="$(SelfContained)" />
   </ItemGroup>
 </Project>

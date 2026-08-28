@@ -142,7 +142,17 @@ public sealed class ScorePlaybackService(
         }
         finally
         {
-            ReleaseActiveKeys();
+            try
+            {
+                ReleaseActiveKeys();
+            }
+            finally
+            {
+                if (keyboardInput is IKeyboardSafetyController safetyController)
+                {
+                    safetyController.ReleasePressedKeys();
+                }
+            }
         }
     }
 

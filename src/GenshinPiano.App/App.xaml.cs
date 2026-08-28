@@ -22,6 +22,7 @@ namespace GenshinPiano.App;
 public partial class App : System.Windows.Application
 {
     private WindowsGlobalEscapeListener? _escapeListener;
+    private WindowsKeyboardInput? _keyboardInput;
     private WindowsMidiOutput? _midiOutput;
     private HttpClient? _updateMetadataHttpClient;
     private HttpClient? _updateDownloadHttpClient;
@@ -36,11 +37,19 @@ public partial class App : System.Windows.Application
     public App()
     {
         DispatcherUnhandledException += (_, args) =>
+        {
+            TryEmergencyReleaseAllKeys("WPF dispatcher exception");
             AppLogger.WriteCrashReport("WPF dispatcher", args.Exception);
+        };
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            TryEmergencyReleaseAllKeys("AppDomain exception");
             AppLogger.WriteCrashReport(
                 "AppDomain",
                 args.ExceptionObject as Exception ?? new Exception(args.ExceptionObject?.ToString()));
+        };
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            TryEmergencyReleaseAllKeys("process exit");
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
             AppLogger.WriteCrashReport("Unobserved task", args.Exception);
@@ -111,8 +120,9 @@ public partial class App : System.Windows.Application
             AuditionService = null;
             AppLogger.Warning($"Windows MIDI output is unavailable: {exception.Message}");
         }
+        _keyboardInput = new WindowsKeyboardInput();
         var playbackService = new ScorePlaybackService(
-            new WindowsKeyboardInput(),
+            _keyboardInput,
             new WindowsForegroundProcessGuard());
         var legacyConversionService = new LegacyBatchConversionService(
             new LegacyGenshinPianoImporter(),
@@ -174,7 +184,11 @@ public partial class App : System.Windows.Application
             updateDownloader = new ResumableUpdatePackageDownloader(
                 _updateDownloadHttpClient,
                 Path.Combine(AppContext.BaseDirectory, "update-cache", "downloads"));
-            updateVerifier = new Sha256UpdatePackageVerifier();
+            var publicKeyResource = GetResourceStream(
+                new Uri("/Assets/Security/UpdateSigningPublicKey.xml", UriKind.Relative)) ??
+                throw new InvalidOperationException("The update signing public key resource is missing.");
+            using var publicKeyReader = new StreamReader(publicKeyResource.Stream);
+            updateVerifier = new SignedUpdatePackageVerifier(publicKeyReader.ReadToEnd());
         }
         var updateCoordinator = new UpdateCoordinator(
             currentVersion,
@@ -388,11 +402,24 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         AppLogger.Info($"Application exiting with code {e.ApplicationExitCode}.");
+        TryEmergencyReleaseAllKeys("application exit");
         _escapeListener?.Dispose();
         _midiOutput?.Dispose();
         _updateMetadataHttpClient?.Dispose();
         _updateDownloadHttpClient?.Dispose();
         _singleInstance?.Dispose();
         base.OnExit(e);
+    }
+
+    private void TryEmergencyReleaseAllKeys(string reason)
+    {
+        try
+        {
+            _keyboardInput?.EmergencyReleaseAllKeys();
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Emergency key release failed during {reason}: {exception.Message}");
+        }
     }
 }

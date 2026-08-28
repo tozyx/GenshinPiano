@@ -20,10 +20,29 @@ public static class GenshinKeyMap
     private static readonly IReadOnlyDictionary<GenshinKey, int> KeyToPitch =
         Entries.ToDictionary(entry => entry.Key, entry => entry.Pitch);
 
+    private static readonly IReadOnlyDictionary<int, int> PitchToIndex =
+        Entries.Select((entry, index) => (entry.Pitch, Index: index))
+            .ToDictionary(entry => entry.Pitch, entry => entry.Index);
+
     public static IReadOnlyList<(GenshinKey Key, int Pitch)> All { get; } =
         Array.AsReadOnly(Entries);
 
     public static bool TryGetPitch(GenshinKey key, out int pitch) => KeyToPitch.TryGetValue(key, out pitch);
+
+    public static bool TryGetKeyIndex(int pitch, out int index) => PitchToIndex.TryGetValue(pitch, out index);
+
+    public static bool TryShiftPitch(int pitch, int keySteps, out int shiftedPitch)
+    {
+        if (PitchToIndex.TryGetValue(pitch, out var index) &&
+            index + keySteps is >= 0 and < 21)
+        {
+            shiftedPitch = Entries[index + keySteps].Pitch;
+            return true;
+        }
+
+        shiftedPitch = default;
+        return false;
+    }
 
     public static bool TryMapPitch(
         int pitch,
@@ -31,20 +50,25 @@ public static class GenshinKeyMap
         OutOfRangePolicy policy,
         out GenshinKey key)
     {
-        var mappedPitch = pitch + transpose;
+        var mappedPitch = (long)pitch + transpose;
         if (policy == OutOfRangePolicy.OctaveFold)
         {
-            while (mappedPitch < 48)
+            if (mappedPitch < 48)
             {
-                mappedPitch += 12;
+                mappedPitch += ((48 - mappedPitch + 11) / 12) * 12;
             }
-
-            while (mappedPitch > 83)
+            else if (mappedPitch > 83)
             {
-                mappedPitch -= 12;
+                mappedPitch -= ((mappedPitch - 83 + 11) / 12) * 12;
             }
         }
 
-        return PitchToKey.TryGetValue(mappedPitch, out key);
+        if (mappedPitch is >= int.MinValue and <= int.MaxValue)
+        {
+            return PitchToKey.TryGetValue((int)mappedPitch, out key);
+        }
+
+        key = default;
+        return false;
     }
 }

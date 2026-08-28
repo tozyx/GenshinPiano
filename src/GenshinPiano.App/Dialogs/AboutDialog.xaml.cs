@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Windows;
-using System.Windows.Media.Imaging;
 using GenshinPiano.App.Services;
 using GenshinPiano.Application.Updates;
 
@@ -19,32 +18,11 @@ public partial class AboutDialog : Window
     {
         InitializeComponent();
 
-        var dpiScale = 1.0;
-
-        if (PresentationSource.FromVisual(this) is { } source)
-        {
-            dpiScale = source.CompositionTarget.TransformToDevice.M11;
-        }
-
-        var targetSize = (int)Math.Round(48 * dpiScale);
-        var uri = new Uri(
-            "pack://application:,,,/Assets/Icons/GenshinPiano.ico",
-            UriKind.Absolute);
-
-        var decoder = new IconBitmapDecoder(
-            uri,
-            BitmapCreateOptions.PreservePixelFormat,
-            BitmapCacheOption.OnLoad);
-
-        var frame = decoder.Frames
-            .OrderBy(frame => Math.Abs(frame.PixelWidth - targetSize))
-            .First();
-
-        AboutIcon.Source = frame;
-
         VersionText.Text = string.Format(
             (string)FindResource("About_Version"),
-            displayVersion);
+            string.IsNullOrWhiteSpace(displayVersion)
+                ? GetDisplayVersion()
+                : displayVersion);
     }
 
     private static string GetDisplayVersion()

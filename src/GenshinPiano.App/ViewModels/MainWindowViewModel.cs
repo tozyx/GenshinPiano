@@ -239,6 +239,16 @@ public sealed class MainWindowViewModel : ObservableObject
     public void NotifyShortPressDurationsGenerated(int noteCount) =>
         SetStatus("Status_ShortPressDurationsGenerated", noteCount);
 
+    public void NotifyScoreRangeShifted(int keySteps, int noteCount) =>
+        SetStatus("Status_ScoreRangeShifted", keySteps, noteCount);
+
+    public void NotifyScoreCleaned(ScoreCleanupResult result) =>
+        SetStatus(
+            "Status_ScoreCleaned",
+            result.RemovedDuplicates,
+            result.TrimmedOverlaps,
+            result.RemovedVeryShortNotes);
+
     public void NotifyStatus(string key, params object?[] arguments) =>
         SetStatus(key, arguments);
 

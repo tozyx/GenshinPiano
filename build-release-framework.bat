@@ -8,15 +8,9 @@ set "PUBLISH_DIR=%~dp0publish\GenshinPiano-win-x64-framework"
 set "SONGS_DIR=%~dp0publish\songs"
 set "ZIP_PATH=%~dp0publish\GenshinPiano-%VERSION%-win-x64-framework.zip"
 set "SHA_PATH=%ZIP_PATH%.sha256"
+set "SIG_PATH=%ZIP_PATH%.sig"
+set "SIGNING_KEY=%GENSHINPIANO_UPDATE_SIGNING_KEY%"
 set "SANDBOX_DIR=%~dp0update-test-sandbox\install-current\win-x64-framework"
-
-echo Cleaning previous publish output...
-
-if exist "%PUBLISH_DIR%" (
-  rmdir /s /q "%PUBLISH_DIR%"
-)
-if exist "%ZIP_PATH%" del /q "%ZIP_PATH%"
-if exist "%SHA_PATH%" del /q "%SHA_PATH%"
 
 if not exist "%SONGS_DIR%\" (
   echo.
@@ -26,6 +20,29 @@ if not exist "%SONGS_DIR%\" (
   popd
   exit /b 1
 )
+if not defined SIGNING_KEY (
+  echo.
+  echo GENSHINPIANO_UPDATE_SIGNING_KEY is not set.
+  echo Set it to the private update signing key before publishing.
+  pause
+  popd
+  exit /b 1
+)
+if not exist "%SIGNING_KEY%" (
+  echo.
+  echo Update signing private key not found:
+  echo %SIGNING_KEY%
+  pause
+  popd
+  exit /b 1
+)
+
+echo Cleaning previous publish output...
+
+if exist "%PUBLISH_DIR%" rmdir /s /q "%PUBLISH_DIR%"
+if exist "%ZIP_PATH%" del /q "%ZIP_PATH%"
+if exist "%SHA_PATH%" del /q "%SHA_PATH%"
+if exist "%SIG_PATH%" del /q "%SIG_PATH%"
 
 dotnet publish ".\src\GenshinPiano.App\GenshinPiano.App.csproj" ^
   -c Release ^
@@ -46,7 +63,7 @@ if errorlevel 1 (
 )
 
 echo Publishing standalone updater...
-dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
+dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained false -p:Version=%VERSION% -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
   echo Updater publish failed.
   pause
@@ -59,6 +76,26 @@ xcopy "%SONGS_DIR%\*" "%PUBLISH_DIR%\songs\" /E /I /Y >nul
 if errorlevel 1 (
   echo.
   echo Failed to copy bundled songs.
+  pause
+  popd
+  exit /b 1
+)
+
+if not exist "%PUBLISH_DIR%\GenshinPiano.exe" (
+  echo Main application executable is missing from publish output.
+  pause
+  popd
+  exit /b 1
+)
+if not exist "%PUBLISH_DIR%\GenshinPiano.Updater.exe" (
+  echo Updater executable is missing from publish output.
+  pause
+  popd
+  exit /b 1
+)
+powershell -NoProfile -Command "if (-not (Get-ChildItem -LiteralPath (Join-Path $env:PUBLISH_DIR 'songs') -File -Recurse | Select-Object -First 1)) { exit 1 }"
+if errorlevel 1 (
+  echo No bundled songs were copied into publish output.
   pause
   popd
   exit /b 1
@@ -95,6 +132,22 @@ if errorlevel 1 (
   exit /b 1
 )
 
+echo Signing update package...
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\tools\Sign-UpdatePackage.ps1" -PackagePath "%ZIP_PATH%" -PrivateKeyPath "%SIGNING_KEY%" -SignaturePath "%SIG_PATH%"
+if errorlevel 1 (
+  echo.
+  echo Failed to sign update package.
+  pause
+  popd
+  exit /b 1
+)
+if not exist "%SIG_PATH%" (
+  echo Update signature file was not generated.
+  pause
+  popd
+  exit /b 1
+)
+
 echo.
 echo Publish completed:
 echo %PUBLISH_DIR%
@@ -102,6 +155,7 @@ echo.
 echo ZIP package:
 echo %ZIP_PATH%
 echo %SHA_PATH%
+echo %SIG_PATH%
 echo.
 echo Test sandbox copy:
 echo %SANDBOX_DIR%

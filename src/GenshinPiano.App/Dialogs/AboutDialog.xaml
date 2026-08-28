@@ -25,7 +25,10 @@
                 <Image x:Name="AboutIcon"
                        Width="48"
                        Height="48"
-                       Stretch="Uniform"/>
+                       Source="/Assets/Icons/GenshinPiano-256.png"
+                       Stretch="Uniform"
+                       SnapsToDevicePixels="True"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
                 <StackPanel Grid.Column="1"
                             Margin="14,0,0,0"
                             VerticalAlignment="Center">

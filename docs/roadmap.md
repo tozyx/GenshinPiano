@@ -2,6 +2,32 @@
 
 ## Completed in the current iteration
 
+- [x] Harden simulated-key release safety.
+  - Track every key pressed by the Windows input adapter with thread-safe state.
+  - Release tracked keys after every normal, cancelled, or failed playback run.
+  - Send a best-effort key-up sweep during managed crashes and application/process exit.
+  - Keep cleanup idempotent so overlapping shutdown paths are safe.
+
+- [x] Authenticate update packages with an embedded RSA public key.
+  - Generate detached RSA-3072/SHA-256 signatures during both release builds.
+  - Keep the private signing key outside the repository and release archives.
+  - Require the ZIP, SHA-256 sidecar, and signature sidecar on each mirror.
+  - Verify both the package hash and signature before an update becomes ready.
+  - Validate required application, updater, and bundled-song output before packaging.
+
+- [x] Add explicit `.gpiano` schema migrations.
+  - Treat schema-less early score JSON as version 0 and migrate it to version 1.
+  - Apply migrations sequentially before typed deserialization and validation.
+  - Reject files created by a newer application to prevent destructive downgrades.
+  - Always write the current schema version and validate malformed null sections safely.
+
+- [x] Add non-destructive score quality analysis and 21-key range shifting.
+  - Report unmapped 21-key notes, exact duplicates, same-pitch overlaps, and very short notes.
+  - Shift by adjacent natural-note keys or octaves as a single undoable edit.
+  - Keep every shifted note visible and directly mappable inside the 21-key editor range.
+  - Let the user explicitly choose duplicate removal, same-pitch overlap trimming, and very-short-note removal.
+  - Keep potentially audible cleanup rules disabled by default and group each cleanup run into one undo step.
+
 - [x] Add per-Windows-session single-instance coordination.
   - Use a named mutex to prevent concurrent writers to settings, recovery data, and update caches.
   - Forward supported score paths from a second launch to the existing instance through a named pipe.

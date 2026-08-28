@@ -1,7 +1,37 @@
+using GenshinPiano.Core.Playback;
+
 namespace GenshinPiano.Core.Scores;
 
 public static class ScoreEditor
 {
+    public static ScoreDocument ShiftAllNotesInGenshinRange(ScoreDocument score, int keySteps)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        if (keySteps == 0)
+        {
+            return score;
+        }
+
+        var notes = score.Tracks.SelectMany(track => track.Notes).ToArray();
+        if (notes.Any(note => !GenshinKeyMap.TryShiftPitch(note.Pitch, keySteps, out _)))
+        {
+            throw new InvalidOperationException("音域平移后将有音符超出原神 21 键范围，或曲谱包含无法映射的半音。" );
+        }
+
+        return score with
+        {
+            Tracks = score.Tracks.Select(track => track with
+            {
+                Notes = track.Notes.Select(note => note with
+                {
+                    Pitch = GenshinKeyMap.TryShiftPitch(note.Pitch, keySteps, out var shiftedPitch)
+                        ? shiftedPitch
+                        : note.Pitch,
+                }).ToList(),
+            }).ToList(),
+        };
+    }
+
     public static ScoreDocument AddNote(ScoreDocument score, NoteEvent note, int trackIndex = 0)
         => AddNotes(score, [note], trackIndex);
 

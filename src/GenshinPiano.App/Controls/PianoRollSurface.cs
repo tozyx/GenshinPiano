@@ -273,6 +273,42 @@ public sealed class PianoRollSurface : Control
         return noteCount;
     }
 
+    public int ShiftAllNotesInGenshinRange(int keySteps)
+    {
+        if (!IsEditingEnabled || Score is null)
+        {
+            return 0;
+        }
+
+        var noteCount = _viewModel.ShiftAllNotesInGenshinRange(keySteps);
+        if (noteCount == 0)
+        {
+            return 0;
+        }
+
+        SynchronizeViewModelScore();
+        SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
+        return noteCount;
+    }
+
+    public ScoreCleanupResult? ApplyScoreCleanup(ScoreCleanupOptions options)
+    {
+        if (!IsEditingEnabled || Score is null)
+        {
+            return null;
+        }
+
+        var result = _viewModel.ApplyScoreCleanup(options);
+        if (result is null)
+        {
+            return null;
+        }
+
+        SynchronizeViewModelScore();
+        SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
+        return result;
+    }
+
     public void UndoEdit()
     {
         if (IsEditingEnabled)

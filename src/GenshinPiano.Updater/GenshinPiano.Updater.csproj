@@ -4,5 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>GenshinPiano.Updater</AssemblyName>
     <RootNamespace>GenshinPiano.Updater</RootNamespace>
+    <ApplicationIcon>..\GenshinPiano.App\Assets\Icons\GenshinPiano.ico</ApplicationIcon>
   </PropertyGroup>
 </Project>

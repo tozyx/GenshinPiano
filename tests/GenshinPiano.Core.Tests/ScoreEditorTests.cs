@@ -107,4 +107,79 @@ public sealed class ScoreEditorTests
         Assert.Equal(2, added.Tracks[0].Notes.Count);
         Assert.Empty(deleted.Tracks[0].Notes);
     }
+
+    [Fact]
+    public void ShiftAllNotesInGenshinRange_PreservesTimingAndIdentity()
+    {
+        var note = new NoteEvent
+        {
+            Pitch = 60,
+            StartTick = 240,
+            DurationTick = 360,
+            RhythmTick = 480,
+        };
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks = [new ScoreTrack { Id = "main", Notes = [note] }],
+        };
+
+        var transposed = ScoreEditor.ShiftAllNotesInGenshinRange(score, 7);
+        var result = Assert.Single(transposed.Tracks[0].Notes);
+
+        Assert.Equal(72, result.Pitch);
+        Assert.Equal(note.Id, result.Id);
+        Assert.Equal(note.StartTick, result.StartTick);
+        Assert.Equal(note.DurationTick, result.DurationTick);
+        Assert.Equal(note.RhythmTick, result.RhythmTick);
+    }
+
+    [Fact]
+    public void ShiftAllNotesInGenshinRange_RejectsUnmappedOrOutOfRangePitch()
+    {
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Id = "main",
+                    Notes = [new NoteEvent { Pitch = 127, DurationTick = 480 }],
+                },
+            ],
+        };
+
+        Assert.Throws<InvalidOperationException>(
+            () => ScoreEditor.ShiftAllNotesInGenshinRange(score, 1));
+    }
+
+    [Fact]
+    public void QualityAnalyzer_ReportsMappingDuplicatesOverlapsAndShortNotes()
+    {
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks =
+            [
+                new ScoreTrack
+                {
+                    Id = "main",
+                    Notes =
+                    [
+                        new NoteEvent { Pitch = 61, DurationTick = 480, RhythmTick = 480 },
+                        new NoteEvent { Pitch = 61, DurationTick = 480, RhythmTick = 480 },
+                        new NoteEvent { Pitch = 61, StartTick = 240, DurationTick = 480, RhythmTick = 480 },
+                        new NoteEvent { Pitch = 60, StartTick = 1000, DurationTick = 30, RhythmTick = 30 },
+                    ],
+                },
+            ],
+        };
+
+        var report = ScoreQualityAnalyzer.Analyze(score);
+
+        Assert.Equal(4, report.TotalNotes);
+        Assert.Equal(3, report.UnmappedNotes);
+        Assert.Equal(1, report.DuplicateNotes);
+        Assert.Equal(1, report.OverlappingNotes);
+        Assert.Equal(1, report.VeryShortNotes);
+        Assert.False(report.CanShiftKeySteps(1));
+    }
 }

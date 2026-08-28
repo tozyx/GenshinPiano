@@ -14,6 +14,7 @@ using GenshinPiano.App.Dialogs;
 using GenshinPiano.App.Controls;
 using GenshinPiano.App.ViewModels;
 using GenshinPiano.App.Services;
+using GenshinPiano.Core.Scores;
 
 namespace GenshinPiano.App;
 
@@ -711,6 +712,38 @@ public partial class MainWindow : Window
         if (optimizedCount > 0 && DataContext is MainWindowViewModel viewModel)
         {
             viewModel.NotifyDurationsOptimized(optimizedCount);
+        }
+    }
+
+    private void ScoreAnalysisMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var report = ScoreQualityAnalyzer.Analyze(viewModel.CurrentScore);
+        var dialog = new ScoreAnalysisDialog(report) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (dialog.KeySteps is int keySteps)
+        {
+            var changedNotes = PianoRollEditor.ShiftAllNotesInGenshinRange(keySteps);
+            if (changedNotes > 0)
+            {
+                viewModel.NotifyScoreRangeShifted(keySteps, changedNotes);
+            }
+
+            return;
+        }
+
+        var cleanupResult = PianoRollEditor.ApplyScoreCleanup(dialog.CleanupOptions);
+        if (cleanupResult is not null)
+        {
+            viewModel.NotifyScoreCleaned(cleanupResult);
         }
     }
 

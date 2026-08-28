@@ -214,4 +214,28 @@ public sealed class PianoRollViewModel
             ? noteCount
             : 0;
     }
+
+    public int ShiftAllNotesInGenshinRange(int keySteps)
+    {
+        if (Score is null || keySteps == 0)
+        {
+            return 0;
+        }
+
+        var noteCount = Score.Tracks.Sum(track => track.Notes.Count);
+        return noteCount > 0 && Commit(ScoreEditor.ShiftAllNotesInGenshinRange(Score, keySteps))
+            ? noteCount
+            : 0;
+    }
+
+    public ScoreCleanupResult? ApplyScoreCleanup(ScoreCleanupOptions options)
+    {
+        if (Score is null || options == ScoreCleanupOptions.None)
+        {
+            return null;
+        }
+
+        var result = ScoreCleaner.Clean(Score, options);
+        return result.TotalChanges > 0 && Commit(result.Score) ? result : null;
+    }
 }

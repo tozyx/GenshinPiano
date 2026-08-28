@@ -69,6 +69,12 @@ public partial class PianoRollEditor : UserControl
 
     public int OptimizeAllNoteDurations() => Surface.OptimizeAllNoteDurations();
 
+    public int ShiftAllNotesInGenshinRange(int keySteps) =>
+        Surface.ShiftAllNotesInGenshinRange(keySteps);
+
+    public ScoreCleanupResult? ApplyScoreCleanup(ScoreCleanupOptions options) =>
+        Surface.ApplyScoreCleanup(options);
+
     public int GenerateShortPressDurations() => Surface.GenerateShortPressDurations();
 
     public PitchLabelMode PitchLabelMode => KeyboardLabels.LabelMode;

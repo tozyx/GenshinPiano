@@ -5,15 +5,69 @@ using GenshinPiano.Core.Playback;
 
 namespace GenshinPiano.Infrastructure.Input;
 
-public sealed class WindowsKeyboardInput : IKeyboardInput
+public sealed class WindowsKeyboardInput : IKeyboardInput, IKeyboardSafetyController
 {
     private const uint InputKeyboard = 1;
     private const uint KeyEventScanCode = 0x0008;
     private const uint KeyEventKeyUp = 0x0002;
 
-    public void KeyDown(IReadOnlyList<GenshinKey> keys) => Send(keys, isKeyUp: false);
+    private readonly object _sync = new();
+    private readonly HashSet<GenshinKey> _pressedKeys = [];
 
-    public void KeyUp(IReadOnlyList<GenshinKey> keys) => Send(keys.Reverse().ToArray(), isKeyUp: true);
+    public void KeyDown(IReadOnlyList<GenshinKey> keys)
+    {
+        lock (_sync)
+        {
+            Send(keys, isKeyUp: false);
+            _pressedKeys.UnionWith(keys);
+        }
+    }
+
+    public void KeyUp(IReadOnlyList<GenshinKey> keys)
+    {
+        lock (_sync)
+        {
+            var reversed = keys.Reverse().ToArray();
+            Send(reversed, isKeyUp: true);
+            _pressedKeys.ExceptWith(keys);
+        }
+    }
+
+    public void ReleasePressedKeys()
+    {
+        lock (_sync)
+        {
+            if (_pressedKeys.Count == 0)
+            {
+                return;
+            }
+
+            var keys = _pressedKeys.OrderByDescending(key => key).ToArray();
+            try
+            {
+                Send(keys, isKeyUp: true);
+            }
+            finally
+            {
+                _pressedKeys.Clear();
+            }
+        }
+    }
+
+    public void EmergencyReleaseAllKeys()
+    {
+        lock (_sync)
+        {
+            try
+            {
+                Send(Enum.GetValues<GenshinKey>().Reverse().ToArray(), isKeyUp: true);
+            }
+            finally
+            {
+                _pressedKeys.Clear();
+            }
+        }
+    }
 
     private static void Send(IReadOnlyList<GenshinKey> keys, bool isKeyUp)
     {

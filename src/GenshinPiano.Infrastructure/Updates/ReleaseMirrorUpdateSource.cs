@@ -69,6 +69,8 @@ public sealed class ReleaseMirrorUpdateSource(
                 string.Equals(asset.Name, fileName, StringComparison.OrdinalIgnoreCase));
             var checksumAsset = candidate.Assets.FirstOrDefault(asset =>
                 string.Equals(asset.Name, fileName + ".sha256", StringComparison.OrdinalIgnoreCase));
+            var signatureAsset = candidate.Assets.FirstOrDefault(asset =>
+                string.Equals(asset.Name, fileName + ".sig", StringComparison.OrdinalIgnoreCase));
             if (packageAsset is null)
             {
                 continue;
@@ -78,8 +80,14 @@ public sealed class ReleaseMirrorUpdateSource(
                 throw new InvalidDataException(
                     $"{sourceName} release {candidate.Version} is missing {fileName}.sha256.");
             }
+            if (signatureAsset is null)
+            {
+                throw new InvalidDataException(
+                    $"{sourceName} release {candidate.Version} is missing {fileName}.sig.");
+            }
 
             var sha256 = await DownloadChecksumAsync(checksumAsset.DownloadUri, cancellationToken);
+            var signature = await DownloadSignatureAsync(signatureAsset.DownloadUri, cancellationToken);
             return new UpdateManifest(
                 1,
                 channel,
@@ -94,12 +102,37 @@ public sealed class ReleaseMirrorUpdateSource(
                     fileName,
                     packageAsset.Size,
                     sha256,
-                    packageAsset.DownloadUri)],
+                    packageAsset.DownloadUri,
+                    Signature: signature)],
                 sourceName,
                 candidate.ReleaseNotes);
         }
 
         return null;
+    }
+
+    private async Task<string> DownloadSignatureAsync(
+        Uri downloadUri,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, downloadUri);
+        request.Headers.UserAgent.ParseAdd("GenshinPiano-Updater/3.0");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var signature = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
+        try
+        {
+            if (Convert.FromBase64String(signature).Length < 256)
+            {
+                throw new FormatException();
+            }
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidDataException(
+                $"{sourceName} returned an invalid update signature.", exception);
+        }
+        return signature;
     }
 
     private async Task<string> DownloadChecksumAsync(

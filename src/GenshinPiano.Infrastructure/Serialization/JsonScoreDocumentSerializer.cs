@@ -1,13 +1,16 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using GenshinPiano.Application.Abstractions;
 using GenshinPiano.Core.Scores;
 
 namespace GenshinPiano.Infrastructure.Serialization;
 
-public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
+public sealed class JsonScoreDocumentSerializer(
+    ScoreSchemaMigrator? schemaMigrator = null) : IScoreDocumentSerializer
 {
+    private readonly ScoreSchemaMigrator _schemaMigrator = schemaMigrator ?? new();
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -21,10 +24,26 @@ public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
         CancellationToken cancellationToken = default)
     {
         await using var stream = File.OpenRead(path);
-        var score = await JsonSerializer.DeserializeAsync<ScoreDocument>(
-            stream,
-            SerializerOptions,
-            cancellationToken);
+        JsonNode? json;
+        try
+        {
+            json = await JsonNode.ParseAsync(stream, cancellationToken: cancellationToken);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("曲谱文件不是有效的 JSON。", exception);
+        }
+
+        var migrated = _schemaMigrator.MigrateToCurrent(json);
+        ScoreDocument? score;
+        try
+        {
+            score = migrated.Deserialize<ScoreDocument>(SerializerOptions);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException("曲谱 JSON 包含无法识别的数据。", exception);
+        }
 
         if (score is null)
         {
@@ -41,7 +60,10 @@ public sealed class JsonScoreDocumentSerializer : IScoreDocumentSerializer
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(score);
-        var materializedScore = NoteDurationCalculator.ApplyAutoDurations(score);
+        var currentScore = score.SchemaVersion == ScoreDocument.CurrentSchemaVersion
+            ? score
+            : score with { SchemaVersion = ScoreDocument.CurrentSchemaVersion };
+        var materializedScore = NoteDurationCalculator.ApplyAutoDurations(currentScore);
         EnsureValid(materializedScore);
 
         var fullPath = Path.GetFullPath(path);

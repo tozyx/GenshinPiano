@@ -13,6 +13,7 @@ public sealed class UpdateInfrastructureTests
     public async Task ReleaseSource_SelectsMatchingSelfContainedAssetAndChecksum()
     {
         const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        var signature = Convert.ToBase64String(new byte[384]);
         var releases = """
             [{
               "tag_name":"v3.1.0-preview.2",
@@ -20,14 +21,20 @@ public sealed class UpdateInfrastructureTests
               "assets":[
                 {"name":"GenshinPiano-3.1.0-preview.2-win-x64.zip","size":123,"browser_download_url":"https://download.test/app.zip"},
                 {"name":"GenshinPiano-3.1.0-preview.2-win-x64.zip.sha256","browser_download_url":"https://download.test/app.zip.sha256"},
+                {"name":"GenshinPiano-3.1.0-preview.2-win-x64.zip.sig","browser_download_url":"https://download.test/app.zip.sig"},
                 {"name":"GenshinPiano-3.1.0-preview.2-win-x64-framework.zip","size":99,"browser_download_url":"https://download.test/framework.zip"}
               ]
             }]
             """;
         using var client = new HttpClient(new StubHttpHandler(request =>
-            request.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal)
-                ? TextResponse(hash + "  app.zip")
-                : JsonResponse(releases)));
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith(".sha256", StringComparison.Ordinal))
+                return TextResponse(hash + "  app.zip");
+            if (path.EndsWith(".sig", StringComparison.Ordinal))
+                return TextResponse(signature);
+            return JsonResponse(releases);
+        }));
         var source = new ReleaseMirrorUpdateSource(
             client,
             "test",
@@ -41,6 +48,7 @@ public sealed class UpdateInfrastructureTests
         var package = Assert.Single(manifest.Packages);
         Assert.Equal("GenshinPiano-3.1.0-preview.2-win-x64.zip", package.FileName);
         Assert.Equal(hash.ToUpperInvariant(), package.Sha256);
+        Assert.Equal(signature, package.Signature);
         Assert.Equal(123, package.Size);
     }
 
@@ -159,6 +167,55 @@ public sealed class UpdateInfrastructureTests
                 CancellationToken.None));
             Assert.False(await verifier.VerifyAsync(
                 CreatePackage(data.Length) with { Sha256 = new string('0', 64) },
+                path,
+                CancellationToken.None));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task SignedVerifier_RequiresMatchingPackageHashAndTrustedSignature()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var data = Encoding.UTF8.GetBytes("signed GenshinPiano update package");
+            await File.WriteAllBytesAsync(path, data);
+            var hash = SHA256.HashData(data);
+            using var trustedKey = RSA.Create(3072);
+            using var otherKey = RSA.Create(3072);
+            var canonical = Encoding.UTF8.GetBytes(
+                $"GenshinPiano.Update.v1\napp.zip\n{Convert.ToHexString(hash)}\n");
+            var signature = trustedKey.SignData(
+                canonical,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            var package = CreatePackage(data.Length) with
+            {
+                Sha256 = Convert.ToHexString(hash),
+                Signature = Convert.ToBase64String(signature),
+            };
+            var verifier = new SignedUpdatePackageVerifier(trustedKey.ToXmlString(false));
+
+            Assert.True(await verifier.VerifyAsync(package, path, CancellationToken.None));
+
+            var untrustedSignature = otherKey.SignData(
+                canonical,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            Assert.False(await verifier.VerifyAsync(
+                package with { Signature = Convert.ToBase64String(untrustedSignature) },
+                path,
+                CancellationToken.None));
+            Assert.False(await verifier.VerifyAsync(
+                package with { FileName = "GenshinPiano-9.9.9-win-x64.zip" },
+                path,
+                CancellationToken.None));
+            Assert.False(await verifier.VerifyAsync(
+                package with { Sha256 = new string('0', 64) },
                 path,
                 CancellationToken.None));
         }

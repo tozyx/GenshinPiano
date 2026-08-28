@@ -76,7 +76,7 @@ public sealed class UpdateCoordinator(
                 manifest.SourceName));
             if (!await verifier.VerifyAsync(package, downloadedPath, cancellationToken))
             {
-                throw new InvalidDataException("The downloaded update package failed SHA-256 verification.");
+                throw new InvalidDataException("The downloaded update package failed integrity or signature verification.");
             }
             SetState(new UpdateState(
                 UpdateStage.Ready,

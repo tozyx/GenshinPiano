@@ -380,6 +380,9 @@
                               Click="PitchLabelMenuItem_OnClick" />
                 </MenuItem>
                 <Separator />
+                <MenuItem Header="{DynamicResource Menu_ScoreAnalysisAndTranspose}"
+                          Click="ScoreAnalysisMenuItem_OnClick" />
+                <Separator />
                 <MenuItem Header="{DynamicResource Menu_OptimizeDurations}"
                           Click="OptimizeDurationsMenuItem_OnClick" />
                 <MenuItem Header="{DynamicResource Menu_GenerateShortPressDurations}"

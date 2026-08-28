@@ -26,7 +26,8 @@ public sealed record UpdatePackage(
     long Size,
     string Sha256,
     Uri DownloadUri,
-    bool Optional = false);
+    bool Optional = false,
+    string? Signature = null);
 
 public sealed record UpdateManifest(
     int SchemaVersion,
