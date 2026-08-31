@@ -34,20 +34,27 @@ For development setup, debugging, tests, Release publishing, update signing, and
 
 [Development and build guide](docs/BUILDING.md#english)
 
+## User guide
+
+For application controls, piano-roll shortcuts, MIDI/OCR import, local audition, and in-game playback, see:
+
+[GenshinPiano user guide](docs/USER_GUIDE.md#english)
+
 ## Portable Configuration
 
 The application runs in portable mode. User settings are stored in `config/settings.json` beside the executable. When distributing a ZIP package, extract the entire package to a directory where the user has write permission. Installing it directly under `Program Files` is not recommended.
 
 ## Current Features
 
-- Open, validate, and save UTF-8 JSON `.gpiano` scores
-- Map score timelines and tempo changes to the 21 Genshin Impact keys, then perform them through the Windows `SendInput` API
-- After playback is requested, wait for the Genshin Impact window to receive focus and then run a three-second safety countdown; losing focus during the countdown resets it and returns to the waiting state
-- Play, pause, and resume from the sidebar; an animated stop button appears while playback is active
-- Send keystrokes only while the Chinese client (`YuanShen.exe`) or global client (`GenshinImpact.exe`) is in the foreground; losing focus freezes the timeline, and playback resumes after focus returns
-- Listen globally for Esc during playback and the countdown; when Genshin Impact is in the foreground, Esc releases held keys and pauses playback while still being passed through to the game
-- Recursively convert legacy `.GenshinPiano` files from **Import → Batch Convert Legacy Scores**, preserving their directory structure
-- Edit scores with the built-in 21-key piano roll: Ctrl-click selection, marquee selection, Ctrl-marquee additive selection, grouped movement, copying, and deletion are supported. Copying keeps the original notes visible and shows a translucent destination preview. Right-click a note to adjust its duration, or use `[` and `]` to change the selected notes or the current snap grid
+- Edit, validate, and save UTF-8 JSON `.gpiano` scores, with a folder library, drag-and-drop opening, renaming, and unsaved-work recovery
+- A 21-key piano roll with note creation/audition, marquee and additive selection, copying, grouped movement, rhythmic length, and key-hold editing
+- Multi-instrument local audition with BPM, natural sustain, playback cursor, selection looping, and smooth high-refresh-rate scrolling
+- Safe in-game keyboard performance with target-window detection, a three-second countdown, focus-loss pause, global Esc pause, and guaranteed key release
+- Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
+- Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
+- Experimental numbered-notation OCR with watermark suppression, row/voice analysis, rhythm reconstruction, and accompaniment recognition, delivered as an optional add-on
+- Dark/light themes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
+- GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.
 
