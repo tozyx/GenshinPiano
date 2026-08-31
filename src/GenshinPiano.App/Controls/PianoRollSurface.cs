@@ -237,6 +237,64 @@ public sealed class PianoRollSurface : Control
 
     public bool CanRedo => _viewModel.CanRedo;
 
+    public int SelectAllNotes()
+    {
+        if (!IsEditingEnabled || Score is null)
+        {
+            return 0;
+        }
+
+        var notes = Score.Tracks.SelectMany(track => track.Notes).ToArray();
+        _viewModel.Selection.ReplaceWith(notes.Select(note => note.Id));
+        RaiseSelectionChanged();
+        return notes.Length;
+    }
+
+    public int SelectNotesRelativeToPlaybackCursor(bool afterCursor)
+    {
+        if (!IsEditingEnabled || Score is null || PlaybackTick < 0)
+        {
+            return 0;
+        }
+
+        var notes = Score.Tracks
+            .SelectMany(track => track.Notes)
+            .Where(note => afterCursor
+                ? note.StartTick >= PlaybackTick
+                : note.StartTick < PlaybackTick)
+            .ToArray();
+        _viewModel.Selection.ReplaceWith(notes.Select(note => note.Id));
+        RaiseSelectionChanged();
+        return notes.Length;
+    }
+
+    public bool NudgeSelectedHorizontally(int direction, bool wholeBeat = false)
+    {
+        var notes = GetSelectedNotes();
+        if (!IsEditingEnabled || Score is null || notes.Count == 0 || direction is not (-1 or 1))
+        {
+            return false;
+        }
+
+        var deltaTick = direction * (wholeBeat ? Score.Timing.Ppq : GetSnapTick(Score));
+        if (deltaTick < 0)
+        {
+            deltaTick = Math.Max(deltaTick, -notes.Min(note => note.StartTick));
+        }
+
+        if (deltaTick == 0)
+        {
+            return false;
+        }
+
+        ReplaceNotes(notes.Select(note => note with
+        {
+            StartTick = note.StartTick + deltaTick,
+        }).ToArray());
+        RaiseSelectionChanged();
+        return true;
+    }
+
     public int OptimizeAllNoteDurations()
     {
         if (!IsEditingEnabled || Score is null)
@@ -807,6 +865,11 @@ public sealed class PianoRollSurface : Control
         else if (key == Key.Y && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
         {
             Redo();
+            e.Handled = true;
+        }
+        else if (key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) != 0)
+        {
+            SelectAllNotes();
             e.Handled = true;
         }
     }

@@ -5,7 +5,12 @@ using GenshinPiano.Core.Scores;
 
 namespace GenshinPiano.Application.Playback;
 
-public sealed record AuditionProgress(long Tick, long DurationTick, TimeSpan Position, TimeSpan Duration);
+public sealed record AuditionProgress(
+    long Tick,
+    long DurationTick,
+    TimeSpan Position,
+    TimeSpan Duration,
+    long SampleTimestamp = 0);
 
 public sealed class ScoreAuditionService(IMidiOutput output)
 {
@@ -60,7 +65,12 @@ public sealed class ScoreAuditionService(IMidiOutput output)
                 }
 
                 var tick = TimeToTick(absoluteTime, score.Timing, plan.DurationTick);
-                progress?.Report(new AuditionProgress(tick, playbackEndTick, absoluteTime, endTime));
+                progress?.Report(new AuditionProgress(
+                    tick,
+                    playbackEndTick,
+                    absoluteTime,
+                    endTime,
+                    Stopwatch.GetTimestamp()));
                 await Task.Delay(16, cancellationToken).ConfigureAwait(false);
             }
 
@@ -68,7 +78,8 @@ public sealed class ScoreAuditionService(IMidiOutput output)
                 playbackEndTick,
                 playbackEndTick,
                 endTime,
-                endTime));
+                endTime,
+                Stopwatch.GetTimestamp()));
         }
         finally
         {

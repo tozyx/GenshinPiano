@@ -32,6 +32,42 @@
     <system:String x:Key="Menu_Import">_Import</system:String>
     <system:String x:Key="Menu_ImportLegacyBatch">Batch convert legacy scores…</system:String>
     <system:String x:Key="Menu_ImportMidiBatch">Batch convert MIDI…</system:String>
+    <system:String x:Key="Menu_ImportOcrImage">Recognize score image…</system:String>
+    <system:String x:Key="Ocr_Title">OCR score recognition - beta</system:String>
+    <system:String x:Key="Ocr_AddonMissing">No compatible OCR add-on is installed. Extract the add-on to: {0}</system:String>
+    <system:String x:Key="Ocr_AddonReady">OCR add-on ready, engine version {0}</system:String>
+    <system:String x:Key="Ocr_Image">Score image</system:String>
+    <system:String x:Key="Ocr_NotSelected">Not selected</system:String>
+    <system:String x:Key="Ocr_Browse">Browse…</system:String>
+    <system:String x:Key="Ocr_Notation">Notation</system:String>
+    <system:String x:Key="Ocr_NotationAuto">Auto detect</system:String>
+    <system:String x:Key="Ocr_NotationNumbered">Numbered notation</system:String>
+    <system:String x:Key="Ocr_NotationStaff">Staff notation</system:String>
+    <system:String x:Key="Ocr_Watermark">Watermarks</system:String>
+    <system:String x:Key="Ocr_WatermarkAuto">Auto (recommended)</system:String>
+    <system:String x:Key="Ocr_WatermarkStrong">Strong</system:String>
+    <system:String x:Key="Ocr_WatermarkOff">Off</system:String>
+    <system:String x:Key="Ocr_IncludeAccompaniment">Include accompaniment</system:String>
+    <system:String x:Key="Ocr_Ready">Select an image and notation type to begin. You can still cancel before importing the result.</system:String>
+    <system:String x:Key="Ocr_SelectImage">Select a score image</system:String>
+    <system:String x:Key="Ocr_ImageFilter">Score images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|All files|*.*</system:String>
+    <system:String x:Key="Ocr_Analyze">Analyze</system:String>
+    <system:String x:Key="Ocr_Import">Import result</system:String>
+    <system:String x:Key="Ocr_Analyzing">The OCR add-on is analyzing the image…</system:String>
+    <system:String x:Key="Ocr_StagePreparing">Preparing the image…</system:String>
+    <system:String x:Key="Ocr_StageWatermark">Removing watermarks…</system:String>
+    <system:String x:Key="Ocr_StageTextDetection">Detecting notation and separating rows…</system:String>
+    <system:String x:Key="Ocr_StageSuperResolution">Enhancing and recognizing notes…</system:String>
+    <system:String x:Key="Ocr_StageReconstruction">Reconstructing rhythm and voices…</system:String>
+    <system:String x:Key="Ocr_Completed">Recognition complete: {0} notes, {1:P0} overall confidence. Manual review is recommended.</system:String>
+    <system:String x:Key="Ocr_Failed">Recognition failed: {0}</system:String>
+    <system:String x:Key="Ocr_UnknownError">Unknown error</system:String>
+    <system:String x:Key="Ocr_Cancelled">Recognition cancelled.</system:String>
+    <system:String x:Key="Ocr_CancelAnalysis">Cancel analysis</system:String>
+    <system:String x:Key="Ocr_NotificationCompletedTitle">OCR recognition complete</system:String>
+    <system:String x:Key="Ocr_NotificationCompletedBody">Recognized {0} notes. Return to the app to review and import them.</system:String>
+    <system:String x:Key="Ocr_NotificationFailedTitle">OCR recognition did not complete</system:String>
+    <system:String x:Key="Status_OcrImported">Imported {0} OCR notes; please review pitch and rhythm</system:String>
     <system:String x:Key="Menu_Settings">_Settings</system:String>
     <system:String x:Key="Menu_Theme">Theme</system:String>
     <system:String x:Key="Menu_ThemeDark">Dark</system:String>
@@ -39,6 +75,10 @@
     <system:String x:Key="Menu_Language">Language</system:String>
     <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
     <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+    <system:String x:Key="Menu_Notifications">Notifications</system:String>
+    <system:String x:Key="Menu_NotifyOcrCompletion">Notify when OCR completes</system:String>
+    <system:String x:Key="Menu_PianoRollFrameRate">Piano-roll frame rate</system:String>
+    <system:String x:Key="Menu_FrameRateVSync">Vertical sync (recommended)</system:String>
     <system:String x:Key="Menu_Updates">Updates</system:String>
     <system:Double x:Key="Menu_UpdateSubmenuItemMinWidth">196</system:Double>
     <system:String x:Key="Menu_AllowNetwork">Allow network access</system:String>
@@ -115,13 +155,18 @@
     <system:String x:Key="Editor_PitchNumbersWithKey">Numbers + keys</system:String>
     <system:String x:Key="Editor_PitchLettersOnly">Letters</system:String>
     <system:String x:Key="Editor_PitchNumbersOnly">Numbers</system:String>
+    <system:String x:Key="Editor_SelectAllNotes">Select all notes</system:String>
+    <system:String x:Key="Editor_SelectBeforeCursor">Select notes before cursor</system:String>
+    <system:String x:Key="Editor_SelectAfterCursor">Select notes at and after cursor</system:String>
     <system:String x:Key="Editor_Hint">View piano-roll controls and shortcuts</system:String>
     <system:String x:Key="Editor_HelpCreateTitle">Create and select</system:String>
     <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• Click empty space: create a note at the New note length and audition it
 • Click a note: select and drag
 • Ctrl + click: add to or remove from the selection
 • Drag empty space: box-select; Ctrl + box-select: add to the selection
+• Ctrl + A: select all; Ctrl + Shift + ← / →: select notes before / after the cursor
 • Right-click empty space: clear the selection
+• ← / →: move by one snap-grid step; Shift + ← / →: move by one beat
 • Ctrl + drag a note: copy
 • Delete / Backspace: delete; Ctrl + Z / Ctrl + Y: undo / redo</system:String>
     <system:String x:Key="Editor_HelpRhythmTitle">Rhythm and duration</system:String>

@@ -252,6 +252,24 @@ public sealed class MainWindowViewModel : ObservableObject
     public void NotifyStatus(string key, params object?[] arguments) =>
         SetStatus(key, arguments);
 
+    public void ImportOcrScore(ScoreDocument score, string imagePath)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        var title = Path.GetFileNameWithoutExtension(imagePath);
+        _workspace.ImportScore(score with
+        {
+            Metadata = score.Metadata with
+            {
+                Title = string.IsNullOrWhiteSpace(title)
+                    ? _localizationService.GetString("Score_Untitled")
+                    : title,
+            },
+        });
+        CurrentSourcePath = null;
+        RefreshFromWorkspace();
+        SetStatus("Status_OcrImported", score.Tracks.Sum(track => track.Notes.Count));
+    }
+
     private void CreateNew()
     {
         CancelAutosave();

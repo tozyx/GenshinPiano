@@ -3,7 +3,7 @@ setlocal
 pushd "%~dp0"
 
 set "VERSION=%~1"
-if not defined VERSION set "VERSION=3.0.1-preview.1"
+if not defined VERSION set "VERSION=3.0.1"
 set "PUBLISH_DIR=%~dp0publish\GenshinPiano-win-x64"
 set "UPDATER_PUBLISH_DIR=%~dp0publish\.tmp\GenshinPiano.Updater-win-x64"
 set "SONGS_DIR=%~dp0publish\songs"
@@ -107,6 +107,16 @@ if errorlevel 1 (
 echo Cleaning temporary updater output...
 rmdir /s /q "%UPDATER_PUBLISH_DIR%"
 
+echo Publishing bundled and standalone OCR add-on packages...
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\tools\Publish-OcrAddon.ps1" -AddonRootDirectory "%~dp0publish\addons" -ArtifactsDirectory "%~dp0publish" -PrivateKeyPath "%SIGNING_KEY%"
+if errorlevel 1 (
+  echo.
+  echo Failed to publish OCR add-on.
+  pause
+  popd
+  exit /b 1
+)
+
 echo Copying bundled songs...
 xcopy "%SONGS_DIR%\*" "%PUBLISH_DIR%\songs\" /E /I /Y >nul
 if errorlevel 1 (
@@ -192,6 +202,9 @@ echo ZIP package:
 echo %ZIP_PATH%
 echo %SHA_PATH%
 echo %SIG_PATH%
+echo.
+echo OCR add-on packages:
+dir /b "%~dp0publish\ocr-addons-*-win-x64.zip*" 2>nul
 echo.
 echo Test sandbox copy:
 echo %SANDBOX_DIR%

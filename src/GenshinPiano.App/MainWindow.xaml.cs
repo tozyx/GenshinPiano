@@ -715,6 +715,21 @@ public partial class MainWindow : Window
         }
     }
 
+    private void SelectAllNotesMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        PianoRollEditor.SelectAllNotes();
+
+    private void UndoMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        PianoRollEditor.UndoEdit();
+
+    private void RedoMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        PianoRollEditor.RedoEdit();
+
+    private void SelectBeforeCursorMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        PianoRollEditor.SelectNotesBeforeCursor();
+
+    private void SelectAfterCursorMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        PianoRollEditor.SelectNotesAfterCursor();
+
     private void ScoreAnalysisMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel viewModel)
@@ -770,6 +785,13 @@ public partial class MainWindow : Window
         MenuItem_OnSubmenuOpened(sender, e);
         if (sender is MenuItem menuItem && ReferenceEquals(e.OriginalSource, menuItem))
         {
+            if (System.Windows.Application.Current is App app)
+            {
+                OcrCompletionNotificationMenuItem.IsChecked =
+                    app.UserSettingsService.Current.Notifications.NotifyWhenOcrCompletes;
+                UpdatePianoRollFrameRateMenuChecks(
+                    app.UserSettingsService.Current.Editor.PianoRollFrameRate);
+            }
             UpdateNetworkDependentUpdateMenuItems(animate: false);
             UpdateFileAssociationMenuState();
         }
@@ -1054,6 +1076,77 @@ public partial class MainWindow : Window
         {
             Owner = this,
         }.ShowDialog();
+    }
+
+    private void OcrCompletionNotificationMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && System.Windows.Application.Current is App app)
+        {
+            app.UserSettingsService.SetNotifyWhenOcrCompletes(menuItem.IsChecked);
+        }
+    }
+
+    private void PianoRollFrameRateMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string mode } ||
+            System.Windows.Application.Current is not App app)
+        {
+            return;
+        }
+
+        app.UserSettingsService.SetPianoRollFrameRate(mode);
+        PianoRollEditor.SetFrameRateMode(mode);
+        UpdatePianoRollFrameRateMenuChecks(mode);
+    }
+
+    private void UpdatePianoRollFrameRateMenuChecks(string mode)
+    {
+        PianoRollFrameRate30MenuItem.IsChecked = mode == "30";
+        PianoRollFrameRate60MenuItem.IsChecked = mode == "60";
+        PianoRollFrameRateVSyncMenuItem.IsChecked = mode == "VSync";
+    }
+
+    private async void ImportOcrImageMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (System.Windows.Application.Current is not App app ||
+            DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        var dialog = new OcrImportDialog(
+            app.OcrAddonService,
+            app.UserSettingsService,
+            app.NotificationService,
+            app.TaskbarProgressService) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.Result?.Score is not { } score ||
+            dialog.ImagePath is not { } imagePath)
+        {
+            return;
+        }
+
+        if (viewModel.IsDirty)
+        {
+            var unsavedDialog = new UnsavedChangesDialog { Owner = this };
+            unsavedDialog.ShowDialog();
+            if (unsavedDialog.Choice == UnsavedChangesChoice.Cancel)
+            {
+                return;
+            }
+
+            if (unsavedDialog.Choice == UnsavedChangesChoice.Save &&
+                !await viewModel.SavePendingChangesAsync())
+            {
+                return;
+            }
+
+            if (unsavedDialog.Choice == UnsavedChangesChoice.DontSave)
+            {
+                viewModel.DiscardRecovery();
+            }
+        }
+
+        viewModel.ImportOcrScore(score, imagePath);
     }
 
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)

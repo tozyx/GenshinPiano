@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!--
+      The OCR engine communicates exclusively through redirected stdio.  It is
+      intentionally built as a Windows executable so launching the add-on does
+      not create a transient Console Window Host or make Task Manager move the
+      main application between process groups.  Redirected stdin/stdout/stderr
+      remain available to ExternalOcrAddonService.
+    -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>GenshinPiano.Ocr.Engine</AssemblyName>
+    <RootNamespace>GenshinPiano.Ocr.Engine</RootNamespace>
+    <Version>0.7.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
+    <ProjectReference Include="..\GenshinPiano.Core\GenshinPiano.Core.csproj" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.3" />
+    <PackageReference Include="RapidOcrNet" Version="2.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="models\orpheusnet\*.onnx"
+          CopyToOutputDirectory="PreserveNewest"
+          TargetPath="models\orpheusnet\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

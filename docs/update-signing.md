@@ -50,6 +50,20 @@ Upload all three files produced for each ZIP:
 The framework-dependent build uses the same three-file convention with the
 `-framework` suffix.
 
+Both release scripts publish the optional OCR engine separately under
+`publish/addons/ocr`; it is deliberately excluded from the versioned
+application directory and application ZIP. The scripts also produce these
+standalone assets:
+
+- `ocr-addons-<engine-version>-win-x64.zip`
+- `ocr-addons-<engine-version>-win-x64.zip.sha256`
+- `ocr-addons-<engine-version>-win-x64.zip.sig`
+
+The standalone archive contains the top-level `addons/ocr` path and can be
+extracted directly beside `GenshinPiano.exe`. It uses the same signing key and
+signature format as application packages because it also contains executable
+code. Upload all three OCR assets together.
+
 The `.sha256` file detects accidental corruption. The `.sig` file proves that
 the ZIP was signed by the project key. Its signed payload binds the signature
 protocol version, ZIP file name, and SHA-256 value, preventing a previously

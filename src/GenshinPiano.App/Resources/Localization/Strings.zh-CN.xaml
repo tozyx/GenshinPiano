@@ -32,6 +32,42 @@
     <system:String x:Key="Menu_Import">导入(_I)</system:String>
     <system:String x:Key="Menu_ImportLegacyBatch">批量转换旧版曲谱…</system:String>
     <system:String x:Key="Menu_ImportMidiBatch">批量转换 MIDI…</system:String>
+    <system:String x:Key="Menu_ImportOcrImage">从曲谱图片识别…</system:String>
+    <system:String x:Key="Ocr_Title">OCR 曲谱识别-beta</system:String>
+    <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 附加包。请将附加包解压到：{0}</system:String>
+    <system:String x:Key="Ocr_AddonReady">OCR 附加包已就绪，引擎版本 {0}</system:String>
+    <system:String x:Key="Ocr_Image">曲谱图片</system:String>
+    <system:String x:Key="Ocr_NotSelected">尚未选择</system:String>
+    <system:String x:Key="Ocr_Browse">浏览…</system:String>
+    <system:String x:Key="Ocr_Notation">谱面类型</system:String>
+    <system:String x:Key="Ocr_NotationAuto">自动识别</system:String>
+    <system:String x:Key="Ocr_NotationNumbered">数字简谱</system:String>
+    <system:String x:Key="Ocr_NotationStaff">五线谱</system:String>
+    <system:String x:Key="Ocr_Watermark">水印抑制</system:String>
+    <system:String x:Key="Ocr_WatermarkAuto">自动（推荐）</system:String>
+    <system:String x:Key="Ocr_WatermarkStrong">强力</system:String>
+    <system:String x:Key="Ocr_WatermarkOff">关闭</system:String>
+    <system:String x:Key="Ocr_IncludeAccompaniment">识别伴奏</system:String>
+    <system:String x:Key="Ocr_Ready">选择图片和谱面类型后开始识别。识别结果导入前仍可取消。</system:String>
+    <system:String x:Key="Ocr_SelectImage">选择曲谱图片</system:String>
+    <system:String x:Key="Ocr_ImageFilter">曲谱图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|所有文件|*.*</system:String>
+    <system:String x:Key="Ocr_Analyze">开始识别</system:String>
+    <system:String x:Key="Ocr_Import">导入结果</system:String>
+    <system:String x:Key="Ocr_Analyzing">正在由 OCR 附加包分析图片…</system:String>
+    <system:String x:Key="Ocr_StagePreparing">正在预处理图片…</system:String>
+    <system:String x:Key="Ocr_StageWatermark">正在去除水印…</system:String>
+    <system:String x:Key="Ocr_StageTextDetection">正在检测曲谱并分离谱行…</system:String>
+    <system:String x:Key="Ocr_StageSuperResolution">正在超分辨率处理并识别音符…</system:String>
+    <system:String x:Key="Ocr_StageReconstruction">正在重建节拍和声部…</system:String>
+    <system:String x:Key="Ocr_Completed">识别完成：{0} 个音符，整体置信度 {1:P0}。建议导入后人工校对。</system:String>
+    <system:String x:Key="Ocr_Failed">识别失败：{0}</system:String>
+    <system:String x:Key="Ocr_UnknownError">未知错误</system:String>
+    <system:String x:Key="Ocr_Cancelled">识别已取消。</system:String>
+    <system:String x:Key="Ocr_CancelAnalysis">取消识别</system:String>
+    <system:String x:Key="Ocr_NotificationCompletedTitle">OCR 识别完成</system:String>
+    <system:String x:Key="Ocr_NotificationCompletedBody">已识别 {0} 个音符，返回软件即可检查并导入。</system:String>
+    <system:String x:Key="Ocr_NotificationFailedTitle">OCR 识别未完成</system:String>
+    <system:String x:Key="Status_OcrImported">已导入 OCR 识别结果，共 {0} 个音符；请检查音高和节奏</system:String>
     <system:String x:Key="Menu_Settings">设置(_S)</system:String>
     <system:String x:Key="Menu_Theme">主题</system:String>
     <system:String x:Key="Menu_ThemeDark">深色</system:String>
@@ -39,6 +75,10 @@
     <system:String x:Key="Menu_Language">语言</system:String>
     <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
     <system:String x:Key="Menu_LanguageEnglish">English</system:String>
+    <system:String x:Key="Menu_Notifications">通知</system:String>
+    <system:String x:Key="Menu_NotifyOcrCompletion">OCR 完成时通知</system:String>
+    <system:String x:Key="Menu_PianoRollFrameRate">卷帘帧率</system:String>
+    <system:String x:Key="Menu_FrameRateVSync">垂直同步（推荐）</system:String>
     <system:String x:Key="Menu_Updates">更新</system:String>
     <system:Double x:Key="Menu_UpdateSubmenuItemMinWidth">128</system:Double>
     <system:String x:Key="Menu_AllowNetwork">允许应用联网</system:String>
@@ -115,13 +155,18 @@
     <system:String x:Key="Editor_PitchNumbersWithKey">数字 + 按键</system:String>
     <system:String x:Key="Editor_PitchLettersOnly">字母</system:String>
     <system:String x:Key="Editor_PitchNumbersOnly">数字</system:String>
+    <system:String x:Key="Editor_SelectAllNotes">全选音符</system:String>
+    <system:String x:Key="Editor_SelectBeforeCursor">选择游标之前的音符</system:String>
+    <system:String x:Key="Editor_SelectAfterCursor">选择游标及之后的音符</system:String>
     <system:String x:Key="Editor_Hint">查看卷帘编辑器操作说明</system:String>
     <system:String x:Key="Editor_HelpCreateTitle">创建与选择</system:String>
     <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• 单击空白处：按“新建长度”创建音符并试听音高
 • 单击音符：选择并拖动
 • Ctrl + 单击：追加或取消选择
 • 拖动空白处：框选；Ctrl + 框选：追加选择
+• Ctrl + A：全选；Ctrl + Shift + ← / →：选择游标前 / 后的音符
 • 右键空白处：取消全部选择
+• ← / →：按吸附网格整体平移；Shift + ← / →：整体移动一拍
 • Ctrl + 拖动音符：复制
 • Delete / Backspace：删除；Ctrl + Z / Ctrl + Y：撤销 / 重做</system:String>
     <system:String x:Key="Editor_HelpRhythmTitle">节奏与时值</system:String>

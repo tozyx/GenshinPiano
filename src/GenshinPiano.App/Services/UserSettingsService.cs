@@ -9,7 +9,7 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 7;
 
     public int Version { get; init; } = CurrentVersion;
 
@@ -20,6 +20,13 @@ public sealed record UserSettings
     public LibraryUserSettings Library { get; init; } = new();
 
     public UpdateUserSettings Update { get; init; } = new();
+
+    public NotificationUserSettings Notifications { get; init; } = new();
+}
+
+public sealed record NotificationUserSettings
+{
+    public bool NotifyWhenOcrCompletes { get; init; } = true;
 }
 
 public sealed record UpdateUserSettings
@@ -58,6 +65,8 @@ public sealed record EditorUserSettings
     public int AuditionInstrument { get; init; }
 
     public int AuditionVolume { get; init; } = 80;
+
+    public string PianoRollFrameRate { get; init; } = "VSync";
 }
 
 public interface IUserSettingsService
@@ -82,6 +91,8 @@ public interface IUserSettingsService
 
     void SetAuditionVolume(int value);
 
+    void SetPianoRollFrameRate(string value);
+
     void SetScoreFolder(string? path);
 
     void SetNetworkAccessEnabled(bool value);
@@ -89,6 +100,8 @@ public interface IUserSettingsService
     void SetAutomaticUpdatesEnabled(bool value);
 
     void SetUpdateChannel(string value);
+
+    void SetNotifyWhenOcrCompletes(bool value);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -206,6 +219,16 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
+    public void SetPianoRollFrameRate(string value)
+    {
+        if (!IsValidPianoRollFrameRate(value) || Current.Editor.PianoRollFrameRate == value)
+        {
+            return;
+        }
+
+        Update(Current with { Editor = Current.Editor with { PianoRollFrameRate = value } });
+    }
+
     public void SetScoreFolder(string? path)
     {
         var normalized = string.IsNullOrWhiteSpace(path) ? string.Empty : Path.GetFullPath(path);
@@ -241,6 +264,17 @@ public sealed class UserSettingsService : IUserSettingsService
     {
         if (value is not ("stable" or "preview") || Current.Update.Channel == value) return;
         Update(Current with { Update = Current.Update with { Channel = value } });
+    }
+
+    public void SetNotifyWhenOcrCompletes(bool value)
+    {
+        if (Current.Notifications.NotifyWhenOcrCompletes != value)
+        {
+            Update(Current with
+            {
+                Notifications = Current.Notifications with { NotifyWhenOcrCompletes = value },
+            });
+        }
     }
 
     private UserSettings Load()
@@ -329,6 +363,9 @@ public sealed class UserSettingsService : IUserSettingsService
                     : defaults.PitchLabelMode,
                 AuditionInstrument = Math.Clamp(editor.AuditionInstrument, 0, 127),
                 AuditionVolume = Math.Clamp(editor.AuditionVolume, 0, 100),
+                PianoRollFrameRate = IsValidPianoRollFrameRate(editor.PianoRollFrameRate)
+                    ? editor.PianoRollFrameRate
+                    : defaults.PianoRollFrameRate,
             },
             Appearance = appearance with
             {
@@ -349,6 +386,7 @@ public sealed class UserSettingsService : IUserSettingsService
                     ? update.Channel
                     : updateDefaults.Channel,
             },
+            Notifications = settings?.Notifications ?? new NotificationUserSettings(),
         };
     }
 
@@ -410,4 +448,7 @@ public sealed class UserSettingsService : IUserSettingsService
 
     private static bool IsValidPitchLabelMode(string? value) => value is
         "LetterWithKey" or "NumberedWithKey" or "LetterOnly" or "NumberedOnly";
+
+    private static bool IsValidPianoRollFrameRate(string? value) =>
+        value is "30" or "60" or "VSync";
 }

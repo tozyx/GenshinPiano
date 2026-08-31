@@ -3,7 +3,7 @@ setlocal
 pushd "%~dp0"
 
 set "VERSION=%~1"
-if not defined VERSION set "VERSION=3.0.1-preview.1"
+if not defined VERSION set "VERSION=3.0.1"
 set "PUBLISH_DIR=%~dp0publish\GenshinPiano-win-x64-framework"
 set "SONGS_DIR=%~dp0publish\songs"
 set "ZIP_PATH=%~dp0publish\GenshinPiano-%VERSION%-win-x64-framework.zip"
@@ -66,6 +66,16 @@ echo Publishing standalone updater...
 dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained false -p:Version=%VERSION% -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
   echo Updater publish failed.
+  pause
+  popd
+  exit /b 1
+)
+
+echo Publishing bundled and standalone OCR add-on packages...
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\tools\Publish-OcrAddon.ps1" -AddonRootDirectory "%~dp0publish\addons" -ArtifactsDirectory "%~dp0publish" -PrivateKeyPath "%SIGNING_KEY%"
+if errorlevel 1 (
+  echo.
+  echo Failed to publish OCR add-on.
   pause
   popd
   exit /b 1
@@ -156,6 +166,9 @@ echo ZIP package:
 echo %ZIP_PATH%
 echo %SHA_PATH%
 echo %SIG_PATH%
+echo.
+echo OCR add-on packages:
+dir /b "%~dp0publish\ocr-addons-*-win-x64.zip*" 2>nul
 echo.
 echo Test sandbox copy:
 echo %SANDBOX_DIR%

@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using GenshinPiano.App.Services;
 using GenshinPiano.App.ViewModels;
@@ -34,6 +36,12 @@ public partial class PianoRollEditor : UserControl
     private bool _continuousFollowActive;
     private long _lastFollowTick = -1;
     private ComboBoxItem? _customNewNoteLengthItem;
+    private string _frameRateMode = "VSync";
+    private AuditionProgress? _latestAuditionProgress;
+    private long _auditionProgressTimestamp;
+    private long _nextAuditionFrameTimestamp;
+    private long _lastAuditionTextTimestamp;
+    private bool _auditionRenderingAttached;
 
     public PianoRollViewModel EditorViewModel { get; } = new();
 
@@ -79,6 +87,16 @@ public partial class PianoRollEditor : UserControl
 
     public PitchLabelMode PitchLabelMode => KeyboardLabels.LabelMode;
 
+    public int SelectAllNotes() => Surface.SelectAllNotes();
+
+    public int SelectNotesBeforeCursor() => Surface.SelectNotesRelativeToPlaybackCursor(false);
+
+    public int SelectNotesAfterCursor() => Surface.SelectNotesRelativeToPlaybackCursor(true);
+
+    public void UndoEdit() => Surface.UndoEdit();
+
+    public void RedoEdit() => Surface.RedoEdit();
+
     public void SetPitchLabelMode(PitchLabelMode mode)
     {
         KeyboardLabels.LabelMode = mode;
@@ -94,6 +112,17 @@ public partial class PianoRollEditor : UserControl
         PlaybackCursor.Visibility = Visibility.Collapsed;
     }
 
+    public void SetFrameRateMode(string mode)
+    {
+        if (mode is not ("30" or "60" or "VSync"))
+        {
+            return;
+        }
+
+        _frameRateMode = mode;
+        _nextAuditionFrameTimestamp = 0;
+    }
+
     private void ZoomIn_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomIn();
 
     private void ZoomOut_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomOut();
@@ -102,9 +131,9 @@ public partial class PianoRollEditor : UserControl
 
     private void VerticalZoomOut_OnClick(object sender, RoutedEventArgs e) => Surface.ZoomRowsOut();
 
-    private void Undo_OnClick(object sender, RoutedEventArgs e) => Surface.UndoEdit();
+    private void SelectBeforeCursor_OnClick(object sender, RoutedEventArgs e) => SelectNotesBeforeCursor();
 
-    private void Redo_OnClick(object sender, RoutedEventArgs e) => Surface.RedoEdit();
+    private void SelectAfterCursor_OnClick(object sender, RoutedEventArgs e) => SelectNotesAfterCursor();
 
     private void SnapComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -369,6 +398,7 @@ public partial class PianoRollEditor : UserControl
             SelectComboItem(AuditionInstrumentComboBox, editor.AuditionInstrument.ToString());
             AuditionVolumeSlider.Value = editor.AuditionVolume / 100d;
             SetAuditionVolume(editor.AuditionVolume);
+            SetFrameRateMode(editor.PianoRollFrameRate);
         }
         finally
         {
@@ -381,6 +411,7 @@ public partial class PianoRollEditor : UserControl
         _auditionPauseRequested = false;
         _auditionCancellation?.Cancel();
         _notePreviewCancellation?.Cancel();
+        StopAuditionRendering(renderFinalFrame: false);
         AuditionVolumePopup.IsOpen = false;
         if (_ownerWindow is not null)
         {
@@ -500,13 +531,28 @@ public partial class PianoRollEditor : UserControl
         SetAuditionPlayingState(true);
         NoteEditorPopup.IsOpen = false;
         AnimateAuditionPlayIcon(true);
+        var playbackEndTick = loopSelection ? loopEndTick : plan.DurationTick;
+        var playbackStartPosition = GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(
+            _auditionTick,
+            Score.Timing);
+        var playbackEndPosition = GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(
+            playbackEndTick,
+            Score.Timing);
+        var initialSampleTimestamp = Stopwatch.GetTimestamp();
+        _latestAuditionProgress = new AuditionProgress(
+            _auditionTick,
+            playbackEndTick,
+            playbackStartPosition,
+            playbackEndPosition,
+            initialSampleTimestamp);
+        _auditionProgressTimestamp = initialSampleTimestamp;
+        StartAuditionRendering();
         var progress = new Progress<AuditionProgress>(item =>
         {
-            _auditionTick = item.Tick;
-            Surface.PlaybackTick = item.Tick;
-            UpdatePlaybackCursor(item.Tick);
-            UpdateAuditionPosition(item.Tick, item.Position);
-            FollowPlaybackHead(item.Tick);
+            _latestAuditionProgress = item;
+            _auditionProgressTimestamp = item.SampleTimestamp > 0
+                ? item.SampleTimestamp
+                : Stopwatch.GetTimestamp();
         });
 
         try
@@ -531,6 +577,7 @@ public partial class PianoRollEditor : UserControl
         }
         finally
         {
+            StopAuditionRendering(renderFinalFrame: true);
             if (ReferenceEquals(_auditionCancellation, cancellation))
             {
                 _auditionCancellation = null;
@@ -547,6 +594,116 @@ public partial class PianoRollEditor : UserControl
 
             cancellation.Dispose();
         }
+    }
+
+    private void StartAuditionRendering()
+    {
+        if (_auditionRenderingAttached)
+        {
+            return;
+        }
+
+        _nextAuditionFrameTimestamp = 0;
+        _lastAuditionTextTimestamp = 0;
+        CompositionTarget.Rendering += CompositionTarget_OnRendering;
+        _auditionRenderingAttached = true;
+    }
+
+    private void StopAuditionRendering(bool renderFinalFrame)
+    {
+        if (renderFinalFrame)
+        {
+            RenderAuditionFrame(force: true);
+        }
+
+        if (_auditionRenderingAttached)
+        {
+            CompositionTarget.Rendering -= CompositionTarget_OnRendering;
+            _auditionRenderingAttached = false;
+        }
+
+        _latestAuditionProgress = null;
+    }
+
+    private void CompositionTarget_OnRendering(object? sender, EventArgs e) =>
+        RenderAuditionFrame(force: false);
+
+    private void RenderAuditionFrame(bool force)
+    {
+        if (!_auditionIsPlaying || Score is null || _latestAuditionProgress is not { } progress)
+        {
+            return;
+        }
+
+        var now = Stopwatch.GetTimestamp();
+        var minimumFrameTicks = _frameRateMode switch
+        {
+            "30" => Stopwatch.Frequency / 30,
+            "60" => Stopwatch.Frequency / 60,
+            _ => 0,
+        };
+        var schedulingTolerance = minimumFrameTicks / 10;
+        if (!force && minimumFrameTicks > 0 &&
+            _nextAuditionFrameTimestamp > 0 &&
+            now + schedulingTolerance < _nextAuditionFrameTimestamp)
+        {
+            return;
+        }
+
+        if (minimumFrameTicks > 0)
+        {
+            _nextAuditionFrameTimestamp = _nextAuditionFrameTimestamp <= 0
+                ? now + minimumFrameTicks
+                : _nextAuditionFrameTimestamp + minimumFrameTicks;
+            while (_nextAuditionFrameTimestamp <= now)
+            {
+                _nextAuditionFrameTimestamp += minimumFrameTicks;
+            }
+        }
+        else
+        {
+            _nextAuditionFrameTimestamp = now;
+        }
+        var elapsed = Stopwatch.GetElapsedTime(_auditionProgressTimestamp, now);
+        var interpolatedPosition = progress.Position + elapsed;
+        if (interpolatedPosition > progress.Duration)
+        {
+            interpolatedPosition = progress.Duration;
+        }
+
+        var tick = TimeToTick(interpolatedPosition, Score.Timing, progress.DurationTick);
+        _auditionTick = tick;
+        Surface.PlaybackTick = tick;
+        UpdatePlaybackCursor(tick);
+        FollowPlaybackHead(tick);
+
+        // Text layout is substantially more expensive than moving the GPU-composited
+        // cursor. Thirty updates per second remain visually continuous for the clock.
+        if (force || now - _lastAuditionTextTimestamp >= Stopwatch.Frequency / 30)
+        {
+            _lastAuditionTextTimestamp = now;
+            UpdateAuditionPosition(tick, interpolatedPosition);
+        }
+    }
+
+    private static long TimeToTick(TimeSpan time, TimingDefinition timing, long maximumTick)
+    {
+        long low = 0;
+        var high = Math.Max(0, maximumTick);
+        while (low < high)
+        {
+            var middle = low + (high - low + 1) / 2;
+            if (GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(middle, timing) <= time)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle - 1;
+            }
+        }
+
+        return low;
     }
 
     private void AuditionStopButton_OnClick(object sender, RoutedEventArgs e)
@@ -1396,12 +1553,32 @@ public partial class PianoRollEditor : UserControl
 
     private void Root_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
+        var key = ShortcutKeyResolver.Resolve(e);
+        var modifiers = Keyboard.Modifiers;
+        var isInputFocused = Keyboard.FocusedElement is TextBox or ComboBox;
+        if (!_auditionIsPlaying && !isInputFocused &&
+            (modifiers & ModifierKeys.Control) != 0)
+        {
+            if (key == Key.A)
+            {
+                Surface.SelectAllNotes();
+                e.Handled = true;
+                return;
+            }
+
+            if ((modifiers & ModifierKeys.Shift) != 0 && key is Key.Left or Key.Right)
+            {
+                Surface.SelectNotesRelativeToPlaybackCursor(key == Key.Right);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        if ((modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) != 0)
         {
             return;
         }
 
-        var key = ShortcutKeyResolver.Resolve(e);
         if (key == Key.Space &&
             Keyboard.FocusedElement is not TextBox &&
             Keyboard.FocusedElement is not ComboBox &&
@@ -1419,6 +1596,15 @@ public partial class PianoRollEditor : UserControl
 
         if (Keyboard.FocusedElement is TextBox or ComboBox)
         {
+            return;
+        }
+
+        if (key is Key.Left or Key.Right && Surface.SelectedNoteCount > 0)
+        {
+            Surface.NudgeSelectedHorizontally(
+                key == Key.Right ? 1 : -1,
+                wholeBeat: (modifiers & ModifierKeys.Shift) != 0);
+            e.Handled = true;
             return;
         }
 

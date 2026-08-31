@@ -2,6 +2,12 @@
 
 ## Completed in the current iteration
 
+- [x] Establish the optional OCR add-on boundary.
+  - Keep OCR runtimes and models outside the lightweight main package.
+  - Discover a versioned engine manifest under `addons/ocr`.
+  - Exchange one UTF-8 JSON request and response through an isolated process.
+  - Reject path traversal, incompatible protocols, malformed results, and invalid scores.
+
 - [x] Harden simulated-key release safety.
   - Track every key pressed by the Windows input adapter with thread-safe state.
   - Release tracked keys after every normal, cancelled, or failed playback run.
@@ -40,3 +46,13 @@
   - If both sources respond during that window, select the higher semantic version.
   - If the other source fails or exceeds the grace period, immediately use the first valid result.
   - Add diagnostics for source latency, selected mirror, selected version, and fallback reason.
+### Numbered-notation OCR baseline
+
+- [x] Preserve source detail with overlapping high-resolution OCR tiles.
+- [x] Reconstruct notation rows from character coordinates and remove tile duplicates.
+- [x] Infer a basic second voice from bimodal vertical spacing between notation rows.
+- [x] Convert and integrate the MIT-licensed OrpheusNet middle-symbol CNN as ONNX.
+- [x] Reimplement OrpheusNet-style middle-band vertical projection for note candidates.
+- [x] Detect octave dots, rhythm underlines and augmentation dots geometrically.
+- [ ] Detect accidentals, extension dashes and ties geometrically.
+- [ ] Add an OCR correction preview before importing the generated score.

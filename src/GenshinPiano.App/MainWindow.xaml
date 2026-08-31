@@ -356,6 +356,13 @@
                       Header="{DynamicResource Menu_Edit}"
                       SubmenuOpened="EditMenuItem_OnSubmenuOpened"
                       Style="{StaticResource TopLevelMenuItemStyle}">
+                <MenuItem Header="{DynamicResource Editor_Undo}"
+                          InputGestureText="Ctrl+Z"
+                          Click="UndoMenuItem_OnClick" />
+                <MenuItem Header="{DynamicResource Editor_Redo}"
+                          InputGestureText="Ctrl+Y"
+                          Click="RedoMenuItem_OnClick" />
+                <Separator />
                 <MenuItem Header="{DynamicResource Editor_PitchLabels}"
                           SubmenuOpened="MenuItem_OnSubmenuOpened">
                     <MenuItem x:Name="PitchLettersWithKeyMenuItem"
@@ -380,6 +387,16 @@
                               Click="PitchLabelMenuItem_OnClick" />
                 </MenuItem>
                 <Separator />
+                <MenuItem Header="{DynamicResource Editor_SelectAllNotes}"
+                          InputGestureText="Ctrl+A"
+                          Click="SelectAllNotesMenuItem_OnClick" />
+                <MenuItem Header="{DynamicResource Editor_SelectBeforeCursor}"
+                          InputGestureText="Ctrl+Shift+←"
+                          Click="SelectBeforeCursorMenuItem_OnClick" />
+                <MenuItem Header="{DynamicResource Editor_SelectAfterCursor}"
+                          InputGestureText="Ctrl+Shift+→"
+                          Click="SelectAfterCursorMenuItem_OnClick" />
+                <Separator />
                 <MenuItem Header="{DynamicResource Menu_ScoreAnalysisAndTranspose}"
                           Click="ScoreAnalysisMenuItem_OnClick" />
                 <Separator />
@@ -396,6 +413,9 @@
                           Command="{Binding ConvertLegacyScoresCommand}" />
                 <MenuItem Header="{DynamicResource Menu_ImportMidiBatch}"
                           Click="ImportMidiBatchMenuItem_OnClick" />
+                <Separator />
+                <MenuItem Header="{DynamicResource Menu_ImportOcrImage}"
+                          Click="ImportOcrImageMenuItem_OnClick" />
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu_Settings}"
                       SubmenuOpened="SettingsMenuItem_OnSubmenuOpened"
@@ -421,6 +441,26 @@
                               Command="{Binding UseEnglishCommand}"
                               IsCheckable="True"
                               IsChecked="{Binding IsEnglish, Mode=OneWay}" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Menu_Notifications}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem x:Name="OcrCompletionNotificationMenuItem"
+                              Header="{DynamicResource Menu_NotifyOcrCompletion}"
+                              IsCheckable="True"
+                              Click="OcrCompletionNotificationMenuItem_OnClick" />
+                </MenuItem>
+                <MenuItem Header="{DynamicResource Menu_PianoRollFrameRate}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem x:Name="PianoRollFrameRate30MenuItem"
+                              Header="30 FPS" Tag="30" IsCheckable="True"
+                              Click="PianoRollFrameRateMenuItem_OnClick" />
+                    <MenuItem x:Name="PianoRollFrameRate60MenuItem"
+                              Header="60 FPS" Tag="60" IsCheckable="True"
+                              Click="PianoRollFrameRateMenuItem_OnClick" />
+                    <MenuItem x:Name="PianoRollFrameRateVSyncMenuItem"
+                              Header="{DynamicResource Menu_FrameRateVSync}"
+                              Tag="VSync" IsCheckable="True"
+                              Click="PianoRollFrameRateMenuItem_OnClick" />
                 </MenuItem>
                 <Separator />
                 <MenuItem x:Name="UpdatesMenuItem"

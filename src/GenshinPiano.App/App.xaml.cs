@@ -10,6 +10,8 @@ using GenshinPiano.Infrastructure.Midi;
 using GenshinPiano.Infrastructure.Serialization;
 using GenshinPiano.Application.Updates;
 using GenshinPiano.Infrastructure.Updates;
+using GenshinPiano.Application.Ocr;
+using GenshinPiano.Infrastructure.Ocr;
 using System.Reflection;
 using System.IO;
 using System.Net.Http;
@@ -28,11 +30,17 @@ public partial class App : System.Windows.Application
     private HttpClient? _updateDownloadHttpClient;
     private SingleInstanceCoordinator? _singleInstance;
 
+    public WindowsNotificationService NotificationService { get; private set; } = null!;
+
+    public WindowsTaskbarProgressService TaskbarProgressService { get; private set; } = null!;
+
     public IUserSettingsService UserSettingsService { get; private set; } = null!;
 
     public ScoreAuditionService? AuditionService { get; private set; }
 
     public MidiBatchConversionService MidiBatchConversionService { get; private set; } = null!;
+
+    public IOcrAddonService OcrAddonService { get; private set; } = null!;
 
     public App()
     {
@@ -59,6 +67,12 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Set this before creating any HWND or touching taskbar APIs. The OCR
+        // engine uses a different explicit ID so its short-lived process never
+        // causes Windows to rebuild the main window's application group.
+        var appIdentityConfigured = WindowsAppIdentity.TrySetCurrentProcess(
+            WindowsAppIdentity.MainApplicationId);
+
         _singleInstance = new SingleInstanceCoordinator();
         var startupScorePath = FindSupportedStartupPath(e.Args);
         if (!_singleInstance.TryAcquire())
@@ -92,10 +106,16 @@ public partial class App : System.Windows.Application
 
         AppLogger.Initialize();
         AppLogger.Info("Application startup began; primary single-instance lock acquired.");
+        if (!appIdentityConfigured)
+        {
+            AppLogger.Warning("The explicit Windows AppUserModelID could not be configured.");
+        }
 
         var serializer = new JsonScoreDocumentSerializer();
         var recoveryService = new ScoreRecoveryService(serializer);
         UserSettingsService = new UserSettingsService();
+        NotificationService = new WindowsNotificationService();
+        TaskbarProgressService = new WindowsTaskbarProgressService();
         var themeService = new ThemeService();
         var localizationService = new LocalizationService();
         var appearance = UserSettingsService.Current.Appearance;
@@ -129,6 +149,8 @@ public partial class App : System.Windows.Application
             serializer);
         var midiScoreImporter = new DryWetMidiScoreImporter();
         MidiBatchConversionService = new MidiBatchConversionService(midiScoreImporter, serializer);
+        OcrAddonService = new ExternalOcrAddonService(
+            Path.Combine(AppContext.BaseDirectory, "addons", "ocr"));
         var assembly = typeof(App).Assembly;
         var informationalVersion = assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -408,6 +430,7 @@ public partial class App : System.Windows.Application
         _updateMetadataHttpClient?.Dispose();
         _updateDownloadHttpClient?.Dispose();
         _singleInstance?.Dispose();
+        NotificationService?.Dispose();
         base.OnExit(e);
     }
 
