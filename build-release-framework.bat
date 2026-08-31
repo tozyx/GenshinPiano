@@ -3,7 +3,7 @@ setlocal
 pushd "%~dp0"
 
 set "VERSION=%~1"
-if not defined VERSION set "VERSION=3.0.1"
+if not defined VERSION set "VERSION=3.0.2"
 set "PUBLISH_DIR=%~dp0publish\GenshinPiano-win-x64-framework"
 set "SONGS_DIR=%~dp0publish\songs"
 set "ZIP_PATH=%~dp0publish\GenshinPiano-%VERSION%-win-x64-framework.zip"

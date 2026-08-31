@@ -36,6 +36,15 @@
     <system:String x:Key="Ocr_Title">OCR 曲谱识别-beta</system:String>
     <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 附加包。请将附加包解压到：{0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR 附加包已就绪，引擎版本 {0}</system:String>
+    <system:String x:Key="Ocr_DownloadAddon">下载附加包</system:String>
+    <system:String x:Key="Ocr_CheckAddonUpdate">检查组件更新</system:String>
+    <system:String x:Key="Ocr_NetworkDisabled">联网功能已关闭，请先在“设置”中允许联网。</system:String>
+    <system:String x:Key="Ocr_AddonChecking">正在从 GitCode 与 GitHub 检查 OCR 附加包…</system:String>
+    <system:String x:Key="Ocr_AddonDownloading">正在下载 OCR 附加包… {0:P0}</system:String>
+    <system:String x:Key="Ocr_AddonInstalled">OCR 附加包 {0} 已从 {1} 安装完成。</system:String>
+    <system:String x:Key="Ocr_AddonCurrent">OCR 附加包已是最新版本 {0}（来源：{1}）。</system:String>
+    <system:String x:Key="Ocr_AddonDownloadCancelled">OCR 附加包下载已取消，稍后可断点续传。</system:String>
+    <system:String x:Key="Ocr_AddonDownloadFailed">OCR 附加包下载或安装失败：{0}</system:String>
     <system:String x:Key="Ocr_Image">曲谱图片</system:String>
     <system:String x:Key="Ocr_NotSelected">尚未选择</system:String>
     <system:String x:Key="Ocr_Browse">浏览…</system:String>

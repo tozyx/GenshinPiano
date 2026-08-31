@@ -42,6 +42,8 @@ public partial class App : System.Windows.Application
 
     public IOcrAddonService OcrAddonService { get; private set; } = null!;
 
+    public OcrAddonPackageManager OcrAddonPackageManager { get; private set; } = null!;
+
     public App()
     {
         DispatcherUnhandledException += (_, args) =>
@@ -169,6 +171,30 @@ public partial class App : System.Windows.Application
             AppContext.BaseDirectory,
             "config",
             "update-simulation.json");
+        _updateMetadataHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        _updateDownloadHttpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        var publicKeyResource = GetResourceStream(
+            new Uri("/Assets/Security/UpdateSigningPublicKey.xml", UriKind.Relative)) ??
+            throw new InvalidOperationException("The update signing public key resource is missing.");
+        using var publicKeyReader = new StreamReader(publicKeyResource.Stream);
+        var signedPackageVerifier = new SignedUpdatePackageVerifier(publicKeyReader.ReadToEnd());
+        var ocrSource = new RacingUpdateSource(
+        [
+            new OcrAddonReleaseSource(
+                _updateMetadataHttpClient, "GitCode",
+                new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases")),
+            new OcrAddonReleaseSource(
+                _updateMetadataHttpClient, "GitHub",
+                new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases")),
+        ], diagnostic: AppLogger.Info);
+        OcrAddonPackageManager = new OcrAddonPackageManager(
+            ocrSource,
+            new ResumableUpdatePackageDownloader(
+                _updateDownloadHttpClient,
+                Path.Combine(AppContext.BaseDirectory, "update-cache", "downloads", "ocr")),
+            signedPackageVerifier,
+            OcrAddonService,
+            Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar));
         IUpdateSource updateSource;
         IUpdatePackageDownloader updateDownloader;
         IUpdatePackageVerifier updateVerifier;
@@ -180,14 +206,6 @@ public partial class App : System.Windows.Application
         }
         else
         {
-            _updateMetadataHttpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(15),
-            };
-            _updateDownloadHttpClient = new HttpClient
-            {
-                Timeout = Timeout.InfiniteTimeSpan,
-            };
             updateSource = new RacingUpdateSource(
             [
                 new ReleaseMirrorUpdateSource(
@@ -206,11 +224,7 @@ public partial class App : System.Windows.Application
             updateDownloader = new ResumableUpdatePackageDownloader(
                 _updateDownloadHttpClient,
                 Path.Combine(AppContext.BaseDirectory, "update-cache", "downloads"));
-            var publicKeyResource = GetResourceStream(
-                new Uri("/Assets/Security/UpdateSigningPublicKey.xml", UriKind.Relative)) ??
-                throw new InvalidOperationException("The update signing public key resource is missing.");
-            using var publicKeyReader = new StreamReader(publicKeyResource.Stream);
-            updateVerifier = new SignedUpdatePackageVerifier(publicKeyReader.ReadToEnd());
+            updateVerifier = signedPackageVerifier;
         }
         var updateCoordinator = new UpdateCoordinator(
             currentVersion,

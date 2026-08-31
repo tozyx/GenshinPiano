@@ -28,13 +28,11 @@ GenshinPiano v3 is a Windows application for arranging and performing music with
 - .NET 10 SDK
 - Visual Studio 2026 with the **.NET desktop development** workload, or another IDE with WPF support
 
-## Build
+## How to build
 
-```powershell
-dotnet restore
-dotnet build GenshinPiano.sln
-dotnet test GenshinPiano.sln
-```
+For development setup, debugging, tests, Release publishing, update signing, and OCR add-on packaging, see:
+
+[Development and build guide](docs/BUILDING.md#english)
 
 ## Portable Configuration
 

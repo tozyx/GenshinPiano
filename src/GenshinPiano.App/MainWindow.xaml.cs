@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private bool _isLocalAuditionPlaying;
     private MainWindowViewModel? _subscribedViewModel;
     private PlaybackMonitorWindow? _playbackMonitorWindow;
+    private OcrImportDialog? _ocrImportDialog;
     private bool _workspaceFileSelectionBusy;
     private bool _suppressWorkspaceFileOpen;
     private bool _scoreSearchClosing;
@@ -1114,12 +1115,38 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_ocrImportDialog is { IsVisible: true } existingDialog)
+        {
+            if (existingDialog.WindowState == WindowState.Minimized)
+            {
+                existingDialog.WindowState = WindowState.Normal;
+            }
+
+            existingDialog.Activate();
+            return;
+        }
+
         var dialog = new OcrImportDialog(
             app.OcrAddonService,
+            app.OcrAddonPackageManager,
             app.UserSettingsService,
             app.NotificationService,
-            app.TaskbarProgressService) { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.Result?.Score is not { } score ||
+            app.TaskbarProgressService);
+        _ocrImportDialog = dialog;
+        bool accepted;
+        try
+        {
+            accepted = await dialog.ShowAsync(this);
+        }
+        finally
+        {
+            if (ReferenceEquals(_ocrImportDialog, dialog))
+            {
+                _ocrImportDialog = null;
+            }
+        }
+
+        if (!accepted || dialog.Result?.Score is not { } score ||
             dialog.ImagePath is not { } imagePath)
         {
             return;

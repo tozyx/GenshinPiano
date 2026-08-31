@@ -12,23 +12,31 @@ namespace GenshinPiano.App.Dialogs;
 public partial class OcrImportDialog : Window
 {
     private readonly IOcrAddonService _service;
+    private readonly OcrAddonPackageManager _packageManager;
     private readonly IUserSettingsService _settings;
     private readonly WindowsNotificationService _notifications;
     private readonly WindowsTaskbarProgressService _taskbarProgress;
     private CancellationTokenSource? _analysisCancellation;
+    private CancellationTokenSource? _downloadCancellation;
+    private readonly TaskCompletionSource<bool> _completion = new(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool _accepted;
 
     public OcrImportDialog(
         IOcrAddonService service,
+        OcrAddonPackageManager packageManager,
         IUserSettingsService settings,
         WindowsNotificationService notifications,
         WindowsTaskbarProgressService taskbarProgress)
     {
         _service = service;
+        _packageManager = packageManager;
         _settings = settings;
         _notifications = notifications;
         _taskbarProgress = taskbarProgress;
         InitializeComponent();
         Closing += OnClosing;
+        Closed += OnClosed;
         UpdateAddonStatus();
     }
 
@@ -38,13 +46,75 @@ public partial class OcrImportDialog : Window
 
     private bool IsAddonAvailable => _service.FindInstalledAddon() is not null;
 
+    public Task<bool> ShowAsync(Window owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (IsVisible)
+        {
+            Activate();
+            return _completion.Task;
+        }
+
+        Owner = owner;
+        Show();
+        Activate();
+        return _completion.Task;
+    }
+
     private void UpdateAddonStatus()
     {
         var addon = _service.FindInstalledAddon();
         AddonStatusText.Text = addon is null
             ? string.Format(GetText("Ocr_AddonMissing"), Path.Combine(AppContext.BaseDirectory, "addons", "ocr"))
             : string.Format(GetText("Ocr_AddonReady"), addon.EngineVersion);
+        DownloadAddonButton.Content = GetText(addon is null ? "Ocr_DownloadAddon" : "Ocr_CheckAddonUpdate");
+        DownloadAddonButton.IsEnabled = _downloadCancellation is null && _settings.Current.Update.NetworkAccessEnabled;
         UpdateAnalyzeState();
+    }
+
+    private async void DownloadAddonButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.Current.Update.NetworkAccessEnabled)
+        {
+            ResultText.Text = GetText("Ocr_NetworkDisabled");
+            return;
+        }
+
+        _downloadCancellation = new CancellationTokenSource();
+        DownloadAddonButton.IsEnabled = false;
+        AnalyzeButton.IsEnabled = false;
+        AnalysisProgress.Value = 0;
+        ResultText.Text = GetText("Ocr_AddonChecking");
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                AnalysisProgress.Value = value;
+                _taskbarProgress.SetProgress(Math.Max(0.01, value));
+                ResultText.Text = string.Format(GetText("Ocr_AddonDownloading"), value);
+            });
+            var result = await _packageManager.DownloadAndInstallAsync(
+                progress, _downloadCancellation.Token);
+            ResultText.Text = string.Format(
+                GetText(result.Updated ? "Ocr_AddonInstalled" : "Ocr_AddonCurrent"),
+                result.Version, result.SourceName);
+        }
+        catch (OperationCanceledException)
+        {
+            ResultText.Text = GetText("Ocr_AddonDownloadCancelled");
+        }
+        catch (Exception exception)
+        {
+            ResultText.Text = string.Format(GetText("Ocr_AddonDownloadFailed"), exception.Message);
+            AppLogger.Warning($"OCR add-on download failed: {exception}");
+        }
+        finally
+        {
+            _downloadCancellation?.Dispose();
+            _downloadCancellation = null;
+            _taskbarProgress.Clear();
+            UpdateAddonStatus();
+        }
     }
 
     private void Browse_OnClick(object sender, RoutedEventArgs e)
@@ -151,7 +221,7 @@ public partial class OcrImportDialog : Window
 
     private void SetBusy(bool busy)
     {
-        AnalyzeButton.IsEnabled = !busy && IsAddonAvailable && ImagePath is not null;
+        AnalyzeButton.IsEnabled = !busy && _downloadCancellation is null && IsAddonAvailable && ImagePath is not null;
         NotationComboBox.IsEnabled = !busy;
         WatermarkComboBox.IsEnabled = !busy;
         AccompanimentCheckBox.IsEnabled = !busy;
@@ -174,13 +244,20 @@ public partial class OcrImportDialog : Window
     }
 
     private void UpdateAnalyzeState() =>
-        AnalyzeButton.IsEnabled = _analysisCancellation is null && IsAddonAvailable && ImagePath is not null;
+        AnalyzeButton.IsEnabled = _analysisCancellation is null && _downloadCancellation is null &&
+                                  IsAddonAvailable && ImagePath is not null;
 
     private void CancelButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (_analysisCancellation is not null)
         {
             _analysisCancellation.Cancel();
+            return;
+        }
+
+        if (_downloadCancellation is not null)
+        {
+            _downloadCancellation.Cancel();
             return;
         }
 
@@ -194,7 +271,7 @@ public partial class OcrImportDialog : Window
             return;
         }
 
-        DialogResult = true;
+        _accepted = true;
         Close();
     }
 
@@ -210,14 +287,18 @@ public partial class OcrImportDialog : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (_analysisCancellation is null)
+        if (_analysisCancellation is null && _downloadCancellation is null)
         {
             return;
         }
 
         e.Cancel = true;
-        _analysisCancellation.Cancel();
+        _analysisCancellation?.Cancel();
+        _downloadCancellation?.Cancel();
     }
+
+    private void OnClosed(object? sender, EventArgs e) =>
+        _completion.TrySetResult(_accepted);
 
     private static string GetText(string key) =>
         System.Windows.Application.Current.TryFindResource(key) as string ?? key;

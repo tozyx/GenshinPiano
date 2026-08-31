@@ -2,5 +2,6 @@
   "schemaVersion": 1,
   "protocolVersion": 1,
   "engineVersion": "0.7.0",
-  "executable": "GenshinPiano.Ocr.Engine.exe"
+  "executable": "GPianoOcrEngine.exe",
+  "launchMode": "file"
 }

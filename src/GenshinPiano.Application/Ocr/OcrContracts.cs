@@ -30,6 +30,12 @@ public enum OcrProgressStage
     ScoreReconstruction,
 }
 
+public enum OcrAddonLaunchMode
+{
+    Stdio,
+    File,
+}
+
 public sealed record OcrProgressUpdate(OcrProgressStage Stage, double Progress);
 
 public sealed record OcrAnalysisRequest(
@@ -52,7 +58,8 @@ public sealed record OcrAnalysisResult(
 public sealed record OcrAddonDescriptor(
     string EngineVersion,
     int ProtocolVersion,
-    string ExecutablePath);
+    string ExecutablePath,
+    OcrAddonLaunchMode LaunchMode = OcrAddonLaunchMode.Stdio);
 
 public interface IOcrAddonService
 {

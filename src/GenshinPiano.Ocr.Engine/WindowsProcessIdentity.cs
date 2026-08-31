@@ -4,7 +4,7 @@ namespace GenshinPiano.Ocr.Engine;
 
 internal static class WindowsProcessIdentity
 {
-    private const string OcrApplicationId = "tozyx.GenshinPiano.OcrEngine";
+    private const string OcrApplicationId = "tozyx.GPianoOcrEngine";
 
     public static void Configure()
     {

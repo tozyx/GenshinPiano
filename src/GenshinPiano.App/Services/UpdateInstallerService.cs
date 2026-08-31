@@ -8,7 +8,9 @@ namespace GenshinPiano.App.Services;
 
 public sealed class UpdateInstallerService
 {
-    private static readonly string[] PreservedEntries = ["config", "songs", "logs", "update-cache"];
+    // Optional components have their own lifecycle and are deliberately not shipped in the
+    // application archive. Preserve them when the application updater swaps the installation.
+    private static readonly string[] PreservedEntries = ["config", "songs", "logs", "update-cache", "addons"];
 
     public static bool HasRollback => FindLatestRollback() is not null;
 

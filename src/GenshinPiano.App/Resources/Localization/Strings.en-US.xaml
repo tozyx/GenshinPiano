@@ -36,6 +36,15 @@
     <system:String x:Key="Ocr_Title">OCR score recognition - beta</system:String>
     <system:String x:Key="Ocr_AddonMissing">No compatible OCR add-on is installed. Extract the add-on to: {0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR add-on ready, engine version {0}</system:String>
+    <system:String x:Key="Ocr_DownloadAddon">Download add-on</system:String>
+    <system:String x:Key="Ocr_CheckAddonUpdate">Check component update</system:String>
+    <system:String x:Key="Ocr_NetworkDisabled">Network access is disabled. Enable it in Settings first.</system:String>
+    <system:String x:Key="Ocr_AddonChecking">Checking GitCode and GitHub for the OCR add-on…</system:String>
+    <system:String x:Key="Ocr_AddonDownloading">Downloading OCR add-on… {0:P0}</system:String>
+    <system:String x:Key="Ocr_AddonInstalled">OCR add-on {0} was installed from {1}.</system:String>
+    <system:String x:Key="Ocr_AddonCurrent">OCR add-on {0} is already current (source: {1}).</system:String>
+    <system:String x:Key="Ocr_AddonDownloadCancelled">OCR add-on download cancelled. It can resume later.</system:String>
+    <system:String x:Key="Ocr_AddonDownloadFailed">OCR add-on download or installation failed: {0}</system:String>
     <system:String x:Key="Ocr_Image">Score image</system:String>
     <system:String x:Key="Ocr_NotSelected">Not selected</system:String>
     <system:String x:Key="Ocr_Browse">Browse…</system:String>

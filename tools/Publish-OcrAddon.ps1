@@ -42,7 +42,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "OCR add-on publish failed with exit code $LASTEXITCODE."
 }
 
-$enginePath = Join-Path $addonPublishDirectory "GenshinPiano.Ocr.Engine.exe"
+$enginePath = Join-Path $addonPublishDirectory "GPianoOcrEngine.exe"
 $manifestPath = Join-Path $addonPublishDirectory "manifest.json"
 if (-not (Test-Path -LiteralPath $enginePath -PathType Leaf) -or
     -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {

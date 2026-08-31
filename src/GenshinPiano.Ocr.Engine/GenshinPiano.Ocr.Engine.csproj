@@ -1,17 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!--
-      The OCR engine communicates exclusively through redirected stdio.  It is
-      intentionally built as a Windows executable so launching the add-on does
-      not create a transient Console Window Host or make Task Manager move the
-      main application between process groups.  Redirected stdin/stdout/stderr
-      remain available to ExternalOcrAddonService.
+      The OCR engine communicates through file IPC, with redirected stdio kept
+      for compatibility with older hosts. It is intentionally built as a
+      Windows executable so launching the add-on does not create a transient
+      Console Window Host. Its executable and version
+      metadata deliberately avoid the main GenshinPiano process identity so
+      Windows Task Manager does not fold the short-lived OCR worker into the
+      main application's process group.
     -->
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <AssemblyName>GenshinPiano.Ocr.Engine</AssemblyName>
+    <AssemblyName>GPianoOcrEngine</AssemblyName>
     <RootNamespace>GenshinPiano.Ocr.Engine</RootNamespace>
+    <AssemblyTitle>GPiano OCR Engine</AssemblyTitle>
+    <Product>GPiano OCR Add-on</Product>
+    <Description>GPiano OCR Engine</Description>
+    <Company>tozyx</Company>
+    <Authors>tozyx</Authors>
     <Version>0.7.0</Version>
   </PropertyGroup>
   <ItemGroup>

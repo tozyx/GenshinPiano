@@ -10,6 +10,47 @@ namespace GenshinPiano.Core.Tests;
 public sealed class UpdateInfrastructureTests
 {
     [Fact]
+    public async Task OcrAddonSource_SelectsNewestSignedComponentIndependentOfReleaseTag()
+    {
+        const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        var signature = Convert.ToBase64String(new byte[384]);
+        var releases = """
+            [{
+              "tag_name":"v3.0.1",
+              "prerelease":false,
+              "assets":[
+                {"name":"ocr-addons-0.6.0-win-x64.zip","size":60,"browser_download_url":"https://download.test/old.zip"},
+                {"name":"ocr-addons-0.6.0-win-x64.zip.sha256","browser_download_url":"https://download.test/old.sha256"},
+                {"name":"ocr-addons-0.6.0-win-x64.zip.sig","browser_download_url":"https://download.test/old.sig"},
+                {"name":"ocr-addons-0.7.0-win-x64.zip","size":70,"browser_download_url":"https://download.test/new.zip"},
+                {"name":"ocr-addons-0.7.0-win-x64.zip.sha256","browser_download_url":"https://download.test/new.sha256"},
+                {"name":"ocr-addons-0.7.0-win-x64.zip.sig","browser_download_url":"https://download.test/new.sig"}
+              ]
+            }]
+            """;
+        using var client = new HttpClient(new StubHttpHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal))
+                return TextResponse(hash);
+            if (request.RequestUri.AbsolutePath.EndsWith(".sig", StringComparison.Ordinal))
+                return TextResponse(signature);
+            return JsonResponse(releases);
+        }));
+
+        var source = new OcrAddonReleaseSource(
+            client, "test", new Uri("https://api.test/releases"));
+        var manifest = await source.GetLatestAsync("stable", CancellationToken.None);
+
+        Assert.NotNull(manifest);
+        Assert.Equal("0.7.0", manifest.Version.ToString());
+        var package = Assert.Single(manifest.Packages);
+        Assert.Equal(GenshinPiano.Application.Updates.UpdatePackageKind.OptionalComponent, package.Kind);
+        Assert.True(package.Optional);
+        Assert.Equal("ocr-addons-0.7.0-win-x64.zip", package.FileName);
+        Assert.Equal(70, package.Size);
+    }
+
+    [Fact]
     public async Task ReleaseSource_SelectsMatchingSelfContainedAssetAndChecksum()
     {
         const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
