@@ -47,8 +47,17 @@ public partial class MidiImportDialog : Window
             IgnorePercussionCheckBox.IsChecked == true,
             policy,
             transpose,
-            selected);
+            selected,
+            PreserveOriginalPitchCheckBox.IsChecked == true);
         DialogResult = true;
+    }
+
+    private void PreserveOriginalPitchCheckBox_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (OutOfRangeComboBox is not null)
+        {
+            OutOfRangeComboBox.IsEnabled = PreserveOriginalPitchCheckBox.IsChecked != true;
+        }
     }
 
     private void CancelButton_OnClick(object sender, RoutedEventArgs e) => DialogResult = false;

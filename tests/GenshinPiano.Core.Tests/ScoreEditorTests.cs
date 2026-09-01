@@ -153,6 +153,26 @@ public sealed class ScoreEditorTests
     }
 
     [Fact]
+    public void MapToGenshinRange_OctaveFoldsPlayableNotesAndDropsSemitones()
+    {
+        var low = new NoteEvent { Pitch = 36, DurationTick = 480 };
+        var semitone = new NoteEvent { Pitch = 61, StartTick = 480, DurationTick = 480 };
+        var high = new NoteEvent { Pitch = 84, StartTick = 960, DurationTick = 480 };
+        var score = ScoreDocument.CreateEmpty() with
+        {
+            Tracks = [new ScoreTrack { Id = "main", Notes = [low, semitone, high] }],
+        };
+
+        var result = ScoreEditor.MapToGenshinRange(score);
+
+        Assert.Equal(2, result.MappedNotes);
+        Assert.Equal(1, result.IgnoredNotes);
+        Assert.Equal([48, 72], result.Score.Tracks[0].Notes.Select(note => note.Pitch));
+        Assert.Equal([low.Id, high.Id], result.Score.Tracks[0].Notes.Select(note => note.Id));
+        Assert.Equal(OutOfRangePolicy.Reject, result.Score.Playback.OutOfRangePolicy);
+    }
+
+    [Fact]
     public void QualityAnalyzer_ReportsMappingDuplicatesOverlapsAndShortNotes()
     {
         var score = ScoreDocument.CreateEmpty() with

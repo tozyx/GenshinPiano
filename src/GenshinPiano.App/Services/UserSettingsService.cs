@@ -67,6 +67,12 @@ public sealed record EditorUserSettings
     public int AuditionVolume { get; init; } = 80;
 
     public string PianoRollFrameRate { get; init; } = "VSync";
+
+    public string PianoRollLayoutMode { get; init; } = "Genshin21";
+
+    public double PianoRollPixelsPerBeat { get; init; } = 112;
+
+    public double PianoRollRowHeight { get; init; } = 24;
 }
 
 public interface IUserSettingsService
@@ -92,6 +98,12 @@ public interface IUserSettingsService
     void SetAuditionVolume(int value);
 
     void SetPianoRollFrameRate(string value);
+
+    void SetPianoRollLayoutMode(string value);
+
+    void SetPianoRollPixelsPerBeat(double value);
+
+    void SetPianoRollRowHeight(double value);
 
     void SetScoreFolder(string? path);
 
@@ -227,6 +239,34 @@ public sealed class UserSettingsService : IUserSettingsService
         }
 
         Update(Current with { Editor = Current.Editor with { PianoRollFrameRate = value } });
+    }
+
+    public void SetPianoRollLayoutMode(string value)
+    {
+        if (!IsValidPianoRollLayoutMode(value) || Current.Editor.PianoRollLayoutMode == value)
+        {
+            return;
+        }
+
+        Update(Current with { Editor = Current.Editor with { PianoRollLayoutMode = value } });
+    }
+
+    public void SetPianoRollPixelsPerBeat(double value)
+    {
+        value = Math.Clamp(value, 48, 320);
+        if (Math.Abs(Current.Editor.PianoRollPixelsPerBeat - value) >= 0.01)
+        {
+            Update(Current with { Editor = Current.Editor with { PianoRollPixelsPerBeat = value } });
+        }
+    }
+
+    public void SetPianoRollRowHeight(double value)
+    {
+        value = Math.Clamp(value, 18, 42);
+        if (Math.Abs(Current.Editor.PianoRollRowHeight - value) >= 0.01)
+        {
+            Update(Current with { Editor = Current.Editor with { PianoRollRowHeight = value } });
+        }
     }
 
     public void SetScoreFolder(string? path)
@@ -366,6 +406,15 @@ public sealed class UserSettingsService : IUserSettingsService
                 PianoRollFrameRate = IsValidPianoRollFrameRate(editor.PianoRollFrameRate)
                     ? editor.PianoRollFrameRate
                     : defaults.PianoRollFrameRate,
+                PianoRollLayoutMode = IsValidPianoRollLayoutMode(editor.PianoRollLayoutMode)
+                    ? editor.PianoRollLayoutMode
+                    : defaults.PianoRollLayoutMode,
+                PianoRollPixelsPerBeat = double.IsFinite(editor.PianoRollPixelsPerBeat)
+                    ? Math.Clamp(editor.PianoRollPixelsPerBeat, 48, 320)
+                    : defaults.PianoRollPixelsPerBeat,
+                PianoRollRowHeight = double.IsFinite(editor.PianoRollRowHeight)
+                    ? Math.Clamp(editor.PianoRollRowHeight, 18, 42)
+                    : defaults.PianoRollRowHeight,
             },
             Appearance = appearance with
             {
@@ -451,4 +500,7 @@ public sealed class UserSettingsService : IUserSettingsService
 
     private static bool IsValidPianoRollFrameRate(string? value) =>
         value is "30" or "60" or "VSync";
+
+    private static bool IsValidPianoRollLayoutMode(string? value) =>
+        value is "Genshin21" or "Piano88" or "UsedRange";
 }

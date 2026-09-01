@@ -530,6 +530,22 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <ComboBox x:Name="PitchLayoutComboBox"
+                              Width="82"
+                              Height="30"
+                              ToolTip="{DynamicResource Editor_PitchLayout}"
+                              SelectedIndex="0"
+                              SelectionChanged="PitchLayoutComboBox_OnSelectionChanged">
+                        <ComboBoxItem Content="{DynamicResource Editor_Layout21}" Tag="Genshin21" />
+                        <ComboBoxItem Content="{DynamicResource Editor_Layout88}" Tag="Piano88" />
+                        <ComboBoxItem Content="{DynamicResource Editor_LayoutUsed}" Tag="UsedRange" />
+                    </ComboBox>
+                    <TextBlock x:Name="HiddenNotesText"
+                               Margin="6,0,8,0"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{DynamicResource AccentBrush}"
+                               Visibility="Collapsed" />
                     <TextBlock Text="{DynamicResource Editor_Grid}"
                                Margin="0,0,6,0"
                                VerticalAlignment="Center"
@@ -565,21 +581,6 @@
                     <Border Width="1" Height="20" Margin="12,0,12,0"
                             VerticalAlignment="Center"
                             Background="{DynamicResource BorderBrush}" />
-                    <TextBlock Text="{DynamicResource Editor_Articulation}"
-                               Margin="0,0,6,0"
-                               VerticalAlignment="Center"
-                               FontSize="12"
-                               Foreground="{DynamicResource SecondaryTextBrush}" />
-                    <ComboBox x:Name="ArticulationComboBox"
-                              Width="108"
-                              Height="30"
-                              SelectedIndex="1"
-                              SelectionChanged="ArticulationComboBox_OnSelectionChanged">
-                        <ComboBoxItem Content="{DynamicResource Editor_Legato}" Tag="Legato" />
-                        <ComboBoxItem Content="{DynamicResource Editor_Natural}" Tag="Natural" />
-                        <ComboBoxItem Content="{DynamicResource Editor_Detached}" Tag="Detached" />
-                        <ComboBoxItem Content="{DynamicResource Editor_Staccato}" Tag="Staccato" />
-                    </ComboBox>
                     <ComboBox x:Name="AuditionInstrumentComboBox"
                               Width="88"
                               Height="30"
@@ -607,7 +608,9 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <Grid>
                     <local:PianoRollKeyboard x:Name="KeyboardLabels"
+                                             Score="{Binding Score, ElementName=Root}"
                                              RowHeight="{Binding RowHeight, ElementName=Surface}"
+                                             PitchLayoutMode="{Binding PitchLayoutMode, ElementName=Surface}"
                                              Background="{DynamicResource PanelBackgroundBrush}"
                                              Foreground="{DynamicResource PrimaryTextBrush}"
                                              BorderBrush="{DynamicResource BorderBrush}" />
@@ -676,7 +679,11 @@
                         <Path Width="10" Height="7"
                               HorizontalAlignment="Center" VerticalAlignment="Top"
                               Stretch="Fill" Fill="{DynamicResource AccentBrush}"
-                              Data="M0,0 L10,0 L5,7 Z" />
+                              Data="M0,0 L10,0 L5,7 Z">
+                            <Path.RenderTransform>
+                                <TranslateTransform x:Name="PlaybackCursorHeadTransform" />
+                            </Path.RenderTransform>
+                        </Path>
                     </Grid>
                 </Grid>
             </ScrollViewer>

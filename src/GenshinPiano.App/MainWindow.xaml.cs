@@ -756,6 +756,16 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (dialog.MapToGenshin21)
+        {
+            var result = PianoRollEditor.MapToGenshinRange();
+            if (result is not null)
+            {
+                viewModel.NotifyMappedToGenshinRange(result.MappedNotes, result.IgnoredNotes);
+            }
+            return;
+        }
+
         var cleanupResult = PianoRollEditor.ApplyScoreCleanup(dialog.CleanupOptions);
         if (cleanupResult is not null)
         {
@@ -778,6 +788,7 @@ public partial class MainWindow : Window
         if (sender is MenuItem menuItem && ReferenceEquals(e.OriginalSource, menuItem))
         {
             UpdatePitchLabelMenuChecks();
+            UpdateArticulationMenuChecks();
         }
     }
 
@@ -1066,6 +1077,25 @@ public partial class MainWindow : Window
         PitchNumbersOnlyMenuItem.IsChecked = mode == PitchLabelMode.NumberedOnly;
     }
 
+    private void ArticulationMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string tag } &&
+            Enum.TryParse<NoteArticulation>(tag, out var articulation))
+        {
+            PianoRollEditor.SetArticulation(articulation);
+            UpdateArticulationMenuChecks();
+        }
+    }
+
+    private void UpdateArticulationMenuChecks()
+    {
+        var articulation = PianoRollEditor.CurrentArticulation;
+        LegatoArticulationMenuItem.IsChecked = articulation == NoteArticulation.Legato;
+        NaturalArticulationMenuItem.IsChecked = articulation == NoteArticulation.Natural;
+        DetachedArticulationMenuItem.IsChecked = articulation == NoteArticulation.Detached;
+        StaccatoArticulationMenuItem.IsChecked = articulation == NoteArticulation.Staccato;
+    }
+
     private void ImportMidiBatchMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
         if (System.Windows.Application.Current is not App app)
@@ -1146,6 +1176,16 @@ public partial class MainWindow : Window
             }
         }
 
+        // OpenFileDialog is a native owned window. Cancelling it and then closing the non-modal
+        // OCR window can otherwise return foreground activation to an unrelated application.
+        // Let both native and WPF close messages drain before restoring the main window.
+        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
+        if (IsLoaded && IsVisible)
+        {
+            Activate();
+            Focus();
+        }
+
         if (!accepted || dialog.Result?.Score is not { } score ||
             dialog.ImagePath is not { } imagePath)
         {
@@ -1179,6 +1219,10 @@ public partial class MainWindow : Window
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         TryHandleFileShortcut(e);
+        if (!e.Handled)
+        {
+            PianoRollEditor.TryHandleEditorShortcut(e);
+        }
     }
 
     private void InputManager_OnPreProcessInput(object sender, PreProcessInputEventArgs e)

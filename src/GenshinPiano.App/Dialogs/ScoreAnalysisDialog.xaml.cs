@@ -32,6 +32,8 @@ public partial class ScoreAnalysisDialog : Window
 
     public ScoreCleanupOptions CleanupOptions { get; private set; }
 
+    public bool MapToGenshin21 { get; private set; }
+
     private void CleanupOption_OnChanged(object sender, RoutedEventArgs e) => UpdateCleanupButton();
 
     private void UpdateCleanupButton()
@@ -80,6 +82,13 @@ public partial class ScoreAnalysisDialog : Window
         }
 
         KeySteps = keySteps;
+        DialogResult = true;
+        Close();
+    }
+
+    private void MapToGenshin21_OnClick(object sender, RoutedEventArgs e)
+    {
+        MapToGenshin21 = true;
         DialogResult = true;
         Close();
     }

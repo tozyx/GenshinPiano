@@ -386,6 +386,13 @@
                               IsCheckable="True"
                               Click="PitchLabelMenuItem_OnClick" />
                 </MenuItem>
+                <MenuItem Header="{DynamicResource Editor_Articulation}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem x:Name="LegatoArticulationMenuItem" Header="{DynamicResource Editor_Legato}" Tag="Legato" IsCheckable="True" Click="ArticulationMenuItem_OnClick" />
+                    <MenuItem x:Name="NaturalArticulationMenuItem" Header="{DynamicResource Editor_Natural}" Tag="Natural" IsCheckable="True" Click="ArticulationMenuItem_OnClick" />
+                    <MenuItem x:Name="DetachedArticulationMenuItem" Header="{DynamicResource Editor_Detached}" Tag="Detached" IsCheckable="True" Click="ArticulationMenuItem_OnClick" />
+                    <MenuItem x:Name="StaccatoArticulationMenuItem" Header="{DynamicResource Editor_Staccato}" Tag="Staccato" IsCheckable="True" Click="ArticulationMenuItem_OnClick" />
+                </MenuItem>
                 <Separator />
                 <MenuItem Header="{DynamicResource Editor_SelectAllNotes}"
                           InputGestureText="Ctrl+A"

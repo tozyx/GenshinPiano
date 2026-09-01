@@ -39,17 +39,30 @@ if not exist "%SIGNING_KEY%" (
 
 echo Cleaning previous publish output...
 
-if exist "%PUBLISH_DIR%" rmdir /s /q "%PUBLISH_DIR%"
+if exist "%PUBLISH_DIR%" (
+  echo Removing framework publish directory...
+  rmdir /s /q "%PUBLISH_DIR%"
+  if exist "%PUBLISH_DIR%" (
+    echo.
+    echo Failed to remove framework publish directory. Close any running GenshinPiano instance from:
+    echo %PUBLISH_DIR%
+    pause
+    popd
+    exit /b 1
+  )
+)
 if exist "%ZIP_PATH%" del /q "%ZIP_PATH%"
 if exist "%SHA_PATH%" del /q "%SHA_PATH%"
 if exist "%SIG_PATH%" del /q "%SIG_PATH%"
 
+echo Publishing framework-dependent application...
 dotnet publish ".\src\GenshinPiano.App\GenshinPiano.App.csproj" ^
   -c Release ^
   -r win-x64 ^
   --self-contained false ^
   -p:Version=%VERSION% ^
   -p:PublishSingleFile=true ^
+  -p:NuGetAudit=false ^
   -p:DebugType=None ^
   -p:DebugSymbols=false ^
   -o "%PUBLISH_DIR%"
@@ -63,7 +76,16 @@ if errorlevel 1 (
 )
 
 echo Publishing standalone updater...
-dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" -c Release -r win-x64 --self-contained false -p:Version=%VERSION% -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o "%PUBLISH_DIR%"
+dotnet publish ".\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" ^
+  -c Release ^
+  -r win-x64 ^
+  --self-contained false ^
+  -p:Version=%VERSION% ^
+  -p:PublishSingleFile=true ^
+  -p:NuGetAudit=false ^
+  -p:DebugType=None ^
+  -p:DebugSymbols=false ^
+  -o "%PUBLISH_DIR%"
 if errorlevel 1 (
   echo Updater publish failed.
   pause

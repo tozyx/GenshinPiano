@@ -1,3 +1,4 @@
+using GenshinPiano.Application.Abstractions;
 using GenshinPiano.Infrastructure.Midi;
 using Melanchall.DryWetMidi.Common;
 using Melanchall.DryWetMidi.Core;
@@ -7,6 +8,31 @@ namespace GenshinPiano.Core.Tests;
 
 public sealed class MidiImportTests
 {
+    [Fact]
+    public async Task Importer_PreservesNativeChromaticPitchWhenRequested()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.mid");
+        try
+        {
+            var track = new TrackChunk(
+                new NoteOnEvent((SevenBitNumber)61, (SevenBitNumber)80),
+                new NoteOffEvent((SevenBitNumber)61, (SevenBitNumber)0) { DeltaTime = 240 });
+            new MidiFile(track) { TimeDivision = new TicksPerQuarterNoteTimeDivision(480) }
+                .Write(path, overwriteFile: true);
+
+            var result = await new DryWetMidiScoreImporter().ImportAsync(
+                path,
+                new MidiImportOptions(PreserveOriginalPitch: true));
+
+            Assert.Equal(61, Assert.Single(Assert.Single(result.Score.Tracks).Notes).Pitch);
+            Assert.Equal(0, result.Report.FoldedNoteCount);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public async Task Importer_PreservesTimingAndFoldsPitchWhileIgnoringPercussion()
     {

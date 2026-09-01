@@ -228,6 +228,15 @@ public sealed class PianoRollViewModel
             : 0;
     }
 
+    public GenshinRangeMappingResult? MapToGenshinRange()
+    {
+        if (Score is null) return null;
+        var result = ScoreEditor.MapToGenshinRange(Score);
+        return (result.MappedNotes > 0 || result.IgnoredNotes > 0) && Commit(result.Score)
+            ? result
+            : null;
+    }
+
     public ScoreCleanupResult? ApplyScoreCleanup(ScoreCleanupOptions options)
     {
         if (Score is null || options == ScoreCleanupOptions.None)

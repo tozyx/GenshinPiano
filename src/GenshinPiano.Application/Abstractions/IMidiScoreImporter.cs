@@ -6,7 +6,8 @@ public sealed record MidiImportOptions(
     bool IgnorePercussion = true,
     OutOfRangePolicy OutOfRangePolicy = OutOfRangePolicy.OctaveFold,
     int Transpose = 0,
-    IReadOnlyCollection<int>? TrackIndices = null);
+    IReadOnlyCollection<int>? TrackIndices = null,
+    bool PreserveOriginalPitch = false);
 
 public sealed record MidiTrackInfo(
     int Index,

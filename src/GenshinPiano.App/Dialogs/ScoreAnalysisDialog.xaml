@@ -103,6 +103,18 @@
                 <Button x:Name="UpOctaveButton" Height="34" Margin="5,0,0,0" Content="+7" Tag="7" Style="{StaticResource AppButtonStyle}" Click="Transpose_OnClick" />
             </UniformGrid>
 
+            <TextBlock Margin="0,18,0,0"
+                       Text="{DynamicResource ScoreTools_MapTo21Title}"
+                       FontWeight="SemiBold" />
+            <TextBlock Margin="0,5,0,10"
+                       Text="{DynamicResource ScoreTools_MapTo21Description}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource SecondaryTextBrush}" />
+            <Button Width="180" Height="34" HorizontalAlignment="Left"
+                    Content="{DynamicResource ScoreTools_MapTo21Action}"
+                    Style="{StaticResource AppButtonStyle}"
+                    Click="MapToGenshin21_OnClick" />
+
             <StackPanel Margin="0,22,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Width="100" Height="36" Content="{DynamicResource Update_Close}" Style="{StaticResource PrimaryButtonStyle}" Click="Close_OnClick" />
             </StackPanel>

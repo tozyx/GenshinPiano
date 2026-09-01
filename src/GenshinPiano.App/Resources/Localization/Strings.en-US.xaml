@@ -153,6 +153,11 @@
     <system:String x:Key="Hero_Title">WPF application shell is ready</system:String>
     <system:String x:Key="Hero_Description">This version provides a unified score model and can open, validate, and save .gpiano JSON files. The piano roll and 21-key preview will be implemented here next.</system:String>
     <system:String x:Key="Editor_Grid">Snap grid</system:String>
+    <system:String x:Key="Editor_PitchLayout">Piano-roll pitch range</system:String>
+    <system:String x:Key="Editor_Layout21">21 keys</system:String>
+    <system:String x:Key="Editor_Layout88">88 keys</system:String>
+    <system:String x:Key="Editor_LayoutUsed">Range</system:String>
+    <system:String x:Key="Editor_HiddenNotes">{0} hidden</system:String>
     <system:String x:Key="Editor_NewNoteLength">New note</system:String>
     <system:String x:Key="Editor_Articulation">Articulation</system:String>
     <system:String x:Key="Editor_Legato">Legato</system:String>
@@ -252,6 +257,7 @@
     <system:String x:Key="MidiImport_Drop">Drop notes</system:String>
     <system:String x:Key="MidiImport_Reject">Stop on error</system:String>
     <system:String x:Key="MidiImport_IgnorePercussion">Ignore percussion</system:String>
+    <system:String x:Key="MidiImport_PreserveOriginalPitch">Preserve native MIDI pitches (chromatic/full range; use the 88-key or Used range view)</system:String>
     <system:String x:Key="MidiImport_SelectTrack">Select at least one track</system:String>
     <system:String x:Key="Audition_SelectionLoop">Loop the selected notes</system:String>
     <system:String x:Key="Status_ThemeChanged">Switched to the {0} theme</system:String>
@@ -317,4 +323,11 @@
     <system:String x:Key="Action_Play">Play / resume</system:String>
     <system:String x:Key="Action_Pause">Pause</system:String>
     <system:String x:Key="Action_Stop">Stop</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Title">Map automatically to 21 keys</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Description">Octave-fold notes into the Genshin 21-key range. Semitones or notes that still cannot be mapped are ignored. The entire operation can be restored with one Undo.</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Action">Map to 21 keys</system:String>
+    <system:String x:Key="Status_MappedTo21">Mapped {0} notes and ignored {1} unplayable notes</system:String>
+    <system:String x:Key="Status_PlaybackUnplayableNotes">{0} notes cannot be played in game and will be skipped</system:String>
+    <system:String x:Key="Status_PlayWaitingForTargetWithSkipped">Waiting for the game window ({0} unplayable notes will be skipped)</system:String>
+    <system:String x:Key="Status_PlayingWithSkipped">Playing {0}/{1}  Current keys: {2}  Skipping {3} unplayable notes</system:String>
 </ResourceDictionary>

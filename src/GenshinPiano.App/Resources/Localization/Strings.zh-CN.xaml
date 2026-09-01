@@ -153,6 +153,11 @@
     <system:String x:Key="Hero_Title">WPF 项目框架已建立</system:String>
     <system:String x:Key="Hero_Description">当前版本已经具备统一曲谱模型和 .gpiano JSON 的打开、校验与保存能力。下一阶段将在这里实现钢琴卷帘和 21 键预览。</system:String>
     <system:String x:Key="Editor_Grid">吸附网格</system:String>
+    <system:String x:Key="Editor_PitchLayout">卷帘音高范围</system:String>
+    <system:String x:Key="Editor_Layout21">21 键</system:String>
+    <system:String x:Key="Editor_Layout88">88 键</system:String>
+    <system:String x:Key="Editor_LayoutUsed">音域</system:String>
+    <system:String x:Key="Editor_HiddenNotes">隐藏 {0} 个</system:String>
     <system:String x:Key="Editor_NewNoteLength">新建长度</system:String>
     <system:String x:Key="Editor_Articulation">演奏法</system:String>
     <system:String x:Key="Editor_Legato">连奏</system:String>
@@ -252,6 +257,7 @@
     <system:String x:Key="MidiImport_Drop">丢弃音符</system:String>
     <system:String x:Key="MidiImport_Reject">遇到即停止</system:String>
     <system:String x:Key="MidiImport_IgnorePercussion">忽略打击乐</system:String>
+    <system:String x:Key="MidiImport_PreserveOriginalPitch">保留 MIDI 原生音高（半音和完整音域，推荐使用88键/使用音域视图）</system:String>
     <system:String x:Key="MidiImport_SelectTrack">请至少选择一个音轨</system:String>
     <system:String x:Key="Audition_SelectionLoop">循环试听选中的音符</system:String>
     <system:String x:Key="Status_ThemeChanged">已切换为{0}主题</system:String>
@@ -317,4 +323,11 @@
     <system:String x:Key="Action_Play">播放 / 继续</system:String>
     <system:String x:Key="Action_Pause">暂停</system:String>
     <system:String x:Key="Action_Stop">停止</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Title">自动映射到 21 键</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Description">将音符按八度折叠到原神 21 键音域。半音或跨度过大而无法映射的音符将被忽略。整次操作可通过一次撤销恢复。</system:String>
+    <system:String x:Key="ScoreTools_MapTo21Action">自动映射到 21 键</system:String>
+    <system:String x:Key="Status_MappedTo21">已映射 {0} 个音符，忽略 {1} 个无法演奏音符</system:String>
+    <system:String x:Key="Status_PlaybackUnplayableNotes">当前有 {0} 个音符无法在游戏中演奏，播放时将跳过</system:String>
+    <system:String x:Key="Status_PlayWaitingForTargetWithSkipped">等待原神窗口（将跳过 {0} 个不可演奏音符）</system:String>
+    <system:String x:Key="Status_PlayingWithSkipped">正在演奏 {0}/{1}　当前按键：{2}　跳过 {3} 个不可演奏音符</system:String>
 </ResourceDictionary>

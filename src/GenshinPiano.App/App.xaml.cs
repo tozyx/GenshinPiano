@@ -36,6 +36,8 @@ public partial class App : System.Windows.Application
 
     public IUserSettingsService UserSettingsService { get; private set; } = null!;
 
+    public IThemeService ThemeService { get; private set; } = null!;
+
     public ScoreAuditionService? AuditionService { get; private set; }
 
     public MidiBatchConversionService MidiBatchConversionService { get; private set; } = null!;
@@ -118,7 +120,8 @@ public partial class App : System.Windows.Application
         UserSettingsService = new UserSettingsService();
         NotificationService = new WindowsNotificationService();
         TaskbarProgressService = new WindowsTaskbarProgressService();
-        var themeService = new ThemeService();
+        ThemeService = new ThemeService();
+        var themeService = ThemeService;
         var localizationService = new LocalizationService();
         var appearance = UserSettingsService.Current.Appearance;
         if (Enum.TryParse<AppTheme>(appearance.Theme, out var configuredTheme))

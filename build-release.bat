@@ -40,12 +40,24 @@ if not exist "%SIGNING_KEY%" (
 
 echo Cleaning previous publish output...
 
-if exist "%PUBLISH_DIR%" rmdir /s /q "%PUBLISH_DIR%"
+if exist "%PUBLISH_DIR%" (
+  echo Removing self-contained publish directory...
+  rmdir /s /q "%PUBLISH_DIR%"
+  if exist "%PUBLISH_DIR%" (
+    echo.
+    echo Failed to remove publish directory. Close any running GenshinPiano instance from:
+    echo %PUBLISH_DIR%
+    pause
+    popd
+    exit /b 1
+  )
+)
 if exist "%UPDATER_PUBLISH_DIR%" rmdir /s /q "%UPDATER_PUBLISH_DIR%"
 if exist "%ZIP_PATH%" del /q "%ZIP_PATH%"
 if exist "%SHA_PATH%" del /q "%SHA_PATH%"
 if exist "%SIG_PATH%" del /q "%SIG_PATH%"
 
+echo Publishing self-contained application...
 dotnet publish ".\src\GenshinPiano.App\GenshinPiano.App.csproj" ^
   -c Release ^
   -r win-x64 ^

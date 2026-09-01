@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using GenshinPiano.Core.Playback;
+using GenshinPiano.Core.Scores;
 
 namespace GenshinPiano.App.Controls;
 
@@ -15,8 +16,19 @@ public enum PitchLabelMode
 
 public sealed class PianoRollKeyboard : Control
 {
-    private static readonly (GenshinKey Key, int Pitch)[] Rows =
-        GenshinKeyMap.All.Reverse().ToArray();
+    private IReadOnlyList<PianoRollPitchRow> _rows = PianoRollPitchLayouts.GetRows(
+        PianoRollPitchLayoutMode.Genshin21);
+
+    private IReadOnlyList<PianoRollPitchRow> Rows => _rows;
+
+    public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
+        nameof(Score),
+        typeof(ScoreDocument),
+        typeof(PianoRollKeyboard),
+        new FrameworkPropertyMetadata(
+            null,
+            FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender,
+            OnLayoutSourceChanged));
 
     public static readonly DependencyProperty RowHeightProperty = DependencyProperty.Register(
         nameof(RowHeight),
@@ -33,6 +45,15 @@ public sealed class PianoRollKeyboard : Control
         typeof(PianoRollKeyboard),
         new FrameworkPropertyMetadata(PitchLabelMode.LetterWithKey, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty PitchLayoutModeProperty = DependencyProperty.Register(
+        nameof(PitchLayoutMode),
+        typeof(PianoRollPitchLayoutMode),
+        typeof(PianoRollKeyboard),
+        new FrameworkPropertyMetadata(
+            PianoRollPitchLayoutMode.Genshin21,
+            FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender,
+            OnLayoutSourceChanged));
+
     public double RowHeight
     {
         get => (double)GetValue(RowHeightProperty);
@@ -45,9 +66,33 @@ public sealed class PianoRollKeyboard : Control
         set => SetValue(LabelModeProperty, value);
     }
 
+    public PianoRollPitchLayoutMode PitchLayoutMode
+    {
+        get => (PianoRollPitchLayoutMode)GetValue(PitchLayoutModeProperty);
+        set => SetValue(PitchLayoutModeProperty, value);
+    }
+
+    public ScoreDocument? Score
+    {
+        get => (ScoreDocument?)GetValue(ScoreProperty);
+        set => SetValue(ScoreProperty, value);
+    }
+
     protected override Size MeasureOverride(Size constraint) => new(
         72,
-        PianoRollSurface.RulerHeight + Rows.Length * RowHeight);
+        PianoRollSurface.RulerHeight + Rows.Count * RowHeight);
+
+    private static void OnLayoutSourceChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+    {
+        ((PianoRollKeyboard)dependencyObject).RefreshRows();
+    }
+
+    private void RefreshRows()
+    {
+        _rows = PianoRollPitchLayouts.GetRows(
+            PitchLayoutMode,
+            Score?.Tracks.SelectMany(track => track.Notes).Select(note => note.Pitch));
+    }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
@@ -59,13 +104,13 @@ public sealed class PianoRollKeyboard : Control
             new Point(RenderSize.Width, PianoRollSurface.RulerHeight));
 
         var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        for (var row = 0; row < Rows.Length; row++)
+        for (var row = 0; row < Rows.Count; row++)
         {
             var y = PianoRollSurface.RulerHeight + row * RowHeight;
-            if (row % 2 == 1)
+            if (Rows[row].IsBlackKey || (PitchLayoutMode == PianoRollPitchLayoutMode.Genshin21 && row % 2 == 1))
             {
                 drawingContext.DrawRectangle(
-                    WithOpacity(BorderBrush, 0.16),
+                    WithOpacity(Foreground, 0.09),
                     null,
                     new Rect(0, y, RenderSize.Width, RowHeight));
             }
@@ -87,9 +132,10 @@ public sealed class PianoRollKeyboard : Control
                 drawingContext.DrawText(
                     pitchText,
                     new Point(pitchColumnLeft, textY));
-                drawingContext.DrawText(
-                    CreateLabelText(entry.Key.ToString(), pixelsPerDip),
-                    new Point(keyColumnLeft, textY));
+                if (entry.Key is { } key)
+                {
+                    drawingContext.DrawText(CreateLabelText(key.ToString(), pixelsPerDip), new Point(keyColumnLeft, textY));
+                }
             }
             else
             {
@@ -134,13 +180,13 @@ public static class PitchLabelFormatter
             : pitchLabel;
     }
 
-    public static string FormatNoteLabel(int pitch, GenshinKey key, PitchLabelMode mode) =>
+    public static string FormatNoteLabel(int pitch, GenshinKey? key, PitchLabelMode mode) =>
         mode switch
         {
-            PitchLabelMode.LetterWithKey or PitchLabelMode.NumberedWithKey => key.ToString(),
+            PitchLabelMode.LetterWithKey or PitchLabelMode.NumberedWithKey when key is not null => key.Value.ToString(),
             PitchLabelMode.LetterOnly => GetLetterPitch(pitch),
             PitchLabelMode.NumberedOnly => GetNumberedPitch(pitch),
-            _ => key.ToString(),
+            _ => FormatPitchLabel(pitch, mode),
         };
 
     private static string GetLetterPitch(int pitch)
@@ -154,6 +200,11 @@ public static class PitchLabelFormatter
             7 => "G",
             9 => "A",
             11 => "B",
+            1 => "C#",
+            3 => "D#",
+            6 => "F#",
+            8 => "G#",
+            10 => "A#",
             _ => "?",
         };
         return $"{noteName}{pitch / 12 - 1}";
@@ -164,11 +215,16 @@ public static class PitchLabelFormatter
         var degree = (pitch % 12) switch
         {
             0 => "1",
+            1 => "1#",
             2 => "2",
+            3 => "2#",
             4 => "3",
             5 => "4",
+            6 => "4#",
             7 => "5",
+            8 => "5#",
             9 => "6",
+            10 => "6#",
             11 => "7",
             _ => "?",
         };

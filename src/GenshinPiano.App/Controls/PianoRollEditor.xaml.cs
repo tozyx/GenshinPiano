@@ -15,13 +15,15 @@ public partial class PianoRollEditor : UserControl
 {
     private static readonly double[] RhythmFactors = [4, 2, 1, 0.5, 0.25, 0.125];
 
-    private bool _updatingArticulation;
     private bool _updatingNewNoteLength;
     private bool _updatingNoteEditor;
     private bool _isDraggingGateRatioPreview;
     private double _gateRatioPercentage = 80;
     private bool _loadingSettings;
     private IUserSettingsService? _settingsService;
+    private IThemeService? _themeService;
+    private double _themeHorizontalOffset;
+    private double _themeVerticalOffset;
     private ScoreAuditionService? _auditionService;
     private CancellationTokenSource? _auditionCancellation;
     private CancellationTokenSource? _notePreviewCancellation;
@@ -34,6 +36,7 @@ public partial class PianoRollEditor : UserControl
     private Window? _ownerWindow;
     private long _auditionTick;
     private bool _continuousFollowActive;
+    private bool _playbackScrollAnimationActive;
     private long _lastFollowTick = -1;
     private ComboBoxItem? _customNewNoteLengthItem;
     private string _frameRateMode = "VSync";
@@ -63,6 +66,7 @@ public partial class PianoRollEditor : UserControl
         Surface.PlaybackSeekRequested += Surface_OnPlaybackSeekRequested;
         Surface.NoteCreated += Surface_OnNoteCreated;
         Surface.NoteRhythmPreviewChanged += Surface_OnNoteRhythmPreviewChanged;
+        Surface.ZoomChanged += Surface_OnZoomChanged;
         Loaded += PianoRollEditor_OnLoaded;
         Unloaded += PianoRollEditor_OnUnloaded;
     }
@@ -80,12 +84,17 @@ public partial class PianoRollEditor : UserControl
     public int ShiftAllNotesInGenshinRange(int keySteps) =>
         Surface.ShiftAllNotesInGenshinRange(keySteps);
 
+    public GenshinRangeMappingResult? MapToGenshinRange() => Surface.MapToGenshinRange();
+
     public ScoreCleanupResult? ApplyScoreCleanup(ScoreCleanupOptions options) =>
         Surface.ApplyScoreCleanup(options);
 
     public int GenerateShortPressDurations() => Surface.GenerateShortPressDurations();
 
     public PitchLabelMode PitchLabelMode => KeyboardLabels.LabelMode;
+
+    public NoteArticulation CurrentArticulation =>
+        Surface.SelectedArticulation ?? Surface.DefaultArticulation;
 
     public int SelectAllNotes() => Surface.SelectAllNotes();
 
@@ -104,6 +113,67 @@ public partial class PianoRollEditor : UserControl
         {
             _settingsService?.SetPitchLabelMode(mode.ToString());
         }
+    }
+
+    public void SetArticulation(NoteArticulation articulation)
+    {
+        Surface.DefaultArticulation = articulation;
+        _settingsService?.SetDefaultArticulation(articulation.ToString());
+        Surface.SetSelectedArticulation(articulation);
+    }
+
+    private void PitchLayoutComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (Surface is null ||
+            PitchLayoutComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
+            !Enum.TryParse<PianoRollPitchLayoutMode>(tag, out var mode))
+        {
+            return;
+        }
+
+        Surface.PitchLayoutMode = mode;
+        if (!_loadingSettings)
+        {
+            _settingsService?.SetPianoRollLayoutMode(mode.ToString());
+        }
+        UpdateHiddenNotesIndicator();
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (mode == PianoRollPitchLayoutMode.Genshin21)
+            {
+                EditorScrollViewer.ScrollToVerticalOffset(0);
+                return;
+            }
+
+            var rows = PianoRollPitchLayouts.GetRows(
+                mode,
+                Score?.Tracks.SelectMany(track => track.Notes).Select(note => note.Pitch));
+            var focusPitch = Surface.SelectedNote?.Pitch ??
+                             Score?.Tracks.SelectMany(track => track.Notes)
+                                 .Select(note => note.Pitch)
+                                 .Where(pitch => pitch is >= 21 and <= 108)
+                                 .DefaultIfEmpty(60)
+                                 .First() ?? 60;
+            var row = Enumerable.Range(0, rows.Count)
+                .MinBy(index => Math.Abs(rows[index].Pitch - focusPitch));
+            var offset = PianoRollSurface.RulerHeight + row * Surface.RowHeight -
+                         EditorScrollViewer.ViewportHeight / 2;
+            EditorScrollViewer.ScrollToVerticalOffset(Math.Max(0, offset));
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void UpdateHiddenNotesIndicator()
+    {
+        if (HiddenNotesText is null || Surface is null)
+        {
+            return;
+        }
+
+        var count = Surface.HiddenNoteCount;
+        HiddenNotesText.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        HiddenNotesText.Text = count > 0
+            ? string.Format((string)FindResource("Editor_HiddenNotes"), count)
+            : string.Empty;
     }
 
     public void SetGamePlaybackActive(bool isActive)
@@ -291,24 +361,11 @@ public partial class PianoRollEditor : UserControl
             e.VerticalOffset,
             e.ViewportWidth,
             e.ViewportHeight);
+        PlaybackCursorHeadTransform.Y = e.VerticalOffset;
         if (e.VerticalChange != 0)
         {
             KeyboardScrollViewer.ScrollToVerticalOffset(e.VerticalOffset);
         }
-    }
-
-    private void ArticulationComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_updatingArticulation || _loadingSettings || Surface is null ||
-            ArticulationComboBox.SelectedItem is not ComboBoxItem { Tag: string tag } ||
-            !Enum.TryParse<NoteArticulation>(tag, out var articulation))
-        {
-            return;
-        }
-
-        Surface.DefaultArticulation = articulation;
-        _settingsService?.SetDefaultArticulation(articulation.ToString());
-        Surface.SetSelectedArticulation(articulation);
     }
 
     private void Surface_OnSelectedNoteChanged(object? sender, EventArgs e)
@@ -328,25 +385,6 @@ public partial class PianoRollEditor : UserControl
                 selectedScore.Timing.Ppq);
         }
 
-        var articulation = Surface.SelectedArticulation;
-        if (articulation is null)
-        {
-            return;
-        }
-
-        _updatingArticulation = true;
-        var matchingItem = ArticulationComboBox.Items
-            .OfType<ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(
-                item.Tag as string,
-                articulation.Value.ToString(),
-                StringComparison.Ordinal));
-        if (matchingItem is not null)
-        {
-            ArticulationComboBox.SelectedItem = matchingItem;
-        }
-        _updatingArticulation = false;
-
         if (NoteEditorPopup.IsOpen && Surface.SelectedNote is { } note && Score is { } score)
         {
             SelectRhythmOption(note.RhythmTick ?? note.DurationTick, score.Timing.Ppq);
@@ -362,8 +400,19 @@ public partial class PianoRollEditor : UserControl
             _ownerWindow.Deactivated += OwnerWindow_OnDeactivated;
         }
 
-        if (_settingsService is not null ||
-            System.Windows.Application.Current is not GenshinPiano.App.App app)
+        if (System.Windows.Application.Current is not GenshinPiano.App.App app)
+        {
+            return;
+        }
+
+        if (_themeService is null)
+        {
+            _themeService = app.ThemeService;
+            _themeService.ThemeChanging += ThemeService_OnThemeChanging;
+            _themeService.ThemeChanged += ThemeService_OnThemeChanged;
+        }
+
+        if (_settingsService is not null)
         {
             return;
         }
@@ -383,7 +432,6 @@ public partial class PianoRollEditor : UserControl
 
             SetNewNoteLength(editor.NewNoteLengthFactor);
 
-            SelectComboItem(ArticulationComboBox, editor.DefaultArticulation);
             if (Enum.TryParse<NoteArticulation>(editor.DefaultArticulation, out var articulation))
             {
                 Surface.DefaultArticulation = articulation;
@@ -399,6 +447,13 @@ public partial class PianoRollEditor : UserControl
             AuditionVolumeSlider.Value = editor.AuditionVolume / 100d;
             SetAuditionVolume(editor.AuditionVolume);
             SetFrameRateMode(editor.PianoRollFrameRate);
+            if (Enum.TryParse<PianoRollPitchLayoutMode>(editor.PianoRollLayoutMode, out var layoutMode))
+            {
+                SelectComboItem(PitchLayoutComboBox, layoutMode.ToString());
+                Surface.PitchLayoutMode = layoutMode;
+            }
+            Surface.PixelsPerBeat = editor.PianoRollPixelsPerBeat;
+            Surface.RowHeight = editor.PianoRollRowHeight;
         }
         finally
         {
@@ -413,6 +468,12 @@ public partial class PianoRollEditor : UserControl
         _notePreviewCancellation?.Cancel();
         StopAuditionRendering(renderFinalFrame: false);
         AuditionVolumePopup.IsOpen = false;
+        if (_themeService is not null)
+        {
+            _themeService.ThemeChanging -= ThemeService_OnThemeChanging;
+            _themeService.ThemeChanged -= ThemeService_OnThemeChanged;
+            _themeService = null;
+        }
         if (_ownerWindow is not null)
         {
             _ownerWindow.PreviewMouseDown -= OwnerWindow_OnPreviewMouseDown;
@@ -429,6 +490,7 @@ public partial class PianoRollEditor : UserControl
             var bpm = score.Timing.TempoMap.OrderBy(change => change.Tick).FirstOrDefault()?.Bpm ?? 120;
             editor.BpmTextBox.Text = bpm.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
         }
+        editor.UpdateHiddenNotesIndicator();
     }
 
     private void Surface_OnPlaybackSeekRequested(object? sender, PlaybackSeekRequestedEventArgs e)
@@ -519,6 +581,18 @@ public partial class PianoRollEditor : UserControl
         else if (_auditionTick >= plan.DurationTick)
         {
             _auditionTick = 0;
+        }
+
+        _continuousFollowActive = false;
+        _lastFollowTick = _auditionTick;
+        AuditionPlayButton.IsEnabled = false;
+        try
+        {
+            await EnsurePlaybackHeadVisibleAsync(_auditionTick);
+        }
+        finally
+        {
+            AuditionPlayButton.IsEnabled = _auditionService is not null;
         }
 
         var instrument = AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
@@ -1273,7 +1347,7 @@ public partial class PianoRollEditor : UserControl
 
     private void FollowPlaybackHead(long tick)
     {
-        if (Score is null)
+        if (Score is null || _playbackScrollAnimationActive)
         {
             return;
         }
@@ -1299,6 +1373,77 @@ public partial class PianoRollEditor : UserControl
         }
 
         EditorScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - anchor));
+    }
+
+    private async Task EnsurePlaybackHeadVisibleAsync(long tick)
+    {
+        if (Score is null || EditorScrollViewer.ViewportWidth <= 0)
+        {
+            return;
+        }
+
+        var x = tick * Surface.PixelsPerBeat / Score.Timing.Ppq;
+        var viewportLeft = EditorScrollViewer.HorizontalOffset;
+        var viewportRight = viewportLeft + EditorScrollViewer.ViewportWidth;
+        var margin = Math.Min(48, EditorScrollViewer.ViewportWidth * 0.12);
+        if (x >= viewportLeft + margin && x <= viewportRight - margin)
+        {
+            return;
+        }
+
+        var anchor = EditorScrollViewer.ViewportWidth * 0.20;
+        await AnimateHorizontalOffsetAsync(Math.Max(0, x - anchor));
+    }
+
+    private Task AnimateHorizontalOffsetAsync(double targetOffset)
+    {
+        var currentOffset = EditorScrollViewer.HorizontalOffset;
+        if (Math.Abs(targetOffset - currentOffset) < 1)
+        {
+            EditorScrollViewer.ScrollToHorizontalOffset(targetOffset);
+            return Task.CompletedTask;
+        }
+
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var startedAt = Stopwatch.GetTimestamp();
+        var duration = TimeSpan.FromMilliseconds(220);
+        _playbackScrollAnimationActive = true;
+        EventHandler? renderingHandler = null;
+        renderingHandler = (_, _) =>
+        {
+            var elapsed = Stopwatch.GetElapsedTime(startedAt);
+            var progress = Math.Clamp(elapsed.TotalMilliseconds / duration.TotalMilliseconds, 0, 1);
+            var easedProgress = 1 - Math.Pow(1 - progress, 3);
+            var offset = currentOffset + (targetOffset - currentOffset) * easedProgress;
+            EditorScrollViewer.ScrollToHorizontalOffset(offset);
+            if (progress < 1)
+            {
+                return;
+            }
+
+            CompositionTarget.Rendering -= renderingHandler;
+            EditorScrollViewer.ScrollToHorizontalOffset(targetOffset);
+            _playbackScrollAnimationActive = false;
+            completion.TrySetResult();
+        };
+        CompositionTarget.Rendering += renderingHandler;
+        return completion.Task;
+    }
+
+    private void ThemeService_OnThemeChanging(object? sender, EventArgs e)
+    {
+        _themeHorizontalOffset = EditorScrollViewer.HorizontalOffset;
+        _themeVerticalOffset = EditorScrollViewer.VerticalOffset;
+    }
+
+    private void ThemeService_OnThemeChanged(object? sender, EventArgs e)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            EditorScrollViewer.UpdateLayout();
+            EditorScrollViewer.ScrollToHorizontalOffset(_themeHorizontalOffset);
+            EditorScrollViewer.ScrollToVerticalOffset(_themeVerticalOffset);
+        }, DispatcherPriority.ContextIdle);
     }
 
     private static void SelectComboItem(ComboBox comboBox, string tag)
@@ -1553,6 +1698,11 @@ public partial class PianoRollEditor : UserControl
 
     private void Root_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        TryHandleEditorShortcut(e);
+    }
+
+    public void TryHandleEditorShortcut(KeyEventArgs e)
+    {
         var key = ShortcutKeyResolver.Resolve(e);
         var modifiers = Keyboard.Modifiers;
         var isInputFocused = Keyboard.FocusedElement is TextBox or ComboBox;
@@ -1616,6 +1766,13 @@ public partial class PianoRollEditor : UserControl
 
         ApplyRhythmShortcut(step);
         e.Handled = true;
+    }
+
+    private void Surface_OnZoomChanged(object? sender, EventArgs e)
+    {
+        if (_loadingSettings) return;
+        _settingsService?.SetPianoRollPixelsPerBeat(Surface.PixelsPerBeat);
+        _settingsService?.SetPianoRollRowHeight(Surface.RowHeight);
     }
 
     private void Root_OnPreviewTextInput(object sender, TextCompositionEventArgs e)

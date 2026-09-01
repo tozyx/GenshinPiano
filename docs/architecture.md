@@ -28,7 +28,7 @@ GenshinPiano.Application ──> GenshinPiano.Core
 
 - `MidiScoreImporter` / `MidiScoreExporter`：MIDI 交换格式
 - `RawInputRecorder`：全局键盘录入
-- `MusicXmlImporter`：五线谱 OMR 结果导入
+- `MusicXmlScoreImporter`：将可替换五线谱 OMR 后端输出的 MusicXML 转为内部曲谱，保留弱起、双谱表、独立声部游标、和弦和跨小节连音；模型选择与阶段计划见 [五线谱 OCR 技术选型](STAFF_OCR.md)
 
 ## 播放管线
 

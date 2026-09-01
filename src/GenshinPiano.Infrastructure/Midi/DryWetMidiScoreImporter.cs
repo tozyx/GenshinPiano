@@ -93,7 +93,19 @@ public sealed class DryWetMidiScoreImporter : IMidiScoreImporter
                 }
 
                 var sourcePitch = checked((int)midiNote.NoteNumber + Math.Clamp(options.Transpose, -36, 36));
-                if (!TryMapPitch(sourcePitch, options.OutOfRangePolicy, out var pitch, out var folded))
+                int pitch;
+                bool folded;
+                if (options.PreserveOriginalPitch)
+                {
+                    if (sourcePitch is < 0 or > 127)
+                    {
+                        droppedNotes++;
+                        continue;
+                    }
+                    pitch = sourcePitch;
+                    folded = false;
+                }
+                else if (!TryMapPitch(sourcePitch, options.OutOfRangePolicy, out pitch, out folded))
                 {
                     droppedNotes++;
                     continue;
@@ -185,7 +197,9 @@ public sealed class DryWetMidiScoreImporter : IMidiScoreImporter
             Playback = new PlaybackSettings
             {
                 Mapping = "genshin-21-key",
-                OutOfRangePolicy = OutOfRangePolicy.Reject,
+                OutOfRangePolicy = options.PreserveOriginalPitch
+                    ? OutOfRangePolicy.Drop
+                    : OutOfRangePolicy.Reject,
             },
         };
 

@@ -4,6 +4,42 @@ namespace GenshinPiano.Core.Scores;
 
 public static class ScoreEditor
 {
+    public static GenshinRangeMappingResult MapToGenshinRange(ScoreDocument score)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        var mappedCount = 0;
+        var ignoredCount = 0;
+        var tracks = score.Tracks.Select(track => track with
+        {
+            Notes = track.Notes.Select(note =>
+            {
+                if (!GenshinKeyMap.TryMapPitch(note.Pitch, 0, OutOfRangePolicy.OctaveFold, out var key) ||
+                    !GenshinKeyMap.TryGetPitch(key, out var mappedPitch))
+                {
+                    ignoredCount++;
+                    return null;
+                }
+
+                if (mappedPitch != note.Pitch) mappedCount++;
+                return note with { Pitch = mappedPitch };
+            }).Where(note => note is not null).Select(note => note!).ToList(),
+        }).ToList();
+
+        return new GenshinRangeMappingResult(
+            score with
+            {
+                Tracks = tracks,
+                Playback = score.Playback with
+                {
+                    Transpose = 0,
+                    Mapping = "genshin-21-key",
+                    OutOfRangePolicy = OutOfRangePolicy.Reject,
+                },
+            },
+            mappedCount,
+            ignoredCount);
+    }
+
     public static ScoreDocument ShiftAllNotesInGenshinRange(ScoreDocument score, int keySteps)
     {
         ArgumentNullException.ThrowIfNull(score);
@@ -108,3 +144,8 @@ public static class ScoreEditor
         return NoteDurationCalculator.ApplyAutoDurations(score with { Tracks = tracks });
     }
 }
+
+public sealed record GenshinRangeMappingResult(
+    ScoreDocument Score,
+    int MappedNotes,
+    int IgnoredNotes);

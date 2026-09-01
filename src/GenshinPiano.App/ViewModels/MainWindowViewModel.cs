@@ -7,6 +7,7 @@ using GenshinPiano.Application.Abstractions;
 using GenshinPiano.Application.Conversion;
 using GenshinPiano.Application.Playback;
 using GenshinPiano.Application.Workspace;
+using GenshinPiano.Core.Playback;
 using GenshinPiano.Core.Scores;
 using Microsoft.Win32;
 
@@ -241,6 +242,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public void NotifyScoreRangeShifted(int keySteps, int noteCount) =>
         SetStatus("Status_ScoreRangeShifted", keySteps, noteCount);
+
+    public void NotifyMappedToGenshinRange(int mappedNotes, int ignoredNotes) =>
+        SetStatus("Status_MappedTo21", mappedNotes, ignoredNotes);
 
     public void NotifyScoreCleaned(ScoreCleanupResult result) =>
         SetStatus(
@@ -660,6 +664,17 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
+        var unplayableNotes = CurrentScore.Tracks.SelectMany(track => track.Notes).Count(note =>
+            !GenshinKeyMap.TryMapPitch(
+                note.Pitch,
+                CurrentScore.Playback.Transpose,
+                CurrentScore.Playback.OutOfRangePolicy,
+                out _));
+        if (unplayableNotes > 0)
+        {
+            SetStatus("Status_PlaybackUnplayableNotes", unplayableNotes);
+        }
+
         _playbackService.TryFocusFirstPlaybackTarget();
 
         // Capture exactly what is currently visible in the editor. Later edits or
@@ -689,7 +704,14 @@ public sealed class MainWindowViewModel : ObservableObject
                 case PlaybackPhase.WaitingForTarget:
                     PlaybackCurrentKeys = "—";
                     IsPlaybackPaused = true;
-                    SetStatus("Status_PlayWaitingForTarget");
+                    if (unplayableNotes > 0)
+                    {
+                        SetStatus("Status_PlayWaitingForTargetWithSkipped", unplayableNotes);
+                    }
+                    else
+                    {
+                        SetStatus("Status_PlayWaitingForTarget");
+                    }
                     break;
                 case PlaybackPhase.Countdown:
                     PlaybackCurrentKeys = "—";
@@ -716,10 +738,11 @@ public sealed class MainWindowViewModel : ObservableObject
                         : string.Concat(playbackProgress.CurrentKeys);
                     PlaybackCurrentKeys = keys;
                     SetStatus(
-                        "Status_Playing",
+                        unplayableNotes > 0 ? "Status_PlayingWithSkipped" : "Status_Playing",
                         playbackProgress.ChordIndex,
                         playbackProgress.ChordCount,
-                        keys);
+                        keys,
+                        unplayableNotes);
                     break;
                 case PlaybackPhase.Completed:
                     PlaybackCurrentKeys = "—";

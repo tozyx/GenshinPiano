@@ -10,6 +10,8 @@ public interface IThemeService
 {
     AppTheme CurrentTheme { get; }
 
+    event EventHandler? ThemeChanging;
+
     event EventHandler? ThemeChanged;
 
     void Apply(AppTheme theme);
