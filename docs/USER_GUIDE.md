@@ -47,6 +47,7 @@
 
 ### 时间轴、缩放与本地试听
 
+- 工具栏可切换“21 键”“88 键”和“曲谱音域”视图；曲谱音域只显示当前曲谱实际使用的音高范围。视图与缩放比例会自动保存。
 - 单击或拖动顶部时间尺设置播放游标，显示时间会按 BPM 自动计算。
 - `Space`：播放 / 暂停本地试听。
 - 选中音符后启用循环按钮，可循环试听选区；取消选择后循环自动关闭。
@@ -74,14 +75,18 @@
 - “导入 → 批量转换旧版曲谱”：转换旧 `.GenshinPiano` 文件。
 - MIDI 导入后可根据用途保留原始短音，或使用编辑菜单中的按下时长工具重新生成。
 
-### OCR 简谱识别（测试功能）
+### OCR 曲谱识别（测试功能）
 
 1. 打开“导入 → OCR 曲谱识别”。
 2. 首次使用时点击“下载附加包”；软件会从 GitCode/GitHub 下载、校验签名并安装 OCR 引擎。
-3. 选择图片、谱面类型、水印抑制强度及是否识别伴奏。
+3. 明确选择“简谱”或“五线谱”，再选择图片、水印抑制强度及是否识别伴奏。软件不会自动猜测谱面类型。
 4. 点击“开始识别”，完成后检查音符数量和置信度，再导入卷帘。
 
-OCR 目前主要面向数字简谱，支持上下音高点、节拍线、水印抑制、谱行/声部分析和伴奏识别，但复杂排版、低分辨率、水印或连音仍可能产生错误。导入后请人工试听和校对。
+简谱路线使用 RapidOCR、数字分类与几何后处理，识别数字、上下音高点、升降号、延音线、节拍线、谱行/声部和伴奏。五线谱路线使用附加包内置的便携 Python 3.11 CPU 环境运行 Oemer，先生成 MusicXML，再导入完整音高、时值、声部和小节结构。两条路线由“谱面类型”下拉框选择，并不会同时运行。
+
+默认关闭“自动映射到原神 21 键”：识别结果会切换到 88 键卷帘，保留升降音及完整音域。启用后，导入结果会切换到 21 键并执行一次可撤销的自动映射；无法合理映射的半音或严重越界音符可能被忽略。谱面类型、水印模式、伴奏和自动映射选项都会保存到便携配置中。
+
+五线谱识别计算量明显更高，在 CPU 上可能需要数分钟并占用较多内存。复杂排版、低分辨率、水印、倾斜照片和复调结构仍可能产生错误；导入后请人工试听和校对。
 
 “设置 → 通知 → OCR 完成时通知”可以控制软件未聚焦时的 Windows 通知。
 
@@ -133,6 +138,8 @@ button, use **File → Open**, or drag a `.gpiano` / `.mid` file onto the main w
 
 ### Navigation and local audition
 
+- Choose the 21-key, full 88-key, or score-range piano-roll view from the toolbar. Score range only
+  shows pitches used by the current score. The selected view and zoom levels are persisted.
 - Click or drag the top ruler to position the playback cursor.
 - `Space` toggles local audition. A selected range can be looped.
 - `Ctrl + wheel`: horizontal zoom; `Shift + wheel`: horizontal scroll;
@@ -153,8 +160,16 @@ not request elevation automatically.
 - Open a MIDI file for interactive import, or use **Import → Batch Convert MIDI** for automatic
   current-folder conversion.
 - Legacy `.GenshinPiano` files can be batch-converted from the Import menu.
-- Experimental numbered-notation OCR is available from **Import → OCR score recognition**. The
-  signed OCR add-on can be downloaded in the dialog. Review and audition OCR results after import.
+- Experimental score OCR is available from **Import → OCR score recognition**. Explicitly choose
+  numbered or staff notation; the application does not auto-detect the notation type. Numbered
+  notation uses the native OCR/post-processing pipeline, while staff notation runs the bundled
+  portable Python/Oemer backend and imports its MusicXML result. The two pipelines are selected by
+  the dropdown and are not run together.
+- With **Auto-map to 21 keys** disabled, results open in the 88-key roll and preserve accidentals and
+  the full pitch range. Enabling it switches to 21 keys and applies one undoable mapping operation;
+  unmappable accidentals or notes far outside the range may be ignored. OCR choices are persisted.
+- Staff OMR is CPU intensive and can take several minutes. Always review and audition imported
+  results. The signed OCR add-on can be downloaded or updated from the dialog.
 
 ### Updates and support
 

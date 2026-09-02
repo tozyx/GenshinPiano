@@ -21,7 +21,9 @@ coverage/
 
 # Packages and publish output
 packages/
-publish/
+publish/*
+!publish/songs/
+!publish/songs/**
 *.nupkg
 *update-signing-private*.xml
 *update-signing-private*.pem

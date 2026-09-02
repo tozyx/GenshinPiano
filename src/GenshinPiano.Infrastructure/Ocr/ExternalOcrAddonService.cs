@@ -85,7 +85,6 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
         string language,
         OcrWatermarkMode watermarkMode = OcrWatermarkMode.Auto,
         bool includeAccompaniment = true,
-        bool preferGpuAcceleration = true,
         IProgress<OcrProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -103,8 +102,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
             notationHint,
             string.IsNullOrWhiteSpace(language) ? "auto" : language,
             watermarkMode,
-            includeAccompaniment,
-            preferGpuAcceleration);
+            includeAccompaniment);
 
         var result = addon.LaunchMode switch
         {

@@ -98,6 +98,38 @@ addons\ocr\manifest.json
 - [OCR 附加包协议](ocr-addon-protocol.md)
 - [OCR 附加包发布与更新流程](ocr-addon-distribution.md)
 
+普通主程序开发不需要 Python、Oemer 或模型。需要调试完整 OCR 时，先安装
+Python 3.11，然后在仓库根目录运行：
+
+```powershell
+.\tools\Setup-OcrDevelopment.ps1
+```
+
+脚本会在仓库同级的 `_research\oemer` 下准备固定版本的 Oemer、CPU venv 和
+经过 SHA-256 校验的模型，再构建精简便携 Runtime，并部署到主程序 Debug
+输出的 `addons\ocr`。首次执行需要访问 Python 包源和 GitHub；这些下载内容
+均不提交到 Git。已有完整环境且只需重新部署时可以使用：
+
+```powershell
+.\tools\Setup-OcrDevelopment.ps1 -SkipDependencyInstall
+```
+
+GitHub CI 不执行该脚本，只验证不依赖 OCR 模型的普通 Release 构建和测试。
+
+脚本固定 Oemer 上游提交、Python 依赖版本及两个官方 ONNX 模型的 SHA-256，
+并应用仓库中的兼容补丁。完整模型和便携 Python Runtime 不提交到 Git；其他
+开发者克隆仓库后运行上述脚本即可获得与发布包一致的 CPU 调试环境。简谱路线
+直接运行 .NET OCR 引擎；五线谱路线由同一个引擎启动便携 Python/Oemer，并将
+生成的 MusicXML 转换为 `ScoreDocument`。界面下拉框只负责选择这两条路线。
+
+相关文件：
+
+- `tools/Setup-OcrDevelopment.ps1`：一键准备/更新开发环境并部署 Debug 附加包
+- `tools/requirements-ocr-development.txt`：固定的 Python 运行依赖
+- `tools/ocr/oemer-inference.patch`：上游推理兼容补丁
+- `tools/Publish-OcrPythonRuntime.ps1`：生成精简 CPU 便携 Runtime
+- `tools/Publish-OcrAddon.ps1`：构建 OCR 引擎、组合 Runtime 并生成发布资产
+
 ### 6. 准备正式发布
 
 两个发布脚本都要求以下目录存在并至少包含一个曲谱文件：
@@ -106,7 +138,7 @@ addons\ocr\manifest.json
 publish\songs
 ```
 
-该目录是本地发布素材，不应提交到 Git。发布脚本会把它复制到应用 ZIP 根目录下的 `songs`。
+该目录中的示例曲谱可以随仓库维护。发布脚本会把它复制到应用 ZIP 根目录下的 `songs`。
 
 正式发布还需要 RSA 私钥为应用包和 OCR 附加包签名。私钥不得提交到仓库。仅在当前 PowerShell 会话中配置：
 
@@ -229,6 +261,28 @@ $env:GENSHINPIANO_UPDATE_SIGNING_KEY = "D:\secure\GenshinPiano.Update.PrivateKey
 
 The public verification key committed to the repository does not prevent contributors from building
 or debugging the application.
+
+### OCR development environment
+
+Normal application development does not require Python, Oemer, or the model files. To reproduce the
+complete OCR environment, install Python 3.11 and run:
+
+```powershell
+.\tools\Setup-OcrDevelopment.ps1
+```
+
+The script pins the Oemer revision and Python dependencies, verifies both official ONNX checkpoints,
+applies the local inference patch, creates a trimmed CPU-only portable runtime, and deploys the add-on
+to the application's Debug output. Rebuild/deploy an already prepared environment with:
+
+```powershell
+.\tools\Setup-OcrDevelopment.ps1 -SkipDependencyInstall
+```
+
+Large model/runtime files are intentionally not stored in Git. The numbered pipeline runs in the
+.NET OCR engine; the staff pipeline launches portable Python/Oemer and converts the resulting
+MusicXML into `ScoreDocument`. GitHub CI remains secret-free and only restores, builds, and tests the
+regular solution; it does not publish releases or download OCR models.
 
 ### Publish packages
 

@@ -167,7 +167,6 @@ public partial class OcrImportDialog : Window
                 System.Globalization.CultureInfo.CurrentUICulture.Name,
                 watermarkMode,
                 AccompanimentCheckBox.IsChecked == true,
-                GpuAccelerationCheckBox.IsChecked == true,
                 progress,
                 cancellationToken: _analysisCancellation.Token);
             if (!Result.Success || Result.Score is null)
@@ -230,7 +229,6 @@ public partial class OcrImportDialog : Window
         WatermarkComboBox.IsEnabled = !busy;
         AccompanimentCheckBox.IsEnabled = !busy;
         AutoMapTo21CheckBox.IsEnabled = !busy;
-        GpuAccelerationCheckBox.IsEnabled = !busy;
         CancelButton.Content = GetText(busy ? "Ocr_CancelAnalysis" : "Common_Cancel");
     }
 
@@ -316,19 +314,17 @@ public partial class OcrImportDialog : Window
         SelectComboItem(WatermarkComboBox, options.WatermarkMode);
         AccompanimentCheckBox.IsChecked = options.IncludeAccompaniment;
         AutoMapTo21CheckBox.IsChecked = options.AutoMapTo21Keys;
-        GpuAccelerationCheckBox.IsChecked = options.PreferGpuAcceleration;
     }
 
     private void SaveOptions()
     {
-        var notation = (NotationComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Auto";
+        var notation = (NotationComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Numbered";
         var watermark = (WatermarkComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Auto";
         _settings.SetOcrOptions(
             notation,
             watermark,
             AccompanimentCheckBox.IsChecked == true,
-            AutoMapTo21Keys,
-            GpuAccelerationCheckBox.IsChecked == true);
+            AutoMapTo21Keys);
     }
 
     private static void SelectComboItem(ComboBox comboBox, string tag)

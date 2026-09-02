@@ -54,6 +54,13 @@ if ([string]$manifest.engineVersion -ne $version) {
     throw "OCR manifest version '$($manifest.engineVersion)' does not match project version '$version'."
 }
 
+Write-Host "Packaging portable CPU Python/Oemer runtime..."
+& (Join-Path $PSScriptRoot "Publish-OcrPythonRuntime.ps1") `
+    -DestinationDirectory (Join-Path $addonPublishDirectory "staff-omr\python")
+if ($LASTEXITCODE -ne 0) {
+    throw "OCR Python runtime packaging failed with exit code $LASTEXITCODE."
+}
+
 $packagePath = Join-Path $artifactsDirectory "ocr-addons-$version-win-x64.zip"
 $checksumPath = "$packagePath.sha256"
 $signaturePath = "$packagePath.sig"

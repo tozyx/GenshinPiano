@@ -1,0 +1,30 @@
+diff --git a/oemer/inference.py b/oemer/inference.py
+index d59b92f..9aed6e9 100755
+--- a/oemer/inference.py
++++ b/oemer/inference.py
+@@ -16,7 +16,7 @@ def resize_image(image: Image.Image):
+     # Best number would be 3M~4.35M pixels.
+     w, h = image.size
+     pis = w * h
+-    if 3000000 <= pis <= 435000:
++    if 3000000 <= pis <= 4350000:
+         return image
+     lb = 3000000 / pis
+     ub = 4350000 / pis
+@@ -52,10 +52,12 @@ def inference(
+         if sys.platform == "darwin":
+             providers = ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+         else:
+-            providers = [
+-                ("CUDAExecutionProvider", {"device_id": 0}),
+-                "CPUExecutionProvider",
+-            ]
++            available = rt.get_available_providers()
++            providers = (
++                [("CUDAExecutionProvider", {"device_id": 0}), "CPUExecutionProvider"]
++                if "CUDAExecutionProvider" in available
++                else ["CPUExecutionProvider"]
++            )
+         sess = rt.InferenceSession(onnx_path, providers=providers)
+         output_names = metadata["output_names"]
+         input_shape = metadata["input_shape"]

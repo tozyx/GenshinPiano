@@ -27,7 +27,6 @@ internal sealed class StaffNotationRecognizer
                 request.ImagePath,
                 musicXmlPath,
                 workDirectory,
-                request.PreferGpuAcceleration,
                 cancellationToken);
             if (!File.Exists(musicXmlPath)) return Failure("staff_backend_no_output", BuildFailureMessage(output));
 
@@ -36,8 +35,6 @@ internal sealed class StaffNotationRecognizer
             var score = request.IncludeAccompaniment ? imported.Score : KeepUpperStaff(imported.Score);
             score = score with { Playback = score.Playback with { Mapping = "full-pitch", OutOfRangePolicy = OutOfRangePolicy.Drop } };
             var warnings = imported.Report.Warnings.ToList();
-            if (request.PreferGpuAcceleration && output.Contains("OCR_BACKEND|CPU", StringComparison.Ordinal))
-                warnings.Add("CUDA acceleration was unavailable; staff recognition used the CPU.");
             if (!request.IncludeAccompaniment && imported.Score.Tracks.Count > score.Tracks.Count)
                 warnings.Add("Lower staves were omitted because accompaniment recognition is disabled.");
             if (imported.Report.GraceNoteCount > 0)
@@ -87,7 +84,6 @@ internal sealed class StaffNotationRecognizer
         string imagePath,
         string musicXmlPath,
         string workDirectory,
-        bool preferGpuAcceleration,
         CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo
@@ -104,11 +100,6 @@ internal sealed class StaffNotationRecognizer
             var bridge = Path.Combine(AppContext.BaseDirectory, "staff-omr", "oemer_bridge.py");
             if (!File.Exists(bridge)) throw new FileNotFoundException("The oemer bridge script is missing.", bridge);
             startInfo.ArgumentList.Add(bridge);
-            if (preferGpuAcceleration) startInfo.ArgumentList.Add("--use-gpu");
-        }
-        else if (!preferGpuAcceleration)
-        {
-            startInfo.Environment["CUDA_VISIBLE_DEVICES"] = "-1";
         }
         startInfo.ArgumentList.Add(imagePath);
         startInfo.ArgumentList.Add("--output-path");

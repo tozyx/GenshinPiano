@@ -31,6 +31,23 @@ asset name, so the OCR engine and application can be released independently. The
 The application updater preserves the complete `addons` directory. Updating or rolling back the
 application therefore does not downgrade or delete independently installed components.
 
+The published add-on contains a portable Python 3.11 CPU runtime under
+`addons/ocr/staff-omr/python`. It includes Oemer, its ONNX checkpoints and the
+required native Python packages, so users do not need a system Python installation.
+`Publish-OcrPythonRuntime.ps1` builds this directory from the development Oemer
+virtual environment while excluding pip caches, downloaded wheels, installation and
+training tools, unused plotting dependencies, and CUDA/NVIDIA packages. The packaging
+script validates the resulting CPU provider and both Oemer model sessions before the
+release archive is created.
+
 Network access remains governed by the application's existing **Allow network access** setting.
 OCR component downloads are user initiated and do not silently download with automatic application
 updates.
+
+## Contributor bootstrap
+
+The portable runtime and checkpoints are deliberately excluded from Git. Contributors who need the
+complete OCR feature should install Python 3.11 and run `tools/Setup-OcrDevelopment.ps1` from the
+repository root. The script pins and verifies the upstream sources and deploys a Debug-ready add-on.
+Use `-SkipDependencyInstall` when the pinned environment is already present and only a rebuild or
+redeployment is required. Ordinary .NET builds and the GitHub CI workflow do not download OCR assets.

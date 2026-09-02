@@ -44,8 +44,7 @@ public sealed record OcrAnalysisRequest(
     OcrNotationHint NotationHint,
     string Language,
     OcrWatermarkMode WatermarkMode = OcrWatermarkMode.Auto,
-    bool IncludeAccompaniment = true,
-    bool PreferGpuAcceleration = true);
+    bool IncludeAccompaniment = true);
 
 public sealed record OcrAnalysisResult(
     int ProtocolVersion,
@@ -72,7 +71,6 @@ public interface IOcrAddonService
         string language,
         OcrWatermarkMode watermarkMode = OcrWatermarkMode.Auto,
         bool includeAccompaniment = true,
-        bool preferGpuAcceleration = true,
         IProgress<OcrProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default);
 }

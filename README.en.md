@@ -11,7 +11,7 @@ GenshinPiano v3 is a Windows application for arranging and performing music with
 - Support importing legacy `.GenshinPiano` scores
 - Provide a piano roll, a 21-key preview, transposition, and pitch-range mapping
 - Provide reliable Windows keyboard playback and recording
-- Support keyboard-score OCR, printed staff-notation OMR, and numbered-notation OMR in the future
+- Provide numbered-notation OCR and printed staff-notation OMR through an optional add-on
 
 ## Solution Structure
 
@@ -47,12 +47,12 @@ The application runs in portable mode. User settings are stored in `config/setti
 ## Current Features
 
 - Edit, validate, and save UTF-8 JSON `.gpiano` scores, with a folder library, drag-and-drop opening, renaming, and unsaved-work recovery
-- A 21-key piano roll with note creation/audition, marquee and additive selection, copying, grouped movement, rhythmic length, and key-hold editing
+- 21-key, full 88-key, and score-range piano-roll views with note creation/audition, marquee and additive selection, copying, grouped movement, rhythmic length, and key-hold editing; view mode and zoom are persisted
 - Multi-instrument local audition with BPM, natural sustain, playback cursor, selection looping, and smooth high-refresh-rate scrolling
 - Safe in-game keyboard performance with target-window detection, a three-second countdown, focus-loss pause, global Esc pause, and guaranteed key release
 - Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
-- Experimental numbered-notation OCR with watermark suppression, row/voice analysis, rhythm reconstruction, and accompaniment recognition, delivered as an optional add-on
+- Experimental score OCR with an explicit numbered/staff selector: numbered notation supports watermark suppression, row/voice analysis, rhythm and tie reconstruction, while the Oemer/MusicXML staff pipeline preserves polyphony, accidentals, and durations; results can remain on the 88-key roll or be mapped to 21 keys
 - Dark/light themes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
 - GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 

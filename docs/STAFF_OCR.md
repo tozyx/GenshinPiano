@@ -72,7 +72,7 @@ MusicXML 是第一阶段的交换格式。SMT 的 beKern 结果先转换为同�
 ## 实施阶段
 
 1. **转换基座**：实现 MusicXML `score-partwise` 导入，覆盖 divisions、拍号、tempo、measure、voice、chord、backup/forward、tie 和休止符；建立最小单谱表、钢琴大谱表、复调和弱起小节测试。
-2. **基线后端**：已通过独立 Python 环境接入 oemer，不把 Python 运行时放入主发布包；下一步记录处理时间、峰值内存、音高/时值/小节准确率和失败原因。
+2. **基线后端**：已通过附加包内的精简便携 Python 3.11 CPU Runtime 接入 oemer，不把 Python 或模型放入主程序 ZIP；继续记录处理时间、峰值内存、音高/时值/小节准确率和失败原因。
 3. **模型评测**：用相同测试集比较 oemer、SMT Camera-GrandStaff、homr 和 Audiveris。开发集与验收集分离，避免只针对少量样图调参。
 4. **默认模型**：若 SMT 达到基线质量，完成 beKern 解析与模型打包；否则保留 oemer 为临时默认，并继续训练或微调 MIT 模型。
 5. **导入校正**：在写入当前曲谱前展示小节/声部、低置信度符号、半音和越界音符，让用户选择保留、折叠或忽略。
@@ -83,7 +83,7 @@ MusicXML 是第一阶段的交换格式。SMT 的 beKern 结果先转换为同�
 - 音高准确率、音符起点准确率、时值准确率和小节对齐率分别达到可用阈值。
 - 双谱表不得因下方声部晚入而整体左移；`backup`、弱起和多声部必须保持各自时间游标。
 - 失败时返回可诊断错误，不生成看似成功但节拍结构损坏的曲谱。
-- 只发布一个同时支持 CPU 与 CUDA 的 OCR 附加包。GPU 是用户可关闭的可选加速，不成为安装前提；启用时若 CUDA 不可用或初始化失败，同一次任务自动回退 CPU。
+- OCR 附加包使用 CPU 版 ONNX Runtime，控制发布体积并避免要求用户安装 CUDA/cuDNN 环境。
 
 ## 许可证与发布
 
@@ -93,9 +93,11 @@ MusicXML 是第一阶段的交换格式。SMT 的 beKern 结果先转换为同�
 
 将 Python 环境安装到 OCR 附加包的 `staff-omr` 目录。支持 `oemer.exe`、`.venv/Scripts/oemer.exe`、`python/Scripts/oemer.exe`，也支持 `python/python.exe` 或 `.venv/Scripts/python.exe`。Python 后端通过随 OCR 引擎发布的 `staff-omr/oemer_bridge.py` 调用，以跳过非必要的分析图生成，并兼容上游对空白谱线分区处理不完整的问题。开发构建还会自动查找工作区同级的 `_research/oemer/.venv/Scripts/python.exe`。
 
-开发时也可通过 `GENSHINPIANO_OEMER_EXECUTABLE` 指向 `oemer.exe` 或 `python.exe`。选择“五线谱”或由“自动检测”识别到五线谱后，引擎会在临时目录运行后端、导入其 MusicXML，并在结束或取消后清理临时文件。
+开发时也可通过 `GENSHINPIANO_OEMER_EXECUTABLE` 指向 `oemer.exe` 或 `python.exe`。当前界面不做谱面类型自动检测：用户选择“五线谱”后，引擎才会在临时目录运行 Oemer 后端、导入其 MusicXML，并在结束或取消后清理临时文件；选择“简谱”时不会启动 Python。
 
-已验证的 Windows CPU 开发环境为 Python 3.11、NumPy 1.26.4、SciPy 1.11.4、ONNX Runtime 1.17.3、OpenCV 4.10.0 和 scikit-learn 1.2.0。scikit-learn 应保持 1.2.0，与随 oemer 分发的 SVC 模型保存版本一致。正式统一附加包使用 `onnxruntime-gpu` 提供 CUDA 和 CPU provider；没有兼容 NVIDIA/CUDA 环境时仍走 CPU。不要在同一运行环境同时安装 `onnxruntime` 与 `onnxruntime-gpu`。`types-Pillow` 和 `types-tensorflow` 仅是上游开发类型依赖，运行时不需要。
+推荐从仓库根目录运行 `tools/Setup-OcrDevelopment.ps1`。脚本会准备固定的上游版本、依赖、模型及补丁，再把完整附加包部署到主程序 Debug 输出。模型和便携 Runtime 体积较大，因此不提交到 Git；正式发布时由 `tools/Publish-OcrAddon.ps1` 生成独立 OCR ZIP。
+
+已验证的 Windows CPU 开发环境为 Python 3.11、NumPy 1.26.4、SciPy 1.11.4、ONNX Runtime 1.17.3、OpenCV 4.10.0 和 scikit-learn 1.2.0。scikit-learn 应保持 1.2.0，与随 oemer 分发的 SVC 模型保存版本一致。正式附加包使用 CPU 版 `onnxruntime`，不包含 CUDA/cuDNN。`types-Pillow` 和 `types-tensorflow` 仅是上游开发类型依赖，运行时不需要。
 
 官方 ONNX 权重放置及校验值：
 

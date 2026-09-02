@@ -49,7 +49,6 @@
     <system:String x:Key="Ocr_NotSelected">Not selected</system:String>
     <system:String x:Key="Ocr_Browse">Browse…</system:String>
     <system:String x:Key="Ocr_Notation">Notation</system:String>
-    <system:String x:Key="Ocr_NotationAuto">Auto detect</system:String>
     <system:String x:Key="Ocr_NotationNumbered">Numbered notation</system:String>
     <system:String x:Key="Ocr_NotationStaff">Staff notation</system:String>
     <system:String x:Key="Ocr_Watermark">Watermarks</system:String>
@@ -338,5 +337,4 @@
     <system:String x:Key="Status_PlayWaitingForTargetWithSkipped">Waiting for the game window ({0} unplayable notes will be skipped)</system:String>
     <system:String x:Key="Status_PlayingWithSkipped">Playing {0}/{1}  Current keys: {2}  Skipping {3} unplayable notes</system:String>
     <system:String x:Key="Ocr_AutoMapTo21">Automatically map to Genshin 21 keys (unmappable semitones are ignored)</system:String>
-    <system:String x:Key="Ocr_EnableGpuAcceleration">Enable GPU acceleration (requires an NVIDIA CUDA GPU; otherwise CPU is used)</system:String>
 </ResourceDictionary>

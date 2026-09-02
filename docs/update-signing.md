@@ -39,6 +39,17 @@ To persist it for future terminals:
 
 Restart VS Code after setting a persistent environment variable.
 
+## GitHub Actions
+
+GitHub Actions is deliberately limited to secret-free restore, build, and test
+checks. It does not create release archives, sign packages, upload build
+artifacts, or create GitHub Releases. The private signing key must not be stored
+as a repository or environment secret.
+
+Signed releases are built only from a trusted local checkout by running the BAT
+scripts with `GENSHINPIANO_UPDATE_SIGNING_KEY` set to the local private-key path.
+Upload the resulting application and OCR assets manually after reviewing them.
+
 ## Release assets
 
 Upload all three files produced for each ZIP:

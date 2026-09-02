@@ -29,11 +29,10 @@ public sealed record UserSettings
 
 public sealed record OcrUserSettings
 {
-    public string NotationHint { get; init; } = "Auto";
+    public string NotationHint { get; init; } = "Numbered";
     public string WatermarkMode { get; init; } = "Auto";
     public bool IncludeAccompaniment { get; init; } = true;
     public bool AutoMapTo21Keys { get; init; }
-    public bool PreferGpuAcceleration { get; init; } = true;
 }
 
 public sealed record NotificationUserSettings
@@ -127,7 +126,7 @@ public interface IUserSettingsService
 
     void SetNotifyWhenOcrCompletes(bool value);
 
-    void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys, bool preferGpuAcceleration);
+    void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -331,9 +330,9 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
-    public void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys, bool preferGpuAcceleration)
+    public void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys)
     {
-        if (notationHint is not ("Auto" or "Numbered" or "Staff") ||
+        if (notationHint is not ("Numbered" or "Staff") ||
             watermarkMode is not ("Auto" or "Strong" or "Off")) return;
         var value = new OcrUserSettings
         {
@@ -341,7 +340,6 @@ public sealed class UserSettingsService : IUserSettingsService
             WatermarkMode = watermarkMode,
             IncludeAccompaniment = includeAccompaniment,
             AutoMapTo21Keys = autoMapTo21Keys,
-            PreferGpuAcceleration = preferGpuAcceleration,
         };
         if (Current.Ocr != value) Update(Current with { Ocr = value });
     }
@@ -469,7 +467,7 @@ public sealed class UserSettingsService : IUserSettingsService
             Notifications = settings?.Notifications ?? new NotificationUserSettings(),
             Ocr = ocr with
             {
-                NotationHint = ocr.NotationHint is "Auto" or "Numbered" or "Staff"
+                NotationHint = ocr.NotationHint is "Numbered" or "Staff"
                     ? ocr.NotationHint
                     : ocrDefaults.NotationHint,
                 WatermarkMode = ocr.WatermarkMode is "Auto" or "Strong" or "Off"

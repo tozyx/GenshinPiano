@@ -21,8 +21,7 @@ internal sealed class JianpuRecognizer
         CancellationToken cancellationToken)
     {
         OcrProgressReporter.Report(OcrProgressStage.Preparing, 0.02);
-        if (request.NotationHint == OcrNotationHint.Staff ||
-            request.NotationHint == OcrNotationHint.Auto && StaffNotationDetector.LooksLikeStaffNotation(request.ImagePath))
+        if (request.NotationHint == OcrNotationHint.Staff)
         {
             return await new StaffNotationRecognizer().RecognizeAsync(request, cancellationToken);
         }

@@ -34,13 +34,12 @@ one JSON result to standard output and exits. Diagnostics belong on standard
 error; standard output must contain JSON only.
 
 Requests contain `protocolVersion`, the absolute `imagePath`, a `notationHint`
-(`auto`, `numbered`, or `staff`), a UI language, and an optional `watermarkMode`
+(`numbered` or `staff`), a UI language, and an optional `watermarkMode`
 (`auto`, `strong`, or `off`; omitted values default to `auto`). The optional
 `includeAccompaniment` flag defaults to `true`; engines may still analyze all
 voices for layout reconstruction when it is false, but should only return the
-primary voice. `preferGpuAcceleration` defaults to `true`. It is a preference,
-not a requirement: engines should use CUDA when it is available and healthy,
-otherwise retry with the CPU provider in the same request. Successful responses contain
+primary voice. Legacy `auto` requests are treated as numbered notation; current
+hosts always require the user to select the notation type. Successful responses contain
 a complete `.gpiano`-compatible `score`, confidence in the range 0–1, and optional
 warnings. Failed responses set `success` to false and should provide stable
 `errorCode` and user-readable `errorMessage` fields.

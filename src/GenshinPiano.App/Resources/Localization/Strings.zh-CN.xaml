@@ -49,7 +49,6 @@
     <system:String x:Key="Ocr_NotSelected">尚未选择</system:String>
     <system:String x:Key="Ocr_Browse">浏览…</system:String>
     <system:String x:Key="Ocr_Notation">谱面类型</system:String>
-    <system:String x:Key="Ocr_NotationAuto">自动识别</system:String>
     <system:String x:Key="Ocr_NotationNumbered">数字简谱</system:String>
     <system:String x:Key="Ocr_NotationStaff">五线谱</system:String>
     <system:String x:Key="Ocr_Watermark">水印抑制</system:String>
@@ -338,5 +337,4 @@
     <system:String x:Key="Status_PlayWaitingForTargetWithSkipped">等待原神窗口（将跳过 {0} 个不可演奏音符）</system:String>
     <system:String x:Key="Status_PlayingWithSkipped">正在演奏 {0}/{1}　当前按键：{2}　跳过 {3} 个不可演奏音符</system:String>
     <system:String x:Key="Ocr_AutoMapTo21">自动映射到原神 21 键（无法映射的半音将忽略）</system:String>
-    <system:String x:Key="Ocr_EnableGpuAcceleration">启用 GPU 加速（需要支持 CUDA 的 NVIDIA 显卡，否则自动使用 CPU）</system:String>
 </ResourceDictionary>
