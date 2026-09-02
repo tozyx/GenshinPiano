@@ -204,6 +204,13 @@
     <system:String x:Key="Status_DurationsOptimized">Optimized the playing duration of {0} notes</system:String>
     <system:String x:Key="Status_ShortPressDurationsGenerated">Generated short key holds for {0} notes</system:String>
     <system:String x:Key="Audition_Piano">Piano</system:String>
+    <system:String x:Key="Audition_WindsongLyre">Windsong Lyre</system:String>
+    <system:String x:Key="Audition_FloralZither">Floral Zither</system:String>
+    <system:String x:Key="Audition_OldFloralZither">Floral Zither (Legacy)</system:String>
+    <system:String x:Key="Audition_VintageLyre">Vintage Lyre</system:String>
+    <system:String x:Key="Audition_Ukulele">Ukulele</system:String>
+    <system:String x:Key="Audition_LingeringEuphonia">Lingering Euphonia</system:String>
+    <system:String x:Key="Audition_LeapingSpiritPiano">Leaping Spirit Piano</system:String>
     <system:String x:Key="Audition_Harp">Harp</system:String>
     <system:String x:Key="Audition_Organ">Organ</system:String>
     <system:String x:Key="Audition_PlayPause">Audition / pause</system:String>
@@ -330,4 +337,6 @@
     <system:String x:Key="Status_PlaybackUnplayableNotes">{0} notes cannot be played in game and will be skipped</system:String>
     <system:String x:Key="Status_PlayWaitingForTargetWithSkipped">Waiting for the game window ({0} unplayable notes will be skipped)</system:String>
     <system:String x:Key="Status_PlayingWithSkipped">Playing {0}/{1}  Current keys: {2}  Skipping {3} unplayable notes</system:String>
+    <system:String x:Key="Ocr_AutoMapTo21">Automatically map to Genshin 21 keys (unmappable semitones are ignored)</system:String>
+    <system:String x:Key="Ocr_EnableGpuAcceleration">Enable GPU acceleration (requires an NVIDIA CUDA GPU; otherwise CPU is used)</system:String>
 </ResourceDictionary>

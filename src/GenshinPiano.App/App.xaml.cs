@@ -26,6 +26,7 @@ public partial class App : System.Windows.Application
     private WindowsGlobalEscapeListener? _escapeListener;
     private WindowsKeyboardInput? _keyboardInput;
     private WindowsMidiOutput? _midiOutput;
+    private WindowsSampleAuditionOutput? _sampleAuditionOutput;
     private HttpClient? _updateMetadataHttpClient;
     private HttpClient? _updateDownloadHttpClient;
     private SingleInstanceCoordinator? _singleInstance;
@@ -138,7 +139,9 @@ public partial class App : System.Windows.Application
         try
         {
             _midiOutput = new WindowsMidiOutput();
-            AuditionService = new ScoreAuditionService(_midiOutput);
+            _sampleAuditionOutput = new WindowsSampleAuditionOutput(
+                Path.Combine(AppContext.BaseDirectory, "Assets", "Audio"));
+            AuditionService = new ScoreAuditionService(_midiOutput, _sampleAuditionOutput);
         }
         catch (System.ComponentModel.Win32Exception exception)
         {
@@ -443,6 +446,7 @@ public partial class App : System.Windows.Application
         AppLogger.Info($"Application exiting with code {e.ApplicationExitCode}.");
         TryEmergencyReleaseAllKeys("application exit");
         _escapeListener?.Dispose();
+        _sampleAuditionOutput?.Dispose();
         _midiOutput?.Dispose();
         _updateMetadataHttpClient?.Dispose();
         _updateDownloadHttpClient?.Dispose();

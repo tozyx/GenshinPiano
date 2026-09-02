@@ -12,7 +12,20 @@ public sealed record AuditionProgress(
     TimeSpan Duration,
     long SampleTimestamp = 0);
 
-public sealed class ScoreAuditionService(IMidiOutput output)
+public static class AuditionInstrumentIds
+{
+    public const int WindsongLyre = -1;
+    public const int FloralZither = -2;
+    public const int OldFloralZither = -3;
+    public const int VintageLyre = -4;
+    public const int Ukulele = -5;
+    public const int LingeringEuphonia = -6;
+    public const int LeapingSpiritPiano = -7;
+
+    public static bool IsSampled(int instrument) => instrument is >= LeapingSpiritPiano and <= WindsongLyre;
+}
+
+public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutput? sampleOutput = null)
 {
     private double _velocityGain = 1;
 
@@ -21,6 +34,7 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         volume = Math.Clamp(volume, 0, 127);
         Volatile.Write(ref _velocityGain, volume / 101.6);
         output.SetVolume(volume);
+        sampleOutput?.SetVolume(volume);
     }
 
     public async Task PlayAsync(
@@ -41,7 +55,8 @@ public sealed class ScoreAuditionService(IMidiOutput output)
             .Where(item => item.Tick >= startTick && item.Tick <= playbackEndTick)
             .ToArray();
         var eventIndex = 0;
-        output.SetInstrument(Math.Clamp(instrument, 0, 127));
+        var sampled = AuditionInstrumentIds.IsSampled(instrument) && sampleOutput is not null;
+        if (!sampled) output.SetInstrument(Math.Clamp(instrument, 0, 127));
         var stopwatch = Stopwatch.StartNew();
         try
         {
@@ -54,13 +69,15 @@ public sealed class ScoreAuditionService(IMidiOutput output)
                     var item = events[eventIndex++];
                     foreach (var pitch in item.NotesOff)
                     {
-                        output.NoteOff(pitch);
+                        if (sampled) sampleOutput!.NoteOff(pitch);
+                        else output.NoteOff(pitch);
                     }
 
                     foreach (var note in item.NotesOn)
                     {
                         var velocity = (int)Math.Round(note.Velocity * Volatile.Read(ref _velocityGain));
-                        output.NoteOn(note.Pitch, Math.Clamp(velocity, 1, 127));
+                        if (sampled) sampleOutput!.NoteOn(instrument, note.Pitch, Math.Clamp(velocity, 1, 127));
+                        else output.NoteOn(note.Pitch, Math.Clamp(velocity, 1, 127));
                     }
                 }
 
@@ -84,6 +101,7 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         finally
         {
             output.AllNotesOff();
+            sampleOutput?.AllNotesOff();
         }
     }
 
@@ -95,10 +113,12 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         CancellationToken cancellationToken = default)
     {
         pitch = Math.Clamp(pitch, 0, 127);
-        output.SetInstrument(Math.Clamp(instrument, 0, 127));
+        var sampled = AuditionInstrumentIds.IsSampled(instrument) && sampleOutput is not null;
+        if (!sampled) output.SetInstrument(Math.Clamp(instrument, 0, 127));
         var adjustedVelocity = (int)Math.Round(
             Math.Clamp(velocity, 1, 127) * Volatile.Read(ref _velocityGain));
-        output.NoteOn(pitch, Math.Clamp(adjustedVelocity, 1, 127));
+        if (sampled) sampleOutput!.NoteOn(instrument, pitch, Math.Clamp(adjustedVelocity, 1, 127));
+        else output.NoteOn(pitch, Math.Clamp(adjustedVelocity, 1, 127));
         try
         {
             await Task.Delay(duration ?? TimeSpan.FromMilliseconds(220), cancellationToken)
@@ -106,7 +126,8 @@ public sealed class ScoreAuditionService(IMidiOutput output)
         }
         finally
         {
-            output.NoteOff(pitch);
+            if (sampled) sampleOutput!.NoteOff(pitch);
+            else output.NoteOff(pitch);
         }
     }
 

@@ -122,6 +122,9 @@ public partial class PianoRollEditor : UserControl
         Surface.SetSelectedArticulation(articulation);
     }
 
+    public void SetPitchLayoutMode(PianoRollPitchLayoutMode mode) =>
+        SelectComboItem(PitchLayoutComboBox, mode.ToString());
+
     private void PitchLayoutComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (Surface is null ||
@@ -132,6 +135,7 @@ public partial class PianoRollEditor : UserControl
         }
 
         Surface.PitchLayoutMode = mode;
+        UpdateSampleInstrumentAvailability(mode);
         if (!_loadingSettings)
         {
             _settingsService?.SetPianoRollLayoutMode(mode.ToString());
@@ -458,6 +462,12 @@ public partial class PianoRollEditor : UserControl
         finally
         {
             _loadingSettings = false;
+        }
+        if (AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string selectedTag } &&
+            int.TryParse(selectedTag, out var selectedInstrument) &&
+            selectedInstrument != editor.AuditionInstrument)
+        {
+            _settingsService.SetAuditionInstrument(selectedInstrument);
         }
     }
 
@@ -835,6 +845,28 @@ public partial class PianoRollEditor : UserControl
         if (!_loadingSettings)
         {
             _settingsService?.SetAuditionInstrument(instrument);
+        }
+    }
+
+    private void UpdateSampleInstrumentAvailability(PianoRollPitchLayoutMode mode)
+    {
+        if (WindsongLyreInstrumentItem is null || FloralZitherInstrumentItem is null) return;
+        var visibility = mode == PianoRollPitchLayoutMode.Genshin21 ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var item in new[]
+                 {
+                     WindsongLyreInstrumentItem, FloralZitherInstrumentItem,
+                     OldFloralZitherInstrumentItem, VintageLyreInstrumentItem,
+                     UkuleleInstrumentItem, LingeringEuphoniaInstrumentItem,
+                     LeapingSpiritPianoInstrumentItem,
+                 })
+        {
+            item.Visibility = visibility;
+        }
+        if (visibility == Visibility.Collapsed &&
+            AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
+            int.TryParse(tag, out var instrument) && AuditionInstrumentIds.IsSampled(instrument))
+        {
+            SelectComboItem(AuditionInstrumentComboBox, "0");
         }
     }
 

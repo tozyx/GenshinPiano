@@ -552,7 +552,7 @@
                                FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="SnapComboBox"
-                              Width="88"
+                              Width="124"
                               Height="30"
                               SelectedIndex="2"
                               SelectionChanged="SnapComboBox_OnSelectionChanged">
@@ -590,6 +590,13 @@
                         <ComboBoxItem Content="{DynamicResource Audition_Piano}" Tag="0" />
                         <ComboBoxItem Content="{DynamicResource Audition_Harp}" Tag="46" />
                         <ComboBoxItem Content="{DynamicResource Audition_Organ}" Tag="19" />
+                        <ComboBoxItem x:Name="WindsongLyreInstrumentItem" Content="{DynamicResource Audition_WindsongLyre}" Tag="-1" />
+                        <ComboBoxItem x:Name="FloralZitherInstrumentItem" Content="{DynamicResource Audition_FloralZither}" Tag="-2" />
+                        <ComboBoxItem x:Name="OldFloralZitherInstrumentItem" Content="{DynamicResource Audition_OldFloralZither}" Tag="-3" />
+                        <ComboBoxItem x:Name="VintageLyreInstrumentItem" Content="{DynamicResource Audition_VintageLyre}" Tag="-4" />
+                        <ComboBoxItem x:Name="UkuleleInstrumentItem" Content="{DynamicResource Audition_Ukulele}" Tag="-5" />
+                        <ComboBoxItem x:Name="LingeringEuphoniaInstrumentItem" Content="{DynamicResource Audition_LingeringEuphonia}" Tag="-6" />
+                        <ComboBoxItem x:Name="LeapingSpiritPianoInstrumentItem" Content="{DynamicResource Audition_LeapingSpiritPiano}" Tag="-7" />
                     </ComboBox>
                 </StackPanel>
 

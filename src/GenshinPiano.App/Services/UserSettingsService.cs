@@ -3,13 +3,14 @@ using System.IO;
 using System.Security;
 using System.Text;
 using System.Text.Json;
+using GenshinPiano.Application.Playback;
 using Microsoft.Win32;
 
 namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 9;
 
     public int Version { get; init; } = CurrentVersion;
 
@@ -22,6 +23,17 @@ public sealed record UserSettings
     public UpdateUserSettings Update { get; init; } = new();
 
     public NotificationUserSettings Notifications { get; init; } = new();
+
+    public OcrUserSettings Ocr { get; init; } = new();
+}
+
+public sealed record OcrUserSettings
+{
+    public string NotationHint { get; init; } = "Auto";
+    public string WatermarkMode { get; init; } = "Auto";
+    public bool IncludeAccompaniment { get; init; } = true;
+    public bool AutoMapTo21Keys { get; init; }
+    public bool PreferGpuAcceleration { get; init; } = true;
 }
 
 public sealed record NotificationUserSettings
@@ -114,6 +126,8 @@ public interface IUserSettingsService
     void SetUpdateChannel(string value);
 
     void SetNotifyWhenOcrCompletes(bool value);
+
+    void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys, bool preferGpuAcceleration);
 }
 
 public sealed class UserSettingsService : IUserSettingsService
@@ -215,7 +229,7 @@ public sealed class UserSettingsService : IUserSettingsService
 
     public void SetAuditionInstrument(int value)
     {
-        value = Math.Clamp(value, 0, 127);
+        value = Math.Clamp(value, AuditionInstrumentIds.LeapingSpiritPiano, 127);
         if (Current.Editor.AuditionInstrument != value)
         {
             Update(Current with { Editor = Current.Editor with { AuditionInstrument = value } });
@@ -317,6 +331,21 @@ public sealed class UserSettingsService : IUserSettingsService
         }
     }
 
+    public void SetOcrOptions(string notationHint, string watermarkMode, bool includeAccompaniment, bool autoMapTo21Keys, bool preferGpuAcceleration)
+    {
+        if (notationHint is not ("Auto" or "Numbered" or "Staff") ||
+            watermarkMode is not ("Auto" or "Strong" or "Off")) return;
+        var value = new OcrUserSettings
+        {
+            NotationHint = notationHint,
+            WatermarkMode = watermarkMode,
+            IncludeAccompaniment = includeAccompaniment,
+            AutoMapTo21Keys = autoMapTo21Keys,
+            PreferGpuAcceleration = preferGpuAcceleration,
+        };
+        if (Current.Ocr != value) Update(Current with { Ocr = value });
+    }
+
     private UserSettings Load()
     {
         try
@@ -383,6 +412,8 @@ public sealed class UserSettingsService : IUserSettingsService
         var library = settings?.Library ?? new LibraryUserSettings();
         var updateDefaults = new UpdateUserSettings();
         var update = settings?.Update ?? updateDefaults;
+        var ocrDefaults = new OcrUserSettings();
+        var ocr = settings?.Ocr ?? ocrDefaults;
         return new UserSettings
         {
             Version = UserSettings.CurrentVersion,
@@ -401,7 +432,7 @@ public sealed class UserSettingsService : IUserSettingsService
                 PitchLabelMode = IsValidPitchLabelMode(editor.PitchLabelMode)
                     ? editor.PitchLabelMode
                     : defaults.PitchLabelMode,
-                AuditionInstrument = Math.Clamp(editor.AuditionInstrument, 0, 127),
+                AuditionInstrument = Math.Clamp(editor.AuditionInstrument, AuditionInstrumentIds.LeapingSpiritPiano, 127),
                 AuditionVolume = Math.Clamp(editor.AuditionVolume, 0, 100),
                 PianoRollFrameRate = IsValidPianoRollFrameRate(editor.PianoRollFrameRate)
                     ? editor.PianoRollFrameRate
@@ -436,6 +467,15 @@ public sealed class UserSettingsService : IUserSettingsService
                     : updateDefaults.Channel,
             },
             Notifications = settings?.Notifications ?? new NotificationUserSettings(),
+            Ocr = ocr with
+            {
+                NotationHint = ocr.NotationHint is "Auto" or "Numbered" or "Staff"
+                    ? ocr.NotationHint
+                    : ocrDefaults.NotationHint,
+                WatermarkMode = ocr.WatermarkMode is "Auto" or "Strong" or "Off"
+                    ? ocr.WatermarkMode
+                    : ocrDefaults.WatermarkMode,
+            },
         };
     }
 
