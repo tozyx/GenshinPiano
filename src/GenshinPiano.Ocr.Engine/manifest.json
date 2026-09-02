@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "protocolVersion": 1,
-  "engineVersion": "0.7.0",
+  "engineVersion": "0.8.0",
   "executable": "GPianoOcrEngine.exe",
   "launchMode": "file"
 }
