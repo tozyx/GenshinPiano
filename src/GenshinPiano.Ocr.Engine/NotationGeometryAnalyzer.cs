@@ -48,6 +48,29 @@ internal static class NotationGeometryAnalyzer
             digitBody.Bounds);
     }
 
+    public static bool HasTieArc(SKBitmap source, SKRect left, SKRect right)
+    {
+        var height = Math.Max(left.Height, right.Height);
+        var gap = right.MidX - left.MidX;
+        if (gap <= Math.Max(left.Width, right.Width) * 0.8f) return false;
+        var roi = SKRectI.Intersect(new SKRectI(
+            (int)Math.Floor(left.MidX),
+            (int)Math.Floor(Math.Min(left.Top, right.Top) - height * 1.25f),
+            (int)Math.Ceiling(right.MidX),
+            (int)Math.Ceiling(Math.Min(left.Top, right.Top) + height * 0.08f)),
+            new SKRectI(0, 0, source.Width, source.Height));
+        if (roi.IsEmpty) return false;
+        return FindComponents(source, roi).Any(component =>
+        {
+            var bounds = component.Bounds;
+            var aspect = bounds.Width / Math.Max(1, bounds.Height);
+            return bounds.Width >= gap * 0.55f &&
+                   bounds.Height <= height * 0.65f &&
+                   aspect >= 2.2f &&
+                   bounds.MidY < Math.Min(left.Top, right.Top);
+        });
+    }
+
     private static InkComponent? FindDigitBody(
         IEnumerable<InkComponent> components,
         SKRect ocrBounds) =>

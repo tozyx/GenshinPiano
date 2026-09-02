@@ -1186,7 +1186,7 @@ public partial class MainWindow : Window
             Focus();
         }
 
-        if (!accepted || dialog.Result?.Score is not { } score ||
+        if (!accepted || dialog.Result?.Score is not { } recognizedScore ||
             dialog.ImagePath is not { } imagePath)
         {
             return;
@@ -1213,7 +1213,16 @@ public partial class MainWindow : Window
             }
         }
 
+        var score = recognizedScore;
+        if (dialog.AutoMapTo21Keys)
+        {
+            score = ScoreEditor.MapToGenshinRange(score).Score;
+        }
         viewModel.ImportOcrScore(score, imagePath);
+        PianoRollEditor.SetPitchLayoutMode(
+            dialog.AutoMapTo21Keys
+                ? PianoRollPitchLayoutMode.Genshin21
+                : PianoRollPitchLayoutMode.Piano88);
     }
 
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)

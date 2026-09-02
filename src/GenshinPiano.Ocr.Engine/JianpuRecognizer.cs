@@ -21,9 +21,10 @@ internal sealed class JianpuRecognizer
         CancellationToken cancellationToken)
     {
         OcrProgressReporter.Report(OcrProgressStage.Preparing, 0.02);
-        if (request.NotationHint == OcrNotationHint.Staff)
+        if (request.NotationHint == OcrNotationHint.Staff ||
+            request.NotationHint == OcrNotationHint.Auto && StaffNotationDetector.LooksLikeStaffNotation(request.ImagePath))
         {
-            return Failure("unsupported_notation", "This engine currently recognizes numbered notation only.");
+            return await new StaffNotationRecognizer().RecognizeAsync(request, cancellationToken);
         }
 
         if (!File.Exists(request.ImagePath))
@@ -140,6 +141,7 @@ internal sealed class JianpuRecognizer
 
         OcrProgressReporter.Report(OcrProgressStage.SuperResolution, 0.78);
         var rows = FilterNotationRows(ClusterRows(candidates), decoded.Width);
+        rows = MarkTies(suppressedImage ?? decoded, rows);
         if (rows.Count == 0)
         {
             return Failure("no_notes_detected", "No numbered-note rows were detected in the image.");
@@ -157,6 +159,11 @@ internal sealed class JianpuRecognizer
         var score = ScoreDocument.CreateEmpty(Path.GetFileNameWithoutExtension(request.ImagePath)) with
         {
             Tracks = tracks,
+            Playback = new PlaybackSettings
+            {
+                Mapping = "full-pitch",
+                OutOfRangePolicy = OutOfRangePolicy.Drop,
+            },
         };
         var confidence = candidates.Count == 0
             ? 0
@@ -174,7 +181,7 @@ internal sealed class JianpuRecognizer
                         ? "Multiple numbered-notation voices were inferred from the page layout. Review their alignment."
                         : "A single numbered-notation voice was inferred from the page layout.",
                 "Octave dots, rhythm underlines and augmentation dots were inferred geometrically. Review low-confidence symbols before playback.",
-                "Accidentals are ignored because the 21-key layout has no semitones. Extension dashes and ties are not applied yet.",
+                "Recognized accidentals and extension dashes were preserved. Review curved ties and other low-confidence notation marks.",
             ]);
     }
 
@@ -264,10 +271,12 @@ internal sealed class JianpuRecognizer
         points.Max(point => point.Y) + offsetY);
 
     private static bool IsCandidateCharacter(char character) =>
-        character is >= '0' and <= '7';
+        character is >= '0' and <= '7' or '#' or 'b' or '-' or '♯' or '♭';
 
     private static char NormalizeCandidateCharacter(char character) => character switch
     {
+        '♯' => '#',
+        '♭' => 'b',
         _ => character,
     };
 
@@ -404,6 +413,7 @@ internal sealed class JianpuRecognizer
                 }
 
                 var classifiedBounds = bounds.Value;
+                char? connectedAccidental = null;
                 // A leading accidental is sometimes connected to the following
                 // digit by anti-aliasing, so the complete run may be confidently
                 // misclassified as another digit. Split a sufficiently wide run
@@ -418,6 +428,7 @@ internal sealed class JianpuRecognizer
                     bodyHeight);
                 if (accidentalDigit is not null)
                 {
+                    connectedAccidental = accidentalDigit.Accidental;
                     classifiedBounds = accidentalDigit.Bounds;
                 }
 
@@ -436,6 +447,7 @@ internal sealed class JianpuRecognizer
                 }
                 if (classification.Label is "sharp" or "flat")
                 {
+                    connectedAccidental = classification.Label == "sharp" ? '#' : 'b';
                     var recovered = TryRecoverDigitAfterAccidental(
                         classifier,
                         source,
@@ -463,6 +475,13 @@ internal sealed class JianpuRecognizer
                     continue;
                 }
                 var geometry = NotationGeometryAnalyzer.Analyze(source, classifiedBounds);
+                if (connectedAccidental is { } accidental)
+                {
+                    result.Add(new GlyphCandidate(
+                        accidental,
+                        (float)classification.Confidence,
+                        new SKRect(bounds.Value.Left, bounds.Value.Top, classifiedBounds.Left, bounds.Value.Bottom)));
+                }
                 result.Add(new GlyphCandidate(
                     classification.Label[0],
                     (float)classification.Confidence,
@@ -898,10 +917,19 @@ internal sealed class JianpuRecognizer
         }
 
         var classification = classifier.Classify(source, digitBounds.Value);
+        var accidentalBounds = FindInkBounds(source, left, bestX, top, bottom);
+        var accidental = accidentalBounds is null
+            ? null
+            : classifier.Classify(source, accidentalBounds.Value).Label switch
+            {
+                "sharp" => (char?)'#',
+                "flat" => 'b',
+                _ => null,
+            };
         return classification.Label.Length == 1 &&
                classification.Label[0] is >= '0' and <= '7' &&
                classification.Confidence >= 0.70
-            ? new RecoveredDigit(digitBounds.Value, classification)
+            ? new RecoveredDigit(digitBounds.Value, classification, accidental)
             : null;
     }
 
@@ -1199,11 +1227,19 @@ internal sealed class JianpuRecognizer
             var primaryAnchors = new List<TimelineAnchor>();
             long primaryTick = 0;
             var primaryAlteration = 0;
+            var tieFromPrevious = false;
             foreach (var glyph in system.Rows[0].Glyphs)
             {
                 if (glyph.Value is '#' or 'b')
                 {
                     primaryAlteration = glyph.Value == '#' ? 1 : -1;
+                    continue;
+                }
+
+                if (glyph.Value == '-' && trackNotes[0].Count > 0)
+                {
+                    ExtendPreviousNote(trackNotes[0], DefaultPpq);
+                    primaryTick += DefaultPpq;
                     continue;
                 }
 
@@ -1213,16 +1249,23 @@ internal sealed class JianpuRecognizer
                     primaryAnchors.Add(new TimelineAnchor(glyph.Bounds.MidX, primaryTick));
                     primaryTick += rhythmTick;
                     primaryAlteration = 0;
+                    tieFromPrevious = false;
                 }
                 else if (ScalePitch.TryGetValue(glyph.Value, out var pitch))
                 {
                     primaryAnchors.Add(new TimelineAnchor(glyph.Bounds.MidX, primaryTick));
-                    trackNotes[0].Add(CreateNote(
-                        pitch + primaryAlteration + (glyph.Features.OctaveShift * 12),
-                        systemStartTick + primaryTick,
-                        rhythmTick));
+                    var resolvedPitch = pitch + primaryAlteration + (glyph.Features.OctaveShift * 12);
+                    if (tieFromPrevious && trackNotes[0].Count > 0 && trackNotes[0][^1].Pitch == resolvedPitch)
+                    {
+                        ExtendPreviousNote(trackNotes[0], rhythmTick);
+                    }
+                    else
+                    {
+                        trackNotes[0].Add(CreateNote(resolvedPitch, systemStartTick + primaryTick, rhythmTick));
+                    }
                     primaryTick += rhythmTick;
                     primaryAlteration = 0;
+                    tieFromPrevious = glyph.TieToNext;
                 }
             }
 
@@ -1231,6 +1274,7 @@ internal sealed class JianpuRecognizer
             {
                 var pendingAlteration = 0;
                 var firstVoiceTick = -1L;
+                var tieFromPreviousVoice = false;
                 foreach (var glyph in system.Rows[voice].Glyphs)
                 {
                     if (glyph.Value is '#' or 'b')
@@ -1243,9 +1287,18 @@ internal sealed class JianpuRecognizer
                         glyph.Bounds.MidX,
                         primaryAnchors,
                         primaryTick);
+
+                    if (glyph.Value == '-' && trackNotes[voice].Count > 0)
+                    {
+                        ExtendPreviousNote(trackNotes[voice], DefaultPpq);
+                        systemTicks = Math.Max(systemTicks, relativeTick + DefaultPpq);
+                        continue;
+                    }
+
                     if (glyph.Value == '0')
                     {
                         pendingAlteration = 0;
+                        tieFromPreviousVoice = false;
                         continue;
                     }
 
@@ -1256,12 +1309,18 @@ internal sealed class JianpuRecognizer
 
                     var rhythmTick = RhythmTick(glyph);
                     firstVoiceTick = firstVoiceTick < 0 ? relativeTick : firstVoiceTick;
-                    trackNotes[voice].Add(CreateNote(
-                        pitch + pendingAlteration + (glyph.Features.OctaveShift * 12),
-                        systemStartTick + relativeTick,
-                        rhythmTick));
+                    var resolvedPitch = pitch + pendingAlteration + (glyph.Features.OctaveShift * 12);
+                    if (tieFromPreviousVoice && trackNotes[voice].Count > 0 && trackNotes[voice][^1].Pitch == resolvedPitch)
+                    {
+                        ExtendPreviousNote(trackNotes[voice], rhythmTick);
+                    }
+                    else
+                    {
+                        trackNotes[voice].Add(CreateNote(resolvedPitch, systemStartTick + relativeTick, rhythmTick));
+                    }
                     systemTicks = Math.Max(systemTicks, relativeTick + rhythmTick);
                     pendingAlteration = 0;
+                    tieFromPreviousVoice = glyph.TieToNext;
                 }
 
                 if (DiagnosticsEnabled() && firstVoiceTick >= 0)
@@ -1301,6 +1360,17 @@ internal sealed class JianpuRecognizer
         DurationMode = DurationMode.Auto,
         Articulation = NoteArticulation.Natural,
     };
+
+    private static void ExtendPreviousNote(List<NoteEvent> notes, int extensionTick)
+    {
+        var previous = notes[^1];
+        var rhythmTick = Math.Max(1, previous.RhythmTick ?? previous.DurationTick) + extensionTick;
+        notes[^1] = previous with
+        {
+            RhythmTick = rhythmTick,
+            DurationTick = Math.Max(1, (rhythmTick * 4) / 5),
+        };
+    }
 
     private static long MapHorizontalPositionToTick(
         float x,
@@ -1350,6 +1420,28 @@ internal sealed class JianpuRecognizer
             : sorted[middle];
     }
 
+    private static List<NotationRow> MarkTies(SKBitmap source, List<NotationRow> rows)
+    {
+        return rows.Select(row =>
+        {
+            var glyphs = row.Glyphs.OrderBy(glyph => glyph.Bounds.Left).ToList();
+            for (var index = 0; index < glyphs.Count; index++)
+            {
+                var left = glyphs[index];
+                if (!ScalePitch.ContainsKey(left.Value)) continue;
+                var nextIndex = index + 1;
+                while (nextIndex < glyphs.Count && glyphs[nextIndex].Value is '#' or 'b') nextIndex++;
+                if (nextIndex >= glyphs.Count) continue;
+                var right = glyphs[nextIndex];
+                if (right.Value != left.Value ||
+                    right.Features.OctaveShift != left.Features.OctaveShift ||
+                    !NotationGeometryAnalyzer.HasTieArc(source, left.Bounds, right.Bounds)) continue;
+                glyphs[index] = left with { TieToNext = true };
+            }
+            return new NotationRow(glyphs, row.CenterY);
+        }).ToList();
+    }
+
     private static void WriteLayoutDiagnostics(
         IReadOnlyList<NotationRow> rows,
         IReadOnlyList<NotationSystem> systems)
@@ -1391,7 +1483,8 @@ internal sealed class JianpuRecognizer
         char Value,
         float Score,
         SKRect Bounds,
-        GeometryFeatures? Geometry = null)
+        GeometryFeatures? Geometry = null,
+        bool TieToNext = false)
     {
         public float CenterY => (Bounds.Top + Bounds.Bottom) / 2f;
         public GeometryFeatures Features => Geometry ?? GeometryFeatures.Empty;
@@ -1404,5 +1497,6 @@ internal sealed class JianpuRecognizer
     private sealed record ProjectionRun(int Left, int Right);
     private sealed record RecoveredDigit(
         SKRect Bounds,
-        OrpheusNetClassifier.ClassificationResult Classification);
+        OrpheusNetClassifier.ClassificationResult Classification,
+        char? Accidental = null);
 }

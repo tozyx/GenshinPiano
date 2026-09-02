@@ -62,7 +62,7 @@
 - [x] Evaluate deployable OMR backends and document license/output/runtime trade-offs.
 - [ ] Add a notation router without changing the existing numbered-notation path.
 - [x] Import MusicXML timing, measures, voices, chords, ties, rests, and piano parts.
-- [ ] Integrate `oemer` as a replaceable end-to-end baseline backend.
+- [x] Integrate `oemer` as a replaceable end-to-end baseline backend.
 - [ ] Benchmark SMT Camera-GrandStaff, oemer, homr, and Audiveris on one fixed corpus.
 - [ ] Package the selected MIT-compatible model as a separately signed OCR add-on.
 - [ ] Add a correction preview for low-confidence, chromatic, and out-of-range notes.

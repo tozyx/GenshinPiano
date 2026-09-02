@@ -23,7 +23,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(addonDirectory);
         _addonDirectory = Path.GetFullPath(addonDirectory);
-        _timeout = timeout ?? TimeSpan.FromMinutes(5);
+        _timeout = timeout ?? TimeSpan.FromMinutes(30);
         if (_timeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -85,6 +85,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
         string language,
         OcrWatermarkMode watermarkMode = OcrWatermarkMode.Auto,
         bool includeAccompaniment = true,
+        bool preferGpuAcceleration = true,
         IProgress<OcrProgressUpdate>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -102,7 +103,8 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
             notationHint,
             string.IsNullOrWhiteSpace(language) ? "auto" : language,
             watermarkMode,
-            includeAccompaniment);
+            includeAccompaniment,
+            preferGpuAcceleration);
 
         var result = addon.LaunchMode switch
         {

@@ -37,12 +37,15 @@ public partial class OcrImportDialog : Window
         InitializeComponent();
         Closing += OnClosing;
         Closed += OnClosed;
+        LoadOptions();
         UpdateAddonStatus();
     }
 
     public OcrAnalysisResult? Result { get; private set; }
 
     public string? ImagePath { get; private set; }
+
+    public bool AutoMapTo21Keys => AutoMapTo21CheckBox.IsChecked == true;
 
     private bool IsAddonAvailable => _service.FindInstalledAddon() is not null;
 
@@ -164,6 +167,7 @@ public partial class OcrImportDialog : Window
                 System.Globalization.CultureInfo.CurrentUICulture.Name,
                 watermarkMode,
                 AccompanimentCheckBox.IsChecked == true,
+                GpuAccelerationCheckBox.IsChecked == true,
                 progress,
                 cancellationToken: _analysisCancellation.Token);
             if (!Result.Success || Result.Score is null)
@@ -225,6 +229,8 @@ public partial class OcrImportDialog : Window
         NotationComboBox.IsEnabled = !busy;
         WatermarkComboBox.IsEnabled = !busy;
         AccompanimentCheckBox.IsEnabled = !busy;
+        AutoMapTo21CheckBox.IsEnabled = !busy;
+        GpuAccelerationCheckBox.IsEnabled = !busy;
         CancelButton.Content = GetText(busy ? "Ocr_CancelAnalysis" : "Common_Cancel");
     }
 
@@ -297,8 +303,40 @@ public partial class OcrImportDialog : Window
         _downloadCancellation?.Cancel();
     }
 
-    private void OnClosed(object? sender, EventArgs e) =>
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        SaveOptions();
         _completion.TrySetResult(_accepted);
+    }
+
+    private void LoadOptions()
+    {
+        var options = _settings.Current.Ocr;
+        SelectComboItem(NotationComboBox, options.NotationHint);
+        SelectComboItem(WatermarkComboBox, options.WatermarkMode);
+        AccompanimentCheckBox.IsChecked = options.IncludeAccompaniment;
+        AutoMapTo21CheckBox.IsChecked = options.AutoMapTo21Keys;
+        GpuAccelerationCheckBox.IsChecked = options.PreferGpuAcceleration;
+    }
+
+    private void SaveOptions()
+    {
+        var notation = (NotationComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Auto";
+        var watermark = (WatermarkComboBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Auto";
+        _settings.SetOcrOptions(
+            notation,
+            watermark,
+            AccompanimentCheckBox.IsChecked == true,
+            AutoMapTo21Keys,
+            GpuAccelerationCheckBox.IsChecked == true);
+    }
+
+    private static void SelectComboItem(ComboBox comboBox, string tag)
+    {
+        comboBox.SelectedItem = comboBox.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag as string, tag, StringComparison.Ordinal))
+            ?? comboBox.Items[0];
+    }
 
     private static string GetText(string key) =>
         System.Windows.Application.Current.TryFindResource(key) as string ?? key;

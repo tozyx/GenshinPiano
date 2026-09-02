@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource Ocr_Title}"
         Width="560"
-        Height="430"
+        Height="468"
         WindowStyle="None"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
@@ -74,7 +74,9 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <DockPanel LastChildFill="True">
@@ -138,14 +140,24 @@
                                   Content="{DynamicResource Ocr_IncludeAccompaniment}" />
                 </Grid>
 
-                <ProgressBar x:Name="AnalysisProgress" Grid.Row="4" Height="5" Margin="0,16,0,0"
+                <ToggleButton x:Name="AutoMapTo21CheckBox" Grid.Row="4" Margin="0,12,0,0"
+                              HorizontalAlignment="Left"
+                              Style="{StaticResource OcrToggleStyle}"
+                              Content="{DynamicResource Ocr_AutoMapTo21}" />
+
+                <ToggleButton x:Name="GpuAccelerationCheckBox" Grid.Row="5" Margin="0,12,0,0"
+                              HorizontalAlignment="Left" IsChecked="True"
+                              Style="{StaticResource OcrToggleStyle}"
+                              Content="{DynamicResource Ocr_EnableGpuAcceleration}" />
+
+                <ProgressBar x:Name="AnalysisProgress" Grid.Row="6" Height="5" Margin="0,16,0,0"
                              Minimum="0" Maximum="1" Value="0"
                              Foreground="{DynamicResource AccentBrush}" />
-                <TextBlock x:Name="ResultText" Grid.Row="5" Margin="0,10,0,0"
+                <TextBlock x:Name="ResultText" Grid.Row="7" Margin="0,10,0,0"
                            Text="{DynamicResource Ocr_Ready}" TextWrapping="Wrap"
                            Foreground="{DynamicResource SecondaryTextBrush}" />
 
-                <StackPanel Grid.Row="6" HorizontalAlignment="Right" Orientation="Horizontal">
+                <StackPanel Grid.Row="8" HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button x:Name="CancelButton" Content="{DynamicResource Common_Cancel}"
                             Style="{StaticResource AppButtonStyle}" Click="CancelButton_OnClick" />
                     <Button x:Name="AnalyzeButton" Margin="8,0,0,0"

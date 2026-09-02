@@ -23,7 +23,10 @@ public sealed class MusicXmlScoreImporter
         using var stream = File.OpenRead(path);
         using var reader = XmlReader.Create(stream, new XmlReaderSettings
         {
-            DtdProcessing = DtdProcessing.Prohibit,
+            // MusicXML exporters commonly emit the official Recordare DOCTYPE.
+            // Ignore the declaration while keeping XmlResolver disabled so no
+            // external DTD or entity can be fetched or expanded.
+            DtdProcessing = DtdProcessing.Ignore,
             XmlResolver = null,
             IgnoreComments = true,
         });
@@ -44,6 +47,11 @@ public sealed class MusicXmlScoreImporter
         {
             cancellationToken.ThrowIfCancellationRequested();
             var partId = Attr(part, "id") ?? $"part-{rawTracks.Count + 1}";
+            foreach (var sound in Children(part, "sound"))
+            {
+                if (ParseTempo(Attr(sound, "tempo")) is { } bpm and > 0)
+                    tempos.Add(new() { Tick = 0, Bpm = bpm });
+            }
             var divisions = 1;
             long measureStart = 0;
             foreach (var measure in Children(part, "measure"))
@@ -152,8 +160,11 @@ public sealed class MusicXmlScoreImporter
     {
         var value = Desc(direction, "sound").Select(x => Attr(x, "tempo")).FirstOrDefault(x => x is not null)
                     ?? Desc(direction, "per-minute").Select(x => x.Value).FirstOrDefault();
-        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var tempo) ? tempo : null;
+        return ParseTempo(value);
     }
+
+    private static double? ParseTempo(string? value) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var tempo) ? tempo : null;
 
     private static bool TryPitch(XElement note, out int pitch, out bool chromatic)
     {

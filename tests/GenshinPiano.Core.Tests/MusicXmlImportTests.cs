@@ -67,11 +67,52 @@ public sealed class MusicXmlImportTests
     }
 
     [Fact]
-    public async Task RejectsExternalDtd()
+    public async Task ImportsStandardMusicXmlDoctypeWithoutResolvingIt()
+    {
+        const string xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+            <score-partwise version="4.0">
+              <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+              <part id="P1"><measure number="1">
+                <attributes><divisions>1</divisions></attributes>
+                <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>
+              </measure></part>
+            </score-partwise>
+            """;
+
+        var result = await ImportAsync(xml);
+
+        Assert.Equal(60, Assert.Single(Assert.Single(result.Score.Tracks).Notes).Pitch);
+    }
+
+    [Fact]
+    public async Task ImportsOemerPartLevelTempo()
+    {
+        const string xml = """
+            <score-partwise version="4.0">
+              <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+              <part id="P1">
+                <sound tempo="90"/>
+                <measure number="1">
+                  <attributes><divisions>1</divisions></attributes>
+                  <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration></note>
+                </measure>
+              </part>
+            </score-partwise>
+            """;
+
+        var result = await ImportAsync(xml);
+
+        Assert.Equal(90, result.Score.Timing.TempoMap[0].Bpm);
+    }
+
+    [Fact]
+    public async Task DoesNotExpandExternalDtdEntities()
     {
         const string xml = """
             <!DOCTYPE score-partwise SYSTEM "file:///C:/Windows/win.ini">
-            <score-partwise version="4.0"/>
+            <score-partwise version="4.0">&external;</score-partwise>
             """;
         await Assert.ThrowsAnyAsync<XmlException>(() => ImportAsync(xml));
     }
