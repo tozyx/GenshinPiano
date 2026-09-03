@@ -24,6 +24,25 @@ public sealed class ReleaseMirrorUpdateSource(
             request,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
+        if (!response.IsSuccessStatusCode && GitHubReleasePageFallback.Supports(releasesEndpoint))
+        {
+            var fallbackReleases = await GitHubReleasePageFallback.GetReleasesAsync(
+                httpClient, releasesEndpoint, cancellationToken);
+            var fallbackCandidates = new List<ReleaseCandidate>();
+            foreach (var release in fallbackReleases)
+            {
+                if (!SemanticVersion.TryParse(release.TagName, out var version) ||
+                    version.CompareTo(currentVersion) <= 0 ||
+                    (string.Equals(channel, "stable", StringComparison.OrdinalIgnoreCase) &&
+                     version.PreRelease is not null)) continue;
+                fallbackCandidates.Add(new ReleaseCandidate(
+                    version,
+                    release.Assets.Select(asset => new ReleaseAsset(
+                        asset.Name, asset.DownloadUri, asset.Size)).ToArray(),
+                    release.ReleaseNotes));
+            }
+            return await SelectManifestAsync(fallbackCandidates, channel, cancellationToken);
+        }
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -61,6 +80,14 @@ public sealed class ReleaseMirrorUpdateSource(
             candidates.Add(new ReleaseCandidate(version, assets, GetString(release, "body")));
         }
 
+        return await SelectManifestAsync(candidates, channel, cancellationToken);
+    }
+
+    private async Task<UpdateManifest?> SelectManifestAsync(
+        IReadOnlyList<ReleaseCandidate> candidates,
+        string channel,
+        CancellationToken cancellationToken)
+    {
         foreach (var candidate in candidates.OrderByDescending(item => item.Version))
         {
             var suffix = frameworkDependent ? "-win-x64-framework.zip" : "-win-x64.zip";

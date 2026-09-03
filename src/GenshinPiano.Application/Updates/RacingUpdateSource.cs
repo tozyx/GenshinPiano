@@ -7,89 +7,84 @@ public sealed class RacingUpdateSource(
     TimeSpan? gracePeriod = null,
     Action<string>? diagnostic = null) : IUpdateSource
 {
-    private readonly TimeSpan _gracePeriod = gracePeriod ?? TimeSpan.FromMilliseconds(750);
-
     public async Task<UpdateManifest?> GetLatestAsync(
         string channel,
         CancellationToken cancellationToken)
     {
+        // Kept in the constructor for source compatibility. Metadata discovery now
+        // waits for every source, because an early response may expose an older release.
+        _ = gracePeriod;
         if (sources.Count == 0) return null;
 
-        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var pending = sources.Select((source, index) =>
+        var tasks = sources.Select((source, index) =>
             TryGetLatestAsync(
                 source,
                 GetSourceName(source, index),
                 channel,
-                linkedCancellation.Token)).ToList();
-        var errors = new List<Exception>();
-        var candidates = new List<SourceAttempt>();
+                cancellationToken)).ToArray();
+        var attempts = await Task.WhenAll(tasks);
+        foreach (var attempt in attempts) LogAttempt(attempt);
 
-        while (pending.Count > 0 && candidates.Count == 0)
+        var errors = attempts.Where(attempt => attempt.Error is not null)
+            .Select(attempt => attempt.Error!).ToArray();
+        var candidates = attempts.Where(attempt => attempt.Manifest is not null).ToArray();
+        if (candidates.Length == 0)
         {
-            var attempt = await TakeNextAsync(pending);
-            LogAttempt(attempt);
-            Collect(attempt, candidates, errors);
-        }
-
-        if (candidates.Count == 0)
-        {
-            if (errors.Count == sources.Count)
+            if (errors.Length == sources.Count)
                 throw new AggregateException("All update sources failed.", errors);
             return null;
         }
 
-        if (pending.Count > 0 && _gracePeriod > TimeSpan.Zero)
-        {
-            var graceDelay = Task.Delay(_gracePeriod, cancellationToken);
-            while (pending.Count > 0)
-            {
-                var nextAttempt = Task.WhenAny(pending);
-                var completed = await Task.WhenAny(nextAttempt, graceDelay);
-                if (ReferenceEquals(completed, graceDelay))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    diagnostic?.Invoke(
-                        $"Update race grace window expired with {pending.Count} " +
-                        "source(s) still pending; using completed candidates.");
-                    break;
-                }
-
-                var task = await nextAttempt;
-                pending.Remove(task);
-                var attempt = await task;
-                LogAttempt(attempt);
-                Collect(attempt, candidates, errors);
-            }
-        }
-
-        var selected = candidates
-            .OrderByDescending(attempt => attempt.Manifest!.Version)
-            .ThenBy(attempt => attempt.Elapsed)
-            .First();
+        var newestVersion = candidates.Max(attempt => attempt.Manifest!.Version);
+        var newest = candidates
+            .Where(attempt => attempt.Manifest!.Version.CompareTo(newestVersion) == 0)
+            .OrderBy(attempt => attempt.Elapsed)
+            .ToArray();
+        var selected = newest[0];
+        var manifest = MergeEquivalentMirrors(selected, newest);
+        var downloadUrlCount = manifest.Packages
+            .SelectMany(package => package.GetDownloadUris()).Count();
         diagnostic?.Invoke(
-            $"Update race selected {selected.SourceName} {selected.Manifest!.Version} " +
-            $"after {selected.Elapsed.TotalMilliseconds:F0} ms; " +
-            $"grace window {_gracePeriod.TotalMilliseconds:F0} ms.");
-        linkedCancellation.Cancel();
-        return selected.Manifest;
+            newest.Length > 1
+                ? $"Update discovery found {newestVersion} on {newest.Length} source(s); " +
+                  $"{downloadUrlCount} equivalent package URL(s) are eligible for download racing."
+                : $"Update discovery selected {selected.SourceName} {newestVersion}; " +
+                  "other sources returned an older version, no compatible update, or an error.");
+        return manifest;
     }
 
-    private static async Task<SourceAttempt> TakeNextAsync(List<Task<SourceAttempt>> pending)
+    private static UpdateManifest MergeEquivalentMirrors(
+        SourceAttempt selected,
+        IReadOnlyList<SourceAttempt> newest)
     {
-        var completed = await Task.WhenAny(pending);
-        pending.Remove(completed);
-        return await completed;
+        var primary = selected.Manifest!;
+        if (newest.Count == 1) return primary;
+
+        var mergedPackages = primary.Packages.Select(package =>
+        {
+            var mirrors = newest.Skip(1)
+                .SelectMany(attempt => attempt.Manifest!.Packages)
+                .Where(candidate => PackagesAreEquivalent(package, candidate))
+                .SelectMany(candidate => candidate.GetDownloadUris())
+                .ToArray();
+            return mirrors.Length == 0
+                ? package
+                : package with { MirrorDownloadUris = mirrors };
+        }).ToArray();
+        return primary with
+        {
+            Packages = mergedPackages,
+            SourceName = string.Join(" + ", newest.Select(attempt => attempt.SourceName)),
+        };
     }
 
-    private static void Collect(
-        SourceAttempt attempt,
-        ICollection<SourceAttempt> candidates,
-        ICollection<Exception> errors)
-    {
-        if (attempt.Manifest is not null) candidates.Add(attempt);
-        else if (attempt.Error is not null) errors.Add(attempt.Error);
-    }
+    private static bool PackagesAreEquivalent(UpdatePackage left, UpdatePackage right) =>
+        left.Id == right.Id &&
+        left.Kind == right.Kind &&
+        left.Version.CompareTo(right.Version) == 0 &&
+        string.Equals(left.FileName, right.FileName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Sha256, right.Sha256, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Signature, right.Signature, StringComparison.Ordinal);
 
     private void LogAttempt(SourceAttempt attempt)
     {
@@ -122,7 +117,7 @@ public sealed class RacingUpdateSource(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return new SourceAttempt(sourceName, null, null, stopwatch.Elapsed);
+            throw;
         }
         catch (Exception exception)
         {

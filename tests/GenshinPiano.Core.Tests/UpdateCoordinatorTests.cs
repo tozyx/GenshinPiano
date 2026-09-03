@@ -127,7 +127,7 @@ public sealed class UpdateCoordinatorTests
     }
 
     [Fact]
-    public async Task RacingSource_UsesFirstValidManifestWhenOtherSourceMissesGraceWindow()
+    public async Task RacingSource_WaitsForNewerManifestBeyondLegacyGraceWindow()
     {
         var slowerNewer = CreateManifest("3.2.0");
         var fasterOlder = CreateManifest("3.1.0");
@@ -139,7 +139,36 @@ public sealed class UpdateCoordinatorTests
 
         var manifest = await source.GetLatestAsync("preview", CancellationToken.None);
 
-        Assert.Same(fasterOlder, manifest);
+        Assert.Same(slowerNewer, manifest);
+    }
+
+    [Fact]
+    public async Task RacingSource_MergesEquivalentDownloadMirrorsForSameVersion()
+    {
+        var github = CreateManifest("3.2.0");
+        var gitCode = github with
+        {
+            Packages =
+            [
+                github.Packages[0] with
+                {
+                    DownloadUri = new Uri("https://gitcode.example/app.zip"),
+                },
+            ],
+        };
+        var source = new RacingUpdateSource(
+        [
+            new DelayedStubSource(gitCode, TimeSpan.FromMilliseconds(5)),
+            new DelayedStubSource(github, TimeSpan.FromMilliseconds(30)),
+        ], gracePeriod: TimeSpan.FromMilliseconds(1));
+
+        var manifest = await source.GetLatestAsync("preview", CancellationToken.None);
+
+        Assert.NotNull(manifest);
+        var package = Assert.Single(manifest.Packages);
+        Assert.Equal(2, package.GetDownloadUris().Count);
+        Assert.Contains(package.GetDownloadUris(), uri => uri.Host == "gitcode.example");
+        Assert.Contains(package.GetDownloadUris(), uri => uri.Host == "example.invalid");
     }
 
     private static UpdateCoordinator CreateCoordinator(

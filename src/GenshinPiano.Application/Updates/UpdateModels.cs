@@ -27,7 +27,16 @@ public sealed record UpdatePackage(
     string Sha256,
     Uri DownloadUri,
     bool Optional = false,
-    string? Signature = null);
+    string? Signature = null,
+    IReadOnlyList<Uri>? MirrorDownloadUris = null)
+{
+    public IReadOnlyList<Uri> GetDownloadUris() =>
+        MirrorDownloadUris is { Count: > 0 }
+            ? new[] { DownloadUri }.Concat(MirrorDownloadUris)
+                .DistinctBy(uri => uri.AbsoluteUri, StringComparer.OrdinalIgnoreCase)
+                .ToArray()
+            : [DownloadUri];
+}
 
 public sealed record UpdateManifest(
     int SchemaVersion,

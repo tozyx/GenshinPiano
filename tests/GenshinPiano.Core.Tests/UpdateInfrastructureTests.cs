@@ -10,6 +10,48 @@ namespace GenshinPiano.Core.Tests;
 public sealed class UpdateInfrastructureTests
 {
     [Fact]
+    public async Task ReleaseSource_FallsBackToGitHubPagesWhenApiIsRateLimited()
+    {
+        var hash = new string('a', 64);
+        var signature = Convert.ToBase64String(new byte[384]);
+        using var client = CreateGitHubFallbackClient(hash, signature);
+        var source = new ReleaseMirrorUpdateSource(
+            client,
+            "GitHub",
+            new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"),
+            frameworkDependent: true,
+            currentVersion: new GenshinPiano.Application.Updates.SemanticVersion(3, 0, 2));
+
+        var manifest = await source.GetLatestAsync("stable", CancellationToken.None);
+
+        Assert.NotNull(manifest);
+        Assert.Equal("3.0.3", manifest.Version.ToString());
+        Assert.Equal(
+            "GenshinPiano-3.0.3-win-x64-framework.zip",
+            Assert.Single(manifest.Packages).FileName);
+        Assert.Contains("## Release notes", manifest.ReleaseNotes);
+        Assert.Contains("- Fixed update discovery.", manifest.ReleaseNotes);
+    }
+
+    [Fact]
+    public async Task OcrSource_FallsBackToGitHubPagesWhenApiIsRateLimited()
+    {
+        var hash = new string('b', 64);
+        var signature = Convert.ToBase64String(new byte[384]);
+        using var client = CreateGitHubFallbackClient(hash, signature);
+        var source = new OcrAddonReleaseSource(
+            client,
+            "GitHub",
+            new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"));
+
+        var manifest = await source.GetLatestAsync("stable", CancellationToken.None);
+
+        Assert.NotNull(manifest);
+        Assert.Equal("0.8.0", manifest.Version.ToString());
+        Assert.Equal("ocr-addons-0.8.0-win-x64.zip", Assert.Single(manifest.Packages).FileName);
+    }
+
+    [Fact]
     public async Task OcrAddonSource_SelectsNewestSignedComponentIndependentOfReleaseTag()
     {
         const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -192,6 +234,50 @@ public sealed class UpdateInfrastructureTests
     }
 
     [Fact]
+    public async Task Downloader_RacesEquivalentMirrorsAndKeepsFastestValidPackage()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "GenshinPianoTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            byte[] data = [1, 2, 3, 4, 5, 6];
+            var requestedHosts = new List<string>();
+            using var client = new HttpClient(new AsyncStubHttpHandler(async (request, cancellationToken) =>
+            {
+                lock (requestedHosts) requestedHosts.Add(request.RequestUri!.Host);
+                await Task.Delay(
+                    request.RequestUri!.Host == "slow.test" ? 250 : 10,
+                    cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(data),
+                };
+            }));
+            var downloader = new ResumableUpdatePackageDownloader(client, directory);
+            var package = CreatePackage(data.Length) with
+            {
+                Sha256 = Convert.ToHexString(SHA256.HashData(data)),
+                DownloadUri = new Uri("https://slow.test/app.zip"),
+                MirrorDownloadUris = [new Uri("https://fast.test/app.zip")],
+            };
+
+            var path = await downloader.DownloadAsync(
+                package,
+                new Progress<double>(),
+                CancellationToken.None);
+
+            Assert.Equal(data, await File.ReadAllBytesAsync(path));
+            Assert.Contains("slow.test", requestedHosts);
+            Assert.Contains("fast.test", requestedHosts);
+            Assert.Empty(Directory.GetFiles(directory, "*.mirror-*"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Verifier_ValidatesSha256()
     {
         var path = Path.GetTempFileName();
@@ -285,11 +371,59 @@ public sealed class UpdateInfrastructureTests
         Content = new StringContent(content, Encoding.ASCII, "text/plain"),
     };
 
+    private static HttpClient CreateGitHubFallbackClient(string hash, string signature)
+    {
+        const string atom = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <feed xmlns="http://www.w3.org/2005/Atom">
+              <entry>
+                <link rel="alternate" href="https://github.com/tozyx/GenshinPiano/releases/tag/v3.0.3" />
+                <content type="html">&lt;h2&gt;Release notes&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Fixed update discovery.&lt;/li&gt;&lt;/ul&gt;</content>
+              </entry>
+            </feed>
+            """;
+        const string assets = """
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/GenshinPiano-3.0.3-win-x64-framework.zip">app</a>
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/GenshinPiano-3.0.3-win-x64-framework.zip.sha256">sha</a>
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/GenshinPiano-3.0.3-win-x64-framework.zip.sig">sig</a>
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/ocr-addons-0.8.0-win-x64.zip">ocr</a>
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/ocr-addons-0.8.0-win-x64.zip.sha256">ocr sha</a>
+            <a href="/tozyx/GenshinPiano/releases/download/v3.0.3/ocr-addons-0.8.0-win-x64.zip.sig">ocr sig</a>
+            """;
+        return new HttpClient(new StubHttpHandler(request =>
+        {
+            var uri = request.RequestUri!;
+            if (uri.Host == "api.github.com")
+                return new HttpResponseMessage(HttpStatusCode.Forbidden);
+            if (uri.AbsolutePath.EndsWith("/releases.atom", StringComparison.Ordinal))
+                return TextResponse(atom);
+            if (uri.AbsolutePath.Contains("/releases/expanded_assets/", StringComparison.Ordinal))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(assets, Encoding.UTF8, "text/html"),
+                };
+            if (uri.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal))
+                return TextResponse(hash);
+            if (uri.AbsolutePath.EndsWith(".sig", StringComparison.Ordinal))
+                return TextResponse(signature);
+            throw new InvalidOperationException($"Unexpected test URL: {uri}");
+        }));
+    }
+
     private sealed class StubHttpHandler(Func<HttpRequestMessage, HttpResponseMessage> respond)
         : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken) => Task.FromResult(respond(request));
+    }
+
+    private sealed class AsyncStubHttpHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) => respond(request, cancellationToken);
     }
 }

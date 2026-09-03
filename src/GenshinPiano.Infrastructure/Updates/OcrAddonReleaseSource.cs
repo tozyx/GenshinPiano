@@ -20,6 +20,15 @@ public sealed partial class OcrAddonReleaseSource(
         request.Headers.UserAgent.ParseAdd("GenshinPiano-OcrAddon/3.0");
         using var response = await httpClient.SendAsync(
             request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode && GitHubReleasePageFallback.Supports(releasesEndpoint))
+        {
+            var fallback = await GitHubReleasePageFallback.GetReleasesAsync(
+                httpClient, releasesEndpoint, cancellationToken);
+            var fallbackPackages = fallback.SelectMany(release =>
+                CollectPackages(release.Assets.Select(asset =>
+                    new ReleaseAsset(asset.Name, asset.DownloadUri, asset.Size)).ToArray(), channel));
+            return await SelectManifestAsync(fallbackPackages, channel, cancellationToken);
+        }
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
@@ -30,22 +39,17 @@ public sealed partial class OcrAddonReleaseSource(
         foreach (var release in json.RootElement.EnumerateArray())
         {
             if (GetBoolean(release, "draft")) continue;
-            var assets = ParseAssets(release);
-            foreach (var zip in assets)
-            {
-                var match = PackageNameRegex().Match(zip.Name);
-                if (!match.Success || !SemanticVersion.TryParse(match.Groups["version"].Value, out var version))
-                    continue;
-                if (string.Equals(channel, "stable", StringComparison.OrdinalIgnoreCase) &&
-                    version.PreRelease is not null) continue;
-                var sha = assets.FirstOrDefault(asset =>
-                    string.Equals(asset.Name, zip.Name + ".sha256", StringComparison.OrdinalIgnoreCase));
-                var sig = assets.FirstOrDefault(asset =>
-                    string.Equals(asset.Name, zip.Name + ".sig", StringComparison.OrdinalIgnoreCase));
-                if (sha is not null && sig is not null) packages.Add((version, zip, sha, sig));
-            }
+            packages.AddRange(CollectPackages(ParseAssets(release), channel));
         }
 
+        return await SelectManifestAsync(packages, channel, cancellationToken);
+    }
+
+    private async Task<UpdateManifest?> SelectManifestAsync(
+        IEnumerable<(SemanticVersion Version, ReleaseAsset Zip, ReleaseAsset Sha, ReleaseAsset Sig)> packages,
+        string channel,
+        CancellationToken cancellationToken)
+    {
         var selected = packages.OrderByDescending(item => item.Version).FirstOrDefault();
         if (selected.Zip is null) return null;
         var checksum = await DownloadTextAsync(selected.Sha.Uri, cancellationToken);
@@ -66,6 +70,24 @@ public sealed partial class OcrAddonReleaseSource(
                 selected.Zip.Name, selected.Zip.Size, checksum, selected.Zip.Uri,
                 Optional: true, Signature: signature),
         ], sourceName);
+    }
+
+    private static IEnumerable<(SemanticVersion Version, ReleaseAsset Zip, ReleaseAsset Sha, ReleaseAsset Sig)>
+        CollectPackages(IReadOnlyList<ReleaseAsset> assets, string channel)
+    {
+        foreach (var zip in assets)
+        {
+            var match = PackageNameRegex().Match(zip.Name);
+            if (!match.Success || !SemanticVersion.TryParse(match.Groups["version"].Value, out var version))
+                continue;
+            if (string.Equals(channel, "stable", StringComparison.OrdinalIgnoreCase) &&
+                version.PreRelease is not null) continue;
+            var sha = assets.FirstOrDefault(asset =>
+                string.Equals(asset.Name, zip.Name + ".sha256", StringComparison.OrdinalIgnoreCase));
+            var sig = assets.FirstOrDefault(asset =>
+                string.Equals(asset.Name, zip.Name + ".sig", StringComparison.OrdinalIgnoreCase));
+            if (sha is not null && sig is not null) yield return (version, zip, sha, sig);
+        }
     }
 
     private async Task<string> DownloadTextAsync(Uri uri, CancellationToken cancellationToken)
