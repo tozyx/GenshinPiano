@@ -560,28 +560,34 @@
                 </MenuItem>
             </MenuItem>
         </Menu>
-            <Border Margin="0,7,18,7"
-                    Padding="3"
+            <Grid x:Name="WorkspaceTabsHost"
+                    Width="184"
+                    Height="31"
+                    Margin="0,7,18,0"
                     HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    Background="{DynamicResource AppBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="9"
+                    VerticalAlignment="Bottom"
                     Panel.ZIndex="2">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton x:Name="PracticePageButton" MinWidth="90"
+                    <RadioButton x:Name="PracticePageButton" Width="90"
                                  GroupName="WorkspacePage"
-                                 Style="{StaticResource SegmentToggleButtonStyle}"
+                                 Style="{StaticResource BrowserTabButtonStyle}"
                                  Click="PracticePageButton_OnClick"
                                  Content="{DynamicResource Workspace_Practice}" />
-                    <RadioButton x:Name="EditorPageButton" MinWidth="90" Margin="3,0,0,0"
+                    <RadioButton x:Name="EditorPageButton" Width="90" Margin="4,0,0,0"
                                  GroupName="WorkspacePage" IsChecked="True"
-                                 Style="{StaticResource SegmentToggleButtonStyle}"
+                                 Style="{StaticResource BrowserTabButtonStyle}"
                                  Click="EditorPageButton_OnClick"
                                  Content="{DynamicResource Workspace_Editor}" />
                 </StackPanel>
-            </Border>
+                <Border x:Name="WorkspaceTabIndicator"
+                        Width="72" Height="3"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Background="{DynamicResource AccentBrush}"
+                        CornerRadius="2"
+                        IsHitTestVisible="False">
+                    <Border.RenderTransform><TranslateTransform X="103" /></Border.RenderTransform>
+                </Border>
+            </Grid>
         </Grid>
 
         <StatusBar DockPanel.Dock="Bottom"

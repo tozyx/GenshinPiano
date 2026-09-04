@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Xml.Linq;
+using GenshinPiano.Application.Playback;
 using GenshinPiano.Core.Playback;
 using GenshinPiano.Core.Scores;
 
@@ -37,6 +38,14 @@ public sealed class PracticeSurface : FrameworkElement
     private double _rollSpacing = 1;
     private double _hiddenCursorRatio = .18;
     private bool _isDraggingHiddenCursor;
+    private DateTime _approachStarted;
+    private double _approachProgress = 1;
+    private bool _approachAnimating;
+    private bool _timedApproach;
+    private bool _practiceRunning;
+    private bool _effectRenderingAttached;
+    private Brush _instrumentFill = new SolidColorBrush(Color.FromRgb(146, 136, 211));
+    private Brush _instrumentClick = new SolidColorBrush(Color.FromRgb(149, 145, 223));
 
     public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
         nameof(Score), typeof(ScoreDocument), typeof(PracticeSurface),
@@ -63,13 +72,97 @@ public sealed class PracticeSurface : FrameworkElement
 
     public void SetPracticePosition(IReadOnlyList<IReadOnlyList<GenshinKey>> sequence, int index)
     {
+        var nextIndex = sequence.Count == 0 ? 0 : Math.Clamp(index, 0, sequence.Count - 1);
+        var nextKeys = sequence.Count == 0 ? [] : sequence[nextIndex];
+        var targetChanged = _practiceIndex != nextIndex || !_targetKeys.SetEquals(nextKeys);
         _practiceSequence = sequence;
-        _practiceIndex = sequence.Count == 0 ? 0 : Math.Clamp(index, 0, sequence.Count - 1);
+        _practiceIndex = nextIndex;
         _targetKeys = sequence.Count == 0
             ? new HashSet<GenshinKey>()
             : sequence[_practiceIndex].ToHashSet();
         ProgressPercent = sequence.Count <= 1 ? 0 : _practiceIndex * 100d / (sequence.Count - 1);
+        if (targetChanged && _practiceRunning && !_timedApproach && _targetKeys.Count > 0) StartApproachCue();
         InvalidateVisual();
+    }
+
+    public void SetTimedApproach(bool timed)
+    {
+        _timedApproach = timed;
+        _approachAnimating = false;
+        _approachProgress = timed ? 0 : 1;
+        if (_practiceRunning && !_timedApproach && _targetKeys.Count > 0) StartApproachCue();
+        InvalidateVisual();
+    }
+
+    public void SetPracticeRunning(bool running)
+    {
+        if (_practiceRunning == running) return;
+        _practiceRunning = running;
+        if (running)
+        {
+            if (!_timedApproach && _targetKeys.Count > 0) StartApproachCue();
+        }
+        else
+        {
+            _approachAnimating = false;
+            _approachProgress = 0;
+            if (_effectRenderingAttached)
+            {
+                CompositionTarget.Rendering -= OnEffectRendering;
+                _effectRenderingAttached = false;
+            }
+            InvalidateVisual();
+        }
+    }
+    public void SetApproachProgress(double progress)
+    {
+        if (!_timedApproach) return;
+        _approachProgress = Math.Clamp(progress, 0, 1);
+        InvalidateVisual();
+    }
+
+    public void SetInstrumentVisual(int instrument)
+    {
+        var colors = instrument switch
+        {
+            AuditionInstrumentIds.VintageLyre => ("#7FB363", "#6C9F52"),
+            AuditionInstrumentIds.FloralZither or AuditionInstrumentIds.OldFloralZither => ("#CDB68E", "#DDCBA8"),
+            AuditionInstrumentIds.Ukulele => ("#4D719A", "#6586D9"),
+            AuditionInstrumentIds.LeapingSpiritPiano => ("#5CADBD", "#5CADBD"),
+            _ => ("#9288D3", "#9591DF"),
+        };
+        _instrumentFill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colors.Item1));
+        _instrumentClick = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colors.Item2));
+        InvalidateVisual();
+    }
+
+    private void StartApproachCue()
+    {
+        _approachStarted = DateTime.UtcNow;
+        _approachProgress = 0;
+        _approachAnimating = true;
+        EnsureEffectRendering();
+    }
+
+    private void EnsureEffectRendering()
+    {
+        if (_effectRenderingAttached) return;
+        _effectRenderingAttached = true;
+        CompositionTarget.Rendering += OnEffectRendering;
+    }
+
+    private void OnEffectRendering(object? sender, EventArgs e)
+    {
+        var now = DateTime.UtcNow;
+        if (_approachAnimating)
+        {
+            _approachProgress = Math.Clamp((now - _approachStarted).TotalMilliseconds / 1200d, 0, 1);
+            if (_approachProgress >= 1) _approachAnimating = false;
+        }
+        InvalidateVisual();
+        if (_approachAnimating) return;
+        CompositionTarget.Rendering -= OnEffectRendering;
+        _effectRenderingAttached = false;
     }
 
     public void SetRollCursorTick(double tick, bool animate)
@@ -266,11 +359,26 @@ public sealed class PracticeSurface : FrameworkElement
             var isTarget = _targetKeys.Contains(key);
             var isWrong = _wrongKeyVersions.ContainsKey(key);
             var pressedRadius = isActive ? radius * .94 : radius;
-            var fill = isWrong ? Brushes.IndianRed : isActive ? accent : isTarget ? GetBrush("AccentSurfaceBrush", Color.FromRgb(220, 235, 250)) : keyBackground;
-            var stroke = isWrong ? Brushes.IndianRed : isActive || isTarget ? accent : ring;
-            dc.DrawEllipse(fill, new Pen(stroke, isActive || isTarget || isWrong ? 4 : 2), center, pressedRadius, pressedRadius);
+            if (isTarget && _approachProgress > 0)
+            {
+                var approachScale = 2.3 - 1.3 * _approachProgress;
+                var approachOpacity = _approachProgress < .5
+                    ? _approachProgress * .6
+                    : .3 + (_approachProgress - .5) * 1.1;
+                var approachBrush = row == 1
+                    ? GetBrush("PracticeCursorBrush", Color.FromRgb(201, 109, 60))
+                    : _instrumentFill;
+                dc.PushOpacity(Math.Clamp(approachOpacity, 0, .85));
+                dc.DrawEllipse(null, new Pen(approachBrush, 1.6),
+                    center, radius * approachScale, radius * approachScale);
+                dc.Pop();
+            }
+            var fill = isWrong ? Brushes.IndianRed : isActive ? _instrumentClick : keyBackground;
+            var stroke = isWrong ? Brushes.IndianRed : isActive ? Brushes.Transparent : isTarget ? accent : ring;
+            var strokeWidth = isTarget ? 1.6 : isActive || isWrong ? 4 : 2;
+            dc.DrawEllipse(fill, new Pen(stroke, strokeWidth), center, pressedRadius, pressedRadius);
             DrawWebBorder(dc, center, pressedRadius * 1.78, isActive || isWrong ? Brushes.White : ring);
-            DrawWebIcon(dc, column, center, pressedRadius * .72, isActive || isWrong ? Brushes.White : accent);
+            DrawWebIcon(dc, column, center, pressedRadius * .72, isActive || isWrong ? Brushes.White : _instrumentFill);
             DrawText(dc, key.ToString(), radius * .25, FontWeights.Bold,
                 isActive || isWrong ? Brushes.White : muted,
                 new Point(center.X - radius, center.Y + radius * .33), radius * 2, TextAlignment.Center);

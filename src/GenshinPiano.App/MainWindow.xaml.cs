@@ -59,6 +59,8 @@ public partial class MainWindow : Window
         };
         _scoreSearchCloseTimer.Tick += ScoreSearchCloseTimer_OnTick;
         InputManager.Current.PreProcessInput += InputManager_OnPreProcessInput;
+        Loaded += (_, _) => SelectionIndicatorAnimator.Move(
+            WorkspaceTabIndicator, EditorPageButton, WorkspaceTabsHost, false);
     }
 
     private void PracticePageButton_OnClick(object sender, RoutedEventArgs e) =>
@@ -73,6 +75,10 @@ public partial class MainWindow : Window
         EditorWorkspacePanel.Visibility = showPractice ? Visibility.Collapsed : Visibility.Visible;
         PracticePageButton.IsChecked = showPractice;
         EditorPageButton.IsChecked = !showPractice;
+        SelectionIndicatorAnimator.Move(
+            WorkspaceTabIndicator,
+            showPractice ? PracticePageButton : EditorPageButton,
+            WorkspaceTabsHost);
         if (!showPractice)
         {
             PianoRollEditor.Focus();

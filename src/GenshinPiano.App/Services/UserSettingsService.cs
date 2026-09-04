@@ -10,7 +10,7 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 9;
+    public const int CurrentVersion = 10;
 
     public int Version { get; init; } = CurrentVersion;
 
@@ -25,6 +25,15 @@ public sealed record UserSettings
     public NotificationUserSettings Notifications { get; init; } = new();
 
     public OcrUserSettings Ocr { get; init; } = new();
+
+    public PracticeUserSettings Practice { get; init; } = new();
+}
+
+public sealed record PracticeUserSettings
+{
+    public double PlaybackSpeed { get; init; } = 1;
+
+    public double NoteSpacing { get; init; } = 1;
 }
 
 public sealed record OcrUserSettings
@@ -116,6 +125,10 @@ public interface IUserSettingsService
 
     void SetPianoRollRowHeight(double value);
 
+    void SetPracticePlaybackSpeed(double value);
+
+    void SetPracticeNoteSpacing(double value);
+
     void SetScoreFolder(string? path);
 
     void SetNetworkAccessEnabled(bool value);
@@ -206,6 +219,28 @@ public sealed class UserSettingsService : IUserSettingsService
         {
             Update(Current with { Editor = Current.Editor with { NaturalSustain = value } });
         }
+    }
+
+    public void SetPracticePlaybackSpeed(double value)
+    {
+        if (!IsAllowedPracticePlaybackSpeed(value) ||
+            Math.Abs(Current.Practice.PlaybackSpeed - value) < 0.000001)
+        {
+            return;
+        }
+
+        Update(Current with { Practice = Current.Practice with { PlaybackSpeed = value } });
+    }
+
+    public void SetPracticeNoteSpacing(double value)
+    {
+        if (!IsAllowedPracticeNoteSpacing(value) ||
+            Math.Abs(Current.Practice.NoteSpacing - value) < 0.000001)
+        {
+            return;
+        }
+
+        Update(Current with { Practice = Current.Practice with { NoteSpacing = value } });
     }
 
     public void SetTheme(AppTheme value)
@@ -412,6 +447,8 @@ public sealed class UserSettingsService : IUserSettingsService
         var update = settings?.Update ?? updateDefaults;
         var ocrDefaults = new OcrUserSettings();
         var ocr = settings?.Ocr ?? ocrDefaults;
+        var practiceDefaults = new PracticeUserSettings();
+        var practice = settings?.Practice ?? practiceDefaults;
         return new UserSettings
         {
             Version = UserSettings.CurrentVersion,
@@ -465,6 +502,15 @@ public sealed class UserSettingsService : IUserSettingsService
                     : updateDefaults.Channel,
             },
             Notifications = settings?.Notifications ?? new NotificationUserSettings(),
+            Practice = practice with
+            {
+                PlaybackSpeed = IsAllowedPracticePlaybackSpeed(practice.PlaybackSpeed)
+                    ? practice.PlaybackSpeed
+                    : practiceDefaults.PlaybackSpeed,
+                NoteSpacing = IsAllowedPracticeNoteSpacing(practice.NoteSpacing)
+                    ? practice.NoteSpacing
+                    : practiceDefaults.NoteSpacing,
+            },
             Ocr = ocr with
             {
                 NotationHint = ocr.NotationHint is "Numbered" or "Staff"
@@ -476,6 +522,12 @@ public sealed class UserSettingsService : IUserSettingsService
             },
         };
     }
+
+    private static bool IsAllowedPracticePlaybackSpeed(double value) =>
+        value is 0.25 or 0.5 or 1 or 1.25;
+
+    private static bool IsAllowedPracticeNoteSpacing(double value) =>
+        value is 1 or 1.25 or 1.5 or 2;
 
     private static UserSettings CreateFirstRunSettings()
     {

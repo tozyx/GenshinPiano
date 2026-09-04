@@ -52,7 +52,7 @@
                     <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
                                Foreground="{DynamicResource SecondaryTextBrush}"
                                Text="{DynamicResource Practice_Instrument}" />
-                    <ComboBox x:Name="PracticeInstrumentBox" Width="132" Margin="0,0,10,0"
+                    <ComboBox x:Name="PracticeInstrumentBox" Width="112" Margin="0,0,10,0"
                               SelectedIndex="0" SelectionChanged="PracticeInstrumentBox_OnSelectionChanged">
                         <ComboBoxItem Content="{DynamicResource Audition_WindsongLyre}" Tag="-1" />
                         <ComboBoxItem Content="{DynamicResource Audition_FloralZither}" Tag="-2" />
@@ -62,57 +62,46 @@
                         <ComboBoxItem Content="{DynamicResource Audition_LingeringEuphonia}" Tag="-6" />
                         <ComboBoxItem Content="{DynamicResource Audition_LeapingSpiritPiano}" Tag="-7" />
                     </ComboBox>
-                    <Border Margin="0,0,10,0"
-                            Padding="3"
-                            Background="{DynamicResource AppBackgroundBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
+                    <Grid x:Name="PracticeModeTabsHost" Width="155" Height="29" Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="FollowModeButton" MinWidth="92"
+                            <RadioButton x:Name="FollowModeButton" Width="76"
                                          GroupName="PracticeMode" IsChecked="True"
-                                         Style="{StaticResource SegmentToggleButtonStyle}"
+                                         Style="{StaticResource BrowserTabButtonStyle}"
                                          Click="FollowModeButton_OnClick"
                                          Content="{DynamicResource Practice_FollowMode}" />
-                            <RadioButton x:Name="TimedModeButton" MinWidth="92" Margin="3,0,0,0"
+                            <RadioButton x:Name="TimedModeButton" Width="76" Margin="3,0,0,0"
                                          GroupName="PracticeMode"
-                                         Style="{StaticResource SegmentToggleButtonStyle}"
+                                         Style="{StaticResource BrowserTabButtonStyle}"
                                          Click="TimedModeButton_OnClick"
                                          Content="{DynamicResource Practice_TimedMode}" />
                         </StackPanel>
-                    </Border>
-                    <Border Margin="0,0,14,0"
-                            Padding="3"
-                            Background="{DynamicResource AppBackgroundBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8">
+                        <Border x:Name="PracticeModeTabIndicator" Width="58" Height="3"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Background="{DynamicResource AccentBrush}" CornerRadius="2"
+                                IsHitTestVisible="False">
+                            <Border.RenderTransform><TranslateTransform X="9" /></Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <Grid x:Name="ViewTabsHost" Width="180" Height="31">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="GameKeysModeButton"
-                                    MinWidth="112"
-                                    GroupName="PracticeViewMode"
-                                    Style="{StaticResource SegmentToggleButtonStyle}"
-                                    Click="GameKeysModeButton_OnClick"
-                                    Content="{DynamicResource Practice_ModeGameKeys}" />
-                            <RadioButton x:Name="VerticalRollModeButton"
-                                    MinWidth="112"
-                                    Margin="3,0,0,0"
-                                    GroupName="PracticeViewMode"
-                                    Style="{StaticResource SegmentToggleButtonStyle}"
-                                    Click="VerticalRollModeButton_OnClick"
-                                    Content="{DynamicResource Practice_ModeVerticalRoll}" />
+                            <RadioButton x:Name="GameKeysModeButton" Width="88"
+                                         GroupName="PracticeViewMode"
+                                         Style="{StaticResource BrowserTabButtonStyle}"
+                                         Click="GameKeysModeButton_OnClick"
+                                         Content="{DynamicResource Practice_ModeGameKeys}" />
+                            <RadioButton x:Name="VerticalRollModeButton" Width="88" Margin="4,0,0,0"
+                                         GroupName="PracticeViewMode"
+                                         Style="{StaticResource BrowserTabButtonStyle}"
+                                         Click="VerticalRollModeButton_OnClick"
+                                         Content="{DynamicResource Practice_ModeVerticalRoll}" />
                         </StackPanel>
-                    </Border>
-                    <Button x:Name="StartPracticeButton"
-                            MinWidth="96"
-                            Padding="16,7"
-                            Click="StartPracticeButton_OnClick"
-                            Content="{DynamicResource Practice_Start}" />
-                    <Button MinWidth="72"
-                            Margin="8,0,0,0"
-                            Padding="13,7"
-                            Click="StopPracticeButton_OnClick"
-                            Content="{DynamicResource Practice_Stop}" />
+                        <Border x:Name="ViewTabIndicator" Width="70" Height="3"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Background="{DynamicResource AccentBrush}" CornerRadius="2"
+                                IsHitTestVisible="False">
+                            <Border.RenderTransform><TranslateTransform X="101" /></Border.RenderTransform>
+                        </Border>
+                    </Grid>
                 </StackPanel>
             </Grid>
         </Border>
@@ -125,20 +114,50 @@
                                Score="{Binding CurrentScore}" />
 
         <Border Grid.Row="2"
-                Padding="18,9"
+                MinHeight="32"
+                Padding="18,2"
                 Background="{DynamicResource PanelBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,1,0,0">
             <Grid>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="PracticeStatusText" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Ready}" />
-                    <TextBlock Margin="18,0,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_ImeHint}" />
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock x:Name="PracticeStatusText" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Ready}" />
+                    <TextBlock Margin="18,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_ImeHint}" />
                 </StackPanel>
-                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                    <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Combo}" />
-                    <TextBlock x:Name="ComboText" MinWidth="34" Margin="6,0,12,0" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="0" />
-                    <TextBlock Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Accuracy}" />
-                    <TextBlock x:Name="AccuracyText" MinWidth="44" Margin="6,0,0,0" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="—" />
+                <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Button x:Name="StartPracticeButton" Margin="0,0,2,0"
+                            Style="{StaticResource PracticeTransportButtonStyle}"
+                            ToolTip="{DynamicResource Practice_Start}"
+                            Click="StartPracticeButton_OnClick">
+                        <Grid Width="17" Height="17">
+                            <Path x:Name="PracticePlayIcon" Margin="2"
+                                  Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform"
+                                  Data="M2.5,0.7 Q1.5,0.2 1.5,1.8 L1.5,14.2 Q1.5,15.8 2.5,15.3 L13.8,8.8 Q15.2,8 13.8,7.2 Z"
+                                  RenderTransformOrigin="0.5,0.5">
+                                <Path.RenderTransform><ScaleTransform ScaleX="1" ScaleY="1" /></Path.RenderTransform>
+                            </Path>
+                            <Grid x:Name="PracticePauseIcon" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform><ScaleTransform ScaleX=".65" ScaleY=".65" /></Grid.RenderTransform>
+                                <Rectangle Width="4.5" Height="16" Margin="0,0,8,0" RadiusX="1"
+                                           Fill="{DynamicResource PrimaryTextBrush}" />
+                                <Rectangle Width="4.5" Height="16" Margin="8,0,0,0" RadiusX="1"
+                                           Fill="{DynamicResource PrimaryTextBrush}" />
+                            </Grid>
+                        </Grid>
+                    </Button>
+                    <Button Margin="0,0,12,0"
+                            Style="{StaticResource PracticeTransportButtonStyle}"
+                            ToolTip="{DynamicResource Practice_Stop}"
+                            Click="StopPracticeButton_OnClick">
+                        <Rectangle Width="10" Height="10" RadiusX="1" RadiusY="1"
+                                   Fill="{DynamicResource StopIconBrush}" />
+                    </Button>
+                    <Border Width="1" Height="20" Margin="0,0,12,0"
+                            VerticalAlignment="Center" Background="{DynamicResource BorderBrush}" />
+                    <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Combo}" />
+                    <TextBlock x:Name="ComboText" MinWidth="34" Margin="6,0,12,0" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="0" />
+                    <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Accuracy}" />
+                    <TextBlock x:Name="AccuracyText" MinWidth="44" Margin="6,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" Text="—" />
                 </StackPanel>
             </Grid>
         </Border>
