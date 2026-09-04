@@ -7,6 +7,7 @@
     <SolidColorBrush x:Key="AccentBrush" Color="#7EB6FF" />
     <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#253D59" />
     <SolidColorBrush x:Key="StopIconBrush" Color="#D98282" />
+    <SolidColorBrush x:Key="PracticeCursorBrush" Color="#F2B36B" />
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#20252D" />
     <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#181C23" />
     <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#1C2129" />

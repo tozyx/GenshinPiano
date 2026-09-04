@@ -336,7 +336,8 @@
             </Grid>
         </Border>
 
-        <Menu DockPanel.Dock="Top"
+        <Grid DockPanel.Dock="Top">
+        <Menu
               Background="{DynamicResource PanelBackgroundBrush}"
               Foreground="{DynamicResource PrimaryTextBrush}"
               BorderBrush="{DynamicResource BorderBrush}"
@@ -559,6 +560,29 @@
                 </MenuItem>
             </MenuItem>
         </Menu>
+            <Border Margin="0,7,18,7"
+                    Padding="3"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource AppBackgroundBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="9"
+                    Panel.ZIndex="2">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="PracticePageButton" MinWidth="90"
+                                 GroupName="WorkspacePage"
+                                 Style="{StaticResource SegmentToggleButtonStyle}"
+                                 Click="PracticePageButton_OnClick"
+                                 Content="{DynamicResource Workspace_Practice}" />
+                    <RadioButton x:Name="EditorPageButton" MinWidth="90" Margin="3,0,0,0"
+                                 GroupName="WorkspacePage" IsChecked="True"
+                                 Style="{StaticResource SegmentToggleButtonStyle}"
+                                 Click="EditorPageButton_OnClick"
+                                 Content="{DynamicResource Workspace_Editor}" />
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <StatusBar DockPanel.Dock="Bottom"
                    Padding="8,4"
@@ -1023,7 +1047,18 @@
             </Border>
 
             <Grid Grid.Column="1" Margin="16">
-                <Border Background="{DynamicResource SurfaceBrush}"
+                <Border x:Name="PracticeWorkspacePanel"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        ClipToBounds="True">
+                    <controls:PracticePage />
+                </Border>
+
+                <Border x:Name="EditorWorkspacePanel"
+                        Background="{DynamicResource SurfaceBrush}"
                         BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10"

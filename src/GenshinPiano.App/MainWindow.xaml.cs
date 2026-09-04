@@ -61,6 +61,23 @@ public partial class MainWindow : Window
         InputManager.Current.PreProcessInput += InputManager_OnPreProcessInput;
     }
 
+    private void PracticePageButton_OnClick(object sender, RoutedEventArgs e) =>
+        ShowWorkspacePage(showPractice: true);
+
+    private void EditorPageButton_OnClick(object sender, RoutedEventArgs e) =>
+        ShowWorkspacePage(showPractice: false);
+
+    private void ShowWorkspacePage(bool showPractice)
+    {
+        PracticeWorkspacePanel.Visibility = showPractice ? Visibility.Visible : Visibility.Collapsed;
+        EditorWorkspacePanel.Visibility = showPractice ? Visibility.Collapsed : Visibility.Visible;
+        PracticePageButton.IsChecked = showPractice;
+        EditorPageButton.IsChecked = !showPractice;
+        if (!showPractice)
+        {
+            PianoRollEditor.Focus();
+        }
+    }
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -1228,7 +1245,7 @@ public partial class MainWindow : Window
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         TryHandleFileShortcut(e);
-        if (!e.Handled)
+        if (!e.Handled && PracticeWorkspacePanel.Visibility != Visibility.Visible)
         {
             PianoRollEditor.TryHandleEditorShortcut(e);
         }
