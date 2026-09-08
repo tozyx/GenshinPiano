@@ -122,9 +122,18 @@
             <Grid>
                 <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                     <TextBlock x:Name="PracticeStatusText" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Ready}" />
-                    <TextBlock Margin="18,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_ImeHint}" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Button x:Name="ReturnBookmarkButton" IsEnabled="False" Style="{StaticResource PracticeTransportButtonStyle}"
+                            ToolTip="{DynamicResource Practice_BookmarkReturn}" Click="ReturnToBookmark_OnClick">
+                        <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource PrimaryTextBrush}"
+                              StrokeThickness="1.7" Data="M 4,3 L 4,13 M 13,3 L 5,8 L 13,13 Z" />
+                    </Button>
+                    <Button Style="{StaticResource PracticeTransportButtonStyle}"
+                            ToolTip="{DynamicResource Practice_Latency}" Click="Calibrate_OnClick">
+                        <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource PrimaryTextBrush}"
+                              StrokeThickness="1.5" Data="M 8,1 A 7,7 0 1 1 7.99,1 M 8,4 L 8,8 L 11,10" />
+                    </Button>
                     <Button x:Name="StartPracticeButton" Margin="0,0,2,0"
                             Style="{StaticResource PracticeTransportButtonStyle}"
                             ToolTip="{DynamicResource Practice_Start}"

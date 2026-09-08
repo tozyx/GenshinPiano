@@ -69,6 +69,10 @@ public partial class PianoRollEditor : UserControl
         Surface.ZoomChanged += Surface_OnZoomChanged;
         Loaded += PianoRollEditor_OnLoaded;
         Unloaded += PianoRollEditor_OnUnloaded;
+        IsVisibleChanged += (_, _) =>
+        {
+            if (!IsVisible && _auditionIsPlaying) PauseAudition();
+        };
     }
 
     public ScoreDocument? Score
@@ -1735,6 +1739,7 @@ public partial class PianoRollEditor : UserControl
 
     public void TryHandleEditorShortcut(KeyEventArgs e)
     {
+        if (!IsVisible || e.Handled || e.IsRepeat) return;
         var key = ShortcutKeyResolver.Resolve(e);
         var modifiers = Keyboard.Modifiers;
         var isInputFocused = Keyboard.FocusedElement is TextBox or ComboBox;
@@ -1763,7 +1768,7 @@ public partial class PianoRollEditor : UserControl
 
         if (key == Key.Space &&
             Keyboard.FocusedElement is not TextBox &&
-            Keyboard.FocusedElement is not ComboBox &&
+            Keyboard.FocusedElement is not ComboBox { IsDropDownOpen: true } &&
             _auditionService is not null)
         {
             e.Handled = true;

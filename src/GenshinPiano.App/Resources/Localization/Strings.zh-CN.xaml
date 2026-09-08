@@ -361,4 +361,6 @@
     <system:String x:Key="Practice_PlaybackSpeed">速度</system:String>
     <system:String x:Key="Practice_NoteSpacing">间距</system:String>
     <system:String x:Key="Practice_Instrument">乐器</system:String>
+    <system:String x:Key="Practice_BookmarkReturn">回到三角标记处继续（拖动三角可移动标记）</system:String>
+    <system:String x:Key="Practice_Latency">输入延迟与校准</system:String>
 </ResourceDictionary>

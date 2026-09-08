@@ -361,4 +361,6 @@
     <system:String x:Key="Practice_PlaybackSpeed">Speed</system:String>
     <system:String x:Key="Practice_NoteSpacing">Spacing</system:String>
     <system:String x:Key="Practice_Instrument">Instrument</system:String>
+    <system:String x:Key="Practice_BookmarkReturn">Resume from marker (drag the triangle to move it)</system:String>
+    <system:String x:Key="Practice_Latency">Input offset and calibration</system:String>
 </ResourceDictionary>

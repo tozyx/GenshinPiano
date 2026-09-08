@@ -21,13 +21,17 @@ public partial class PracticePage : UserControl
     private bool _running, _timed;
     private TimeSpan _timedPosition;
     private TimeSpan _timedOrigin;
-    private DateTime _timedStarted;
+    private long _timedStarted;
     private double _playbackSpeed = 1;
     private int _practiceInstrument = AuditionInstrumentIds.WindsongLyre;
     private bool _renderClockAttached;
     private bool _playIconShowsPause;
     private bool _restoringPracticeSettings = true;
-    private static readonly TimeSpan HitWindow = TimeSpan.FromMilliseconds(180);
+    private double _inputDelayMs;
+    private int _bookmark = -1;
+    private int _navigationVersion;
+    private bool _positioning;
+    private bool _resumeClock;
     private static readonly TimeSpan TimedPreRoll = TimeSpan.FromMilliseconds(1200);
     private static readonly TimeSpan ApproachLeadTime = TimeSpan.FromMilliseconds(1500);
 
@@ -35,6 +39,8 @@ public partial class PracticePage : UserControl
     {
         InitializeComponent();
         RestorePracticeSettings();
+        Surface.BookmarkChanged += (_, index) => _bookmark = index;
+
         SetMode(PracticeSurfaceMode.VerticalRoll);
         Loaded += (_, _) =>
         {
@@ -45,8 +51,9 @@ public partial class PracticePage : UserControl
         {
             if (args.NewValue is true)
                 Dispatcher.BeginInvoke(InitializeSelectionIndicators);
+            else PausePractice();
         };
-        Unloaded += (_, _) => CancelTimer();
+        Unloaded += (_, _) => PausePractice();
         DataContextChanged += (_, _) => Attach();
     }
 
@@ -55,6 +62,7 @@ public partial class PracticePage : UserControl
         if (System.Windows.Application.Current is App app)
         {
             var settings = app.UserSettingsService.Current.Practice;
+            _inputDelayMs = settings.InputDelayMs;
             PlaybackSpeedBox.SelectedIndex = settings.PlaybackSpeed switch
             {
                 0.25 => 0,
@@ -104,6 +112,8 @@ public partial class PracticePage : UserControl
 
     private void Reload()
     {
+        _bookmark = -1;
+        Surface.SetBookmark(-1);
         Reset(false);
         try
         {
@@ -117,11 +127,27 @@ public partial class PracticePage : UserControl
 
     private void PracticePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (!IsVisible || e.Handled) return;
+        var physical = e.Key == Key.ImeProcessed ? e.ImeProcessedKey : e.Key;
+        if (Keyboard.FocusedElement is TextBox ||
+            Keyboard.FocusedElement is ComboBox { IsDropDownOpen: true }) return;
+        if (physical == Key.Space && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            e.Handled = true;
+            if (!e.IsRepeat) StartPracticeButton_OnClick(sender, e);
+            return;
+        }
         if (e.IsRepeat || Keyboard.Modifiers != ModifierKeys.None || !ResolveKey(e, out var key)) return;
         Surface.SetKeyPressed(key, true);
         Accept(key);
         _ = PreviewAsync(key);
         e.Handled = true;
+    }
+
+    public void TryHandlePlaybackShortcut(KeyEventArgs e)
+    {
+        var physical = e.Key == Key.ImeProcessed ? e.ImeProcessedKey : e.Key;
+        if (physical == Key.Space) PracticePage_OnPreviewKeyDown(this, e);
     }
 
     private void PracticePage_OnPreviewKeyUp(object sender, KeyEventArgs e)
@@ -168,7 +194,13 @@ public partial class PracticePage : UserControl
     private void Accept(GenshinKey key)
     {
         if (!_running || _index >= _steps.Count) return;
-        if (_timed && (_timedPosition - _steps[_index].Offset).Duration() > ScaledHitWindow)
+        if (_timed)
+        {
+            _timedPosition = CurrentTimedPosition();
+            ExpireNotes();
+            if (!_running || _index >= _steps.Count) return;
+        }
+        if (_timed && !PracticeTiming.IsHit(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
         {
             _attempts++;
             _combo = 0;
@@ -176,6 +208,7 @@ public partial class PracticePage : UserControl
             Stats();
             return;
         }
+        if (_matched.Contains(key)) return;
         _attempts++;
         var target = _steps[_index].Keys;
         if (!target.Contains(key))
@@ -206,10 +239,17 @@ public partial class PracticePage : UserControl
     private void StartPracticeButton_OnClick(object sender, RoutedEventArgs e)
     {
         Surface.Focus();
+        if (_positioning) return;
         if (_steps.Count == 0) { Status("Practice_NoNotes"); return; }
         if (_index >= _steps.Count) Reset(false);
         _running = !_running;
-        if (!_running) { CancelTimer(); Status("Practice_Paused"); }
+        if (!_running)
+        {
+            if (_timed) _timedPosition = CurrentTimedPosition();
+            _resumeClock = _timed;
+            CancelTimer();
+            Status("Practice_Paused");
+        }
         else if (_timed) { Status("Practice_TimedActive"); StartTimer(); }
         else Status("Practice_FollowActive");
         Refresh(false);
@@ -228,7 +268,8 @@ public partial class PracticePage : UserControl
 
     private void SetPracticeMode(bool timed)
     {
-        Reset(false);
+        PausePractice();
+        _resumeClock = false;
         _timed = timed;
         Surface.SetTimedApproach(timed);
         FollowModeButton.IsChecked = !timed;
@@ -239,15 +280,17 @@ public partial class PracticePage : UserControl
                 timed ? TimedModeButton : FollowModeButton,
                 PracticeModeTabsHost);
         Status("Practice_Ready");
-        Refresh(false);
+        _ = PositionAtCurrentAsync(false);
         Surface.Focus();
     }
 
     private void StartTimer()
     {
         CancelTimer();
-        _timedOrigin = _steps[_index].Offset;
-        _timedStarted = DateTime.UtcNow;
+        _timedOrigin = _resumeClock ? _timedPosition + TimedPreRoll : _steps[_index].Offset;
+        _resumeClock = false;
+        _timedStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        _timedPosition = _timedOrigin - TimedPreRoll;
         _renderClockAttached = true;
         CompositionTarget.Rendering += OnTimedRendering;
     }
@@ -255,17 +298,25 @@ public partial class PracticePage : UserControl
     private void OnTimedRendering(object? sender, EventArgs e)
     {
         if (!_running || !_timed || _index >= _steps.Count) return;
-        var elapsed = DateTime.UtcNow - _timedStarted;
-        _timedPosition = _timedOrigin - TimedPreRoll +
-                         TimeSpan.FromTicks((long)(elapsed.Ticks * _playbackSpeed));
+        _timedPosition = CurrentTimedPosition();
         Surface.SetRollCursorTick(GetTickAt(_timedPosition), false);
         var remaining = _steps[_index].Offset - _timedPosition;
         var approachWindow = ApproachLeadTime.TotalMilliseconds * _playbackSpeed;
         Surface.SetApproachProgress(
             1 - remaining.TotalMilliseconds / Math.Max(1, approachWindow));
 
+        ExpireNotes();
+    }
+
+    private TimeSpan CurrentTimedPosition() => _timedOrigin - TimedPreRoll +
+        TimeSpan.FromTicks((long)(System.Diagnostics.Stopwatch.GetElapsedTime(_timedStarted).Ticks * _playbackSpeed));
+
+    private TimeSpan JudgmentPosition => PracticeTiming.Compensate(_timedPosition, _inputDelayMs, _playbackSpeed);
+
+    private void ExpireNotes()
+    {
         while (_running && _index < _steps.Count &&
-               _timedPosition > _steps[_index].Offset + ScaledHitWindow)
+               PracticeTiming.IsMissed(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
         {
             _attempts += _steps[_index].Keys.Count(key => !_matched.Contains(key));
             _combo = 0;
@@ -273,9 +324,6 @@ public partial class PracticePage : UserControl
             Stats();
         }
     }
-
-    private TimeSpan ScaledHitWindow =>
-        TimeSpan.FromTicks((long)(HitWindow.Ticks * _playbackSpeed));
 
     private double GetTickAt(TimeSpan offset)
     {
@@ -300,7 +348,10 @@ public partial class PracticePage : UserControl
     private void Reset(bool clearSteps)
     {
         CancelTimer();
+        _navigationVersion++;
+        _positioning = false;
         _running = false;
+        _resumeClock = false;
         _index = _combo = _hits = _attempts = 0;
         _matched.Clear();
         if (clearSteps) _steps = [];
@@ -315,7 +366,7 @@ public partial class PracticePage : UserControl
     private void PlaybackSpeedBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var wasRunning = _running && _timed;
-        var currentPosition = _timedPosition;
+        var currentPosition = wasRunning ? CurrentTimedPosition() : _timedPosition;
         _playbackSpeed = PlaybackSpeedBox.SelectedIndex switch
         {
             0 => .25, 1 => .5, 3 => 1.25, _ => 1,
@@ -325,7 +376,7 @@ public partial class PracticePage : UserControl
         if (wasRunning)
         {
             _timedOrigin = currentPosition + TimedPreRoll;
-            _timedStarted = DateTime.UtcNow;
+            _timedStarted = System.Diagnostics.Stopwatch.GetTimestamp();
         }
         Surface?.Focus();
     }
@@ -356,10 +407,14 @@ public partial class PracticePage : UserControl
 
     private void Refresh(bool animateRoll = false)
     {
+        Surface.SetStepTicks(_steps.Select(x => x.Tick).ToArray());
         Surface.SetPracticeRunning(_running);
         Surface.SetPracticePosition(_steps.Select(x => x.Keys).ToArray(), _index);
-        if (!_timed && _steps.Count > 0)
-            Surface.SetRollCursorTick(_steps[Math.Min(_index, _steps.Count - 1)].Tick, animateRoll);
+        if ((!_timed || (!_running && !_resumeClock)) && _steps.Count > 0)
+        {
+            var step = _steps[Math.Min(_index, _steps.Count - 1)];
+            Surface.SetRollCursorTick(_timed ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, animateRoll);
+        }
         AnimatePracticePlayIcon(_running);
         Stats();
     }
@@ -413,6 +468,54 @@ public partial class PracticePage : UserControl
                 ViewTabIndicator,
                 mode == PracticeSurfaceMode.GameKeys ? GameKeysModeButton : VerticalRollModeButton,
                 ViewTabsHost);
+        Surface.Focus();
+    }
+
+    private void PausePractice()
+    {
+        Surface.ClearPressedKeys();
+        if (!_running) return;
+        if (_timed) _timedPosition = CurrentTimedPosition();
+        _running = false;
+        _resumeClock = _timed;
+        CancelTimer();
+        Surface.SetPracticeRunning(false);
+        AnimatePracticePlayIcon(false);
+        Status("Practice_Paused");
+    }
+
+    private async void ReturnToBookmark_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_steps.Count == 0 || _bookmark < 0) return;
+        Reset(false);
+        _index = Math.Clamp(_bookmark, 0, _steps.Count - 1);
+        await PositionAtCurrentAsync(true);
+    }
+
+    private async Task PositionAtCurrentAsync(bool resume)
+    {
+        var version = ++_navigationVersion;
+        _positioning = true;
+        Refresh(true);
+        await Task.Delay(330);
+        if (version != _navigationVersion) return;
+        _positioning = false;
+        if (resume && IsVisible) StartPracticeButton_OnClick(this, new RoutedEventArgs());
+    }
+
+    private void Calibrate_OnClick(object sender, RoutedEventArgs e)
+    {
+        PausePractice();
+        var dialog = new GenshinPiano.App.Dialogs.PracticeLatencyDialog(_inputDelayMs)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            _inputDelayMs = dialog.DelayMilliseconds;
+            if (System.Windows.Application.Current is App app)
+                app.UserSettingsService.SetPracticeInputDelay(_inputDelayMs);
+        }
         Surface.Focus();
     }
 }

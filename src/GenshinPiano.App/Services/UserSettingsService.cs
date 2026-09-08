@@ -31,6 +31,7 @@ public sealed record UserSettings
 
 public sealed record PracticeUserSettings
 {
+    public double InputDelayMs { get; init; }
     public double PlaybackSpeed { get; init; } = 1;
 
     public double NoteSpacing { get; init; } = 1;
@@ -128,6 +129,7 @@ public interface IUserSettingsService
     void SetPracticePlaybackSpeed(double value);
 
     void SetPracticeNoteSpacing(double value);
+    void SetPracticeInputDelay(double value);
 
     void SetScoreFolder(string? path);
 
@@ -241,6 +243,12 @@ public sealed class UserSettingsService : IUserSettingsService
         }
 
         Update(Current with { Practice = Current.Practice with { NoteSpacing = value } });
+    }
+
+    public void SetPracticeInputDelay(double value)
+    {
+        if (!double.IsFinite(value)) return;
+        Update(Current with { Practice = Current.Practice with { InputDelayMs = Math.Clamp(value, -300, 300) } });
     }
 
     public void SetTheme(AppTheme value)
@@ -504,6 +512,7 @@ public sealed class UserSettingsService : IUserSettingsService
             Notifications = settings?.Notifications ?? new NotificationUserSettings(),
             Practice = practice with
             {
+                InputDelayMs = double.IsFinite(practice.InputDelayMs) ? Math.Clamp(practice.InputDelayMs, -300, 300) : 0,
                 PlaybackSpeed = IsAllowedPracticePlaybackSpeed(practice.PlaybackSpeed)
                     ? practice.PlaybackSpeed
                     : practiceDefaults.PlaybackSpeed,

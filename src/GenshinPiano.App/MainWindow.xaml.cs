@@ -1251,6 +1251,11 @@ public partial class MainWindow : Window
     private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         TryHandleFileShortcut(e);
+        if (!e.Handled && PracticeWorkspacePanel.Visibility == Visibility.Visible &&
+            PracticeWorkspacePanel.Child is GenshinPiano.App.Controls.PracticePage practice)
+        {
+            practice.TryHandlePlaybackShortcut(e);
+        }
         if (!e.Handled && PracticeWorkspacePanel.Visibility != Visibility.Visible)
         {
             PianoRollEditor.TryHandleEditorShortcut(e);

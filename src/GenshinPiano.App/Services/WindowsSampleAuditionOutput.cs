@@ -8,7 +8,7 @@ namespace GenshinPiano.App.Services;
 
 public sealed class WindowsSampleAuditionOutput(string sampleRoot) : ISampleAuditionOutput, IDisposable
 {
-    private readonly Dictionary<int, MediaPlayer> _players = [];
+    private readonly List<MediaPlayer> _players = [];
     private double _masterVolume = 1;
 
     public void SetVolume(int volume) =>
@@ -21,7 +21,7 @@ public sealed class WindowsSampleAuditionOutput(string sampleRoot) : ISampleAudi
     public void NoteOff(int pitch)
     {
         // These samples contain their natural decay. Stopping on key-up would
-        // truncate the instrument tail, so replacement happens on the next attack.
+        // truncate the instrument tail. Repeated attacks use independent voices.
     }
 
     public void AllNotesOff() =>
@@ -51,29 +51,32 @@ public sealed class WindowsSampleAuditionOutput(string sampleRoot) : ISampleAudi
         var path = Path.Combine(sampleRoot, folder, key.ToString().ToLowerInvariant() + ".mp3");
         if (!File.Exists(path)) return;
 
-        if (_players.Remove(pitch, out var previous))
+        if (_players.Count >= 128)
         {
+            var previous = _players[0];
+            _players.RemoveAt(0);
             previous.Stop();
             previous.Close();
         }
         var player = new MediaPlayer { Volume = _masterVolume * Math.Clamp(velocity, 1, 127) / 127d };
         player.MediaEnded += (_, _) => RemovePlayer(pitch, player);
         player.MediaFailed += (_, _) => RemovePlayer(pitch, player);
-        _players[pitch] = player;
+        _players.Add(player);
         player.Open(new Uri(path, UriKind.Absolute));
         player.Play();
     }
 
     private void RemovePlayer(int pitch, MediaPlayer player)
     {
-        if (_players.TryGetValue(pitch, out var current) && ReferenceEquals(current, player))
-            _players.Remove(pitch);
+        _players.Remove(player);
         player.Close();
     }
 
     private void StopAll()
     {
-        foreach (var player in _players.Values)
+        var voices = _players.ToArray();
+        _players.Clear();
+        foreach (var player in voices)
         {
             player.Stop();
             player.Close();

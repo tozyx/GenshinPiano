@@ -30,6 +30,24 @@ public sealed class PracticeSurface : FrameworkElement
     private IReadOnlySet<GenshinKey> _targetKeys = new HashSet<GenshinKey>();
     private readonly Dictionary<GenshinKey, int> _wrongKeyVersions = [];
     private int _practiceIndex;
+    private long[] _stepTicks = [];
+    private int _bookmarkIndex = -1;
+    private readonly List<(Rect Bounds, int Index)> _noteTargets = [];
+    public event EventHandler<int>? BookmarkChanged;
+    public void SetStepTicks(long[] ticks) => _stepTicks = ticks;
+    public void SetBookmark(int index)
+    {
+        _bookmarkIndex = index;
+        InvalidateVisual();
+    }
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonDown(e);
+        SetBookmark(-1);
+        BookmarkChanged?.Invoke(this, -1);
+        e.Handled = true;
+    }
+
     private double _rollCursorTick;
     private double _rollAnimationFrom;
     private double _rollAnimationTo;
@@ -225,9 +243,18 @@ public sealed class PracticeSurface : FrameworkElement
         if (changed) InvalidateVisual();
     }
 
+    public void ClearPressedKeys()
+    {
+        _pressedKeys.Clear();
+        _pointerKey = null;
+        if (IsMouseCaptured) ReleaseMouseCapture();
+        InvalidateVisual();
+    }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
+        _noteTargets.Clear();
         var background = GetBrush("SurfaceBrush", Color.FromRgb(249, 250, 247));
         drawingContext.DrawRectangle(background, null, new Rect(RenderSize));
         if (Mode == PracticeSurfaceMode.VerticalRoll)
@@ -238,6 +265,7 @@ public sealed class PracticeSurface : FrameworkElement
         {
             DrawGameKeys(drawingContext);
         }
+
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -245,6 +273,14 @@ public sealed class PracticeSurface : FrameworkElement
         base.OnMouseLeftButtonDown(e);
         Focus();
         var point = e.GetPosition(this);
+        foreach (var target in _noteTargets.AsEnumerable().Reverse())
+        {
+            if (!target.Bounds.Contains(point)) continue;
+            SetBookmark(target.Index);
+            BookmarkChanged?.Invoke(this, target.Index);
+            e.Handled = true;
+            return;
+        }
         if (Mode == PracticeSurfaceMode.VerticalRoll &&
             Math.Abs(point.Y - GetHiddenCursorY()) <= 10)
         {
@@ -344,8 +380,6 @@ public sealed class PracticeSurface : FrameworkElement
 
         DrawText(dc, Score?.Metadata.Title ?? string.Empty, 22, FontWeights.SemiBold, ink,
             new Point(marginX, 26), availableWidth, TextAlignment.Left);
-        DrawText(dc, "Q W E R T Y U  ·  A S D F G H J  ·  Z X C V B N M", 11,
-            FontWeights.Normal, muted, new Point(marginX, 58), availableWidth, TextAlignment.Left);
 
         DrawFilmStrip(dc, width, accent, ink, muted, keyBackground, ring);
 
@@ -359,7 +393,7 @@ public sealed class PracticeSurface : FrameworkElement
             var isTarget = _targetKeys.Contains(key);
             var isWrong = _wrongKeyVersions.ContainsKey(key);
             var pressedRadius = isActive ? radius * .94 : radius;
-            if (isTarget && _approachProgress > 0)
+            if (_practiceRunning && isTarget && _approachProgress > 0)
             {
                 var approachScale = 2.3 - 1.3 * _approachProgress;
                 var approachOpacity = _approachProgress < .5
@@ -402,11 +436,14 @@ public sealed class PracticeSurface : FrameworkElement
             var itemHeight = isCurrent ? 48d : 40d;
             var x = centerX + offset * (slotWidth + 10) - itemWidth / 2;
             var rect = new Rect(x, y, itemWidth, itemHeight);
+            _noteTargets.Add((rect, stepIndex));
             var itemBrush = isCurrent
                 ? GetBrush("AccentSurfaceBrush", Color.FromRgb(220, 235, 250))
                 : background;
             dc.PushOpacity(isCurrent ? 1 : Math.Max(.32, .72 - Math.Abs(offset) * .1));
-            dc.DrawRoundedRectangle(itemBrush, new Pen(isCurrent ? accent : border, isCurrent ? 2.2 : 1), rect, 9, 9);
+            var marked = stepIndex == _bookmarkIndex;
+            var marker = GetBrush("PracticeCursorBrush", Colors.Coral);
+            dc.DrawRoundedRectangle(marked ? marker : itemBrush, new Pen(marked ? marker : isCurrent ? accent : border, isCurrent ? 2.2 : 1), rect, 9, 9);
             DrawText(dc, string.Join("+", _practiceSequence[stepIndex]), isCurrent ? 15 : 12,
                 isCurrent ? FontWeights.Bold : FontWeights.SemiBold,
                 isCurrent ? ink : muted, new Point(rect.X, rect.Y + (isCurrent ? 13 : 11)),
@@ -466,7 +503,11 @@ public sealed class PracticeSurface : FrameworkElement
             var rect = new Rect(keyIndex * laneWidth + 2, y - noteHeight, Math.Max(3, laneWidth - 4), noteHeight);
             var reveal = Math.Clamp((rect.Bottom - hiddenCursorY) / 52d, .08, 1);
             dc.PushOpacity(reveal);
-            dc.DrawRoundedRectangle(accent, null, rect, 4, 4);
+            var stepIndex = Array.BinarySearch(_stepTicks, note.StartTick);
+            var hitRect = Rect.Intersect(rect, new Rect(0, hiddenCursorY, ActualWidth, Math.Max(0, playLineY - hiddenCursorY)));
+            if (stepIndex >= 0 && !hitRect.IsEmpty) _noteTargets.Add((hitRect, stepIndex));
+            dc.DrawRoundedRectangle(stepIndex >= 0 && stepIndex == _bookmarkIndex
+                ? GetBrush("PracticeCursorBrush", Colors.Coral) : accent, null, rect, 4, 4);
             dc.Pop();
         }
         dc.Pop();
