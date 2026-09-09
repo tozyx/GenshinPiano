@@ -16,7 +16,9 @@ The other sampled instrument audio in this directory is derived from the
 - Revision: c4be9fb018067fb9d43607db538923ac89421924
 - License declared by the source repository: GNU GPL version 3
 
-Those instrument files are renamed from the source's 0-20 key-index layout
-without altering their audio content.
+Those instrument files are renamed from the source's 0-20 key-index layout.
+For consistent application playback, the distributed MP3 copies are transcoded
+and loudness-normalized with approximately 1 dB of peak headroom. This signal
+processing does not change their attribution or source license.
 
 See `GPL-3.0.txt` in this directory for the source repository's license text.

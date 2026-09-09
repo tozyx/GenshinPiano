@@ -57,6 +57,22 @@
 - 底部可调整 BPM、自然延音、音量和本地试听音色。
 - “设置 → 卷帘帧率”可选择 30 FPS、60 FPS 或垂直同步。
 
+### 练习与音游
+
+- 顶部“练习 / 曲谱编辑”标签可进入独立练习页；练习曲目直接复用左侧曲谱列表及 `.gpiano` / MIDI 打开流程。
+- “游戏按键”显示 21 个圆形游戏乐器按键及当前组合提示；“垂直卷帘”用于下落式读谱。
+- “跟弹模式”只有正确完成当前组合后才前进；“节奏模式”按曲谱时间推进，并允许在目标时间前后一定范围内命中。两者都不判断松键时机。
+- 练习页支持 `Space` 播放或暂停。操作下拉框后焦点会返回练习区；中文输入法开启时仍按物理键位识别。
+- 垂直卷帘可设置 25%、50%、100% 或 125% 播放速度，以及 100%–200% 音符间距。这些选项会保存到便携配置。
+- 拖动卷帘中的上隐游标可以改变音符开始显现的位置。暂停时可滚轮浏览；再次播放会先回到当前待弹音符。
+- 左键单击音符可设置标记，右键取消；“返回标记”只负责定位并保持暂停，不会立即开始播放。
+- 节奏或音游练习暂停时，已完成音符会淡化；再次开始且定位完成后，已完成音符不再绘制。跟弹模式维持当前音符贴近底线的浏览方式。
+- 垂直卷帘底部的音符图标用于锁定音游功能。开启后完整曲谱自动播放，玩家按键只负责判定，音符统一显示为固定高度，不使用原始时值判断松键。
+- 开启音游后会滑出“校准”和“设置”按钮。校准时以四拍敲击声为准，按 `Space` 查看判定线反馈，再上下拖动判定线，使第四拍与音符触线同步。
+- 音游设置可将独立反馈音调整为 0–100；未开始播放时也可以按键试听。该音量不影响曲谱伴奏和普通乐器试听。
+
+完整说明见 [练习与音游指南](PRACTICE.md)。
+
 ### 游戏内演奏
 
 1. 点击左下角播放按钮或按 `F5`。
@@ -145,6 +161,22 @@ button, use **File → Open**, or drag a `.gpiano` / `.mid` file onto the main w
 - `Ctrl + wheel`: horizontal zoom; `Shift + wheel`: horizontal scroll;
   `Ctrl + Shift + wheel`: vertical zoom.
 - BPM, sustain, volume, instrument, and render frame rate can be adjusted in the editor/settings.
+
+### Practice and rhythm game
+
+- Open the dedicated practice page from the **Practice / Score editor** tabs. It reuses the sidebar score list and the existing `.gpiano` / MIDI loading path.
+- **Game keys** presents the 21 circular instrument keys and upcoming combinations. **Vertical roll** provides falling-note reading.
+- **Follow mode** advances after the current combination is completed. **Timed mode** follows score time and accepts hits within an early/late timing window. Key release is not judged.
+- `Space` starts or pauses practice. Focus returns to the practice surface after using a selector, and physical keys remain usable with a Chinese IME active.
+- Vertical roll supports 25%, 50%, 100%, and 125% playback speed plus 100%–200% note spacing. Both settings are persisted.
+- Drag the hidden-note cursor to control where notes become visible. While paused, use the wheel to inspect the roll; starting first returns to the current target note.
+- Left-click a note to mark it and right-click to clear the marker. Returning to a marker only navigates and remains paused.
+- Completed notes are dimmed while timed/rhythm-game practice is paused, then omitted after playback starts and positioning finishes. Follow mode keeps its existing play-line behavior.
+- The note icon in the vertical-roll status bar locks the rhythm-game layer. The full score then autoplays while player input is used only for timing judgments; note blocks have a fixed visual height and release timing is ignored.
+- Enabling rhythm game reveals calibration and settings buttons. During calibration, use the four audible beats as the reference, press `Space` to inspect line feedback, and drag the line until the falling note meets it on beat four.
+- Rhythm hit-sound volume is independently adjustable from 0–100 and can be previewed before starting. It does not change score accompaniment or normal instrument audition volume.
+
+See [Practice and rhythm-game guide](PRACTICE.md) for details.
 
 ### In-game playback
 

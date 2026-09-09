@@ -211,6 +211,8 @@ ocr-addons-<ocr-version>-win-x64.zip.sig
 - Debug 和 Release 均能编译
 - 自动化测试全部通过
 - 主程序能新建、打开、保存和试听曲谱
+- 练习页的跟弹、节奏和音游开关均可开始、暂停、停止并从标记音符定位
+- 音游校准与反馈音量可以保存，七种采样和内置 MIDI 在相同音量下无明显响度跳变或削波
 - `publish\songs` 已准备且不包含不应分发的文件
 - ZIP 根目录包含 `GenshinPiano.exe`、`GenshinPiano.Updater.exe` 和 `songs`
 - 应用包和 OCR 包均生成 `.sha256` 与 `.sig`
@@ -306,4 +308,5 @@ See [OCR add-on distribution](ocr-addon-distribution.md) and
 [OCR protocol](ocr-addon-protocol.md) for component-specific details.
 
 Before publishing, test a clean extracted copy, application update and rollback, OCR component
-download, score loading/saving, and local playback.
+download, score loading/saving, local playback, all practice modes, rhythm-game calibration, and
+sampled/MIDI loudness at the same volume setting.

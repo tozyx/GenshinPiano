@@ -2,6 +2,13 @@
 
 ## Completed in the current iteration
 
+- [x] Add a dedicated score-practice and rhythm-game experience.
+  - Provide game-key and vertical-roll practice views with follow and timed progression.
+  - Add a vertical-roll rhythm-game switch with full-score autoplay and timing-only judgments.
+  - Add fixed-height rhythm-game notes, draggable hidden-note cursor, marked-note navigation, and mode-aware pause positioning.
+  - Add four-beat input-offset calibration and independently persisted hit-sound volume.
+  - Normalize the seven 21-key instrument sample sets and align sampled/MIDI perceptual volume mapping.
+
 - [x] Establish the optional OCR add-on boundary.
   - Keep OCR runtimes and models outside the lightweight main package.
   - Discover a versioned engine manifest under `addons/ocr`.

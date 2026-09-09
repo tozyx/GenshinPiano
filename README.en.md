@@ -10,6 +10,7 @@ GenshinPiano v3 is a Windows application for arranging and performing music with
 - Import and export standard MIDI files
 - Support importing legacy `.GenshinPiano` scores
 - Provide a piano roll, a 21-key preview, transposition, and pitch-range mapping
+- Provide game-key, vertical-roll, follow, timed, and rhythm-game practice
 - Provide reliable Windows keyboard playback and recording
 - Provide numbered-notation OCR and printed staff-notation OMR through an optional add-on
 
@@ -40,6 +41,10 @@ For application controls, piano-roll shortcuts, MIDI/OCR import, local audition,
 
 [GenshinPiano user guide](docs/USER_GUIDE.md#english)
 
+For practice views, timing judgments, latency calibration, and marked-note resume behavior, see:
+
+[Practice and rhythm-game guide](docs/PRACTICE.md#english)
+
 ## Portable Configuration
 
 The application runs in portable mode. User settings are stored in `config/settings.json` beside the executable. When distributing a ZIP package, extract the entire package to a directory where the user has write permission. Installing it directly under `Program Files` is not recommended.
@@ -49,6 +54,10 @@ The application runs in portable mode. User settings are stored in `config/setti
 - Edit, validate, and save UTF-8 JSON `.gpiano` scores, with a folder library, drag-and-drop opening, renaming, and unsaved-work recovery
 - 21-key, full 88-key, and score-range piano-roll views with note creation/audition, marquee and additive selection, copying, grouped movement, rhythmic length, and key-hold editing; view mode and zoom are persisted
 - Multi-instrument local audition with BPM, natural sustain, playback cursor, selection looping, and smooth high-refresh-rate scrolling
+- A dedicated practice page with game-key and vertical-roll views, follow/timed practice, a draggable hidden-note cursor, playback-speed control, and adjustable note spacing
+- An optional vertical-roll rhythm-game layer with full-score autoplay, timing-only input judgments, fixed-size note blocks, hit sounds, input-offset calibration, and hit-sound volume control
+- Click-to-mark practice positions, paused current-note selection, and return-to-marker navigation that remains paused until the user starts
+- Seven sampled 21-key game instruments; sampled audio and built-in MIDI share a perceptual volume curve, and sample peaks are loudness-normalized
 - Safe in-game keyboard performance with target-window detection, a three-second countdown, focus-loss pause, global Esc pause, and guaranteed key release
 - Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
