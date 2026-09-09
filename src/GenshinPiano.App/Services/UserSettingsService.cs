@@ -10,7 +10,7 @@ namespace GenshinPiano.App.Services;
 
 public sealed record UserSettings
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
 
     public int Version { get; init; } = CurrentVersion;
 
@@ -35,6 +35,7 @@ public sealed record PracticeUserSettings
     public double PlaybackSpeed { get; init; } = 1;
 
     public double NoteSpacing { get; init; } = 1;
+    public int RhythmHitVolume { get; init; } = 75;
 }
 
 public sealed record OcrUserSettings
@@ -130,6 +131,7 @@ public interface IUserSettingsService
 
     void SetPracticeNoteSpacing(double value);
     void SetPracticeInputDelay(double value);
+    void SetPracticeRhythmHitVolume(int value);
 
     void SetScoreFolder(string? path);
 
@@ -249,6 +251,13 @@ public sealed class UserSettingsService : IUserSettingsService
     {
         if (!double.IsFinite(value)) return;
         Update(Current with { Practice = Current.Practice with { InputDelayMs = Math.Clamp(value, -300, 300) } });
+    }
+
+    public void SetPracticeRhythmHitVolume(int value)
+    {
+        value = Math.Clamp(value, 0, 100);
+        if (Current.Practice.RhythmHitVolume == value) return;
+        Update(Current with { Practice = Current.Practice with { RhythmHitVolume = value } });
     }
 
     public void SetTheme(AppTheme value)
@@ -519,6 +528,7 @@ public sealed class UserSettingsService : IUserSettingsService
                 NoteSpacing = IsAllowedPracticeNoteSpacing(practice.NoteSpacing)
                     ? practice.NoteSpacing
                     : practiceDefaults.NoteSpacing,
+                RhythmHitVolume = Math.Clamp(practice.RhythmHitVolume, 0, 100),
             },
             Ocr = ocr with
             {

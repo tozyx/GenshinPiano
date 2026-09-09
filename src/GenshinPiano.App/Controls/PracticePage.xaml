@@ -124,15 +124,42 @@
                     <TextBlock x:Name="PracticeStatusText" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="{DynamicResource Practice_Ready}" />
                 </StackPanel>
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Grid x:Name="CalibrationReveal" Width="0" Opacity="0" ClipToBounds="True">
+                        <Button x:Name="RhythmGameSettingsButton" IsEnabled="False"
+                                Width="28" HorizontalAlignment="Left"
+                                Style="{StaticResource PracticeTransportButtonStyle}"
+                                ToolTip="{DynamicResource Menu_Settings}" Click="RhythmGameSettings_OnClick"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Button.RenderTransform><TranslateTransform X="18" /></Button.RenderTransform>
+                            <Path Width="17" Height="17" Stretch="Uniform" Stroke="{DynamicResource AccentBrush}"
+                                  StrokeThickness="1.45" StrokeLineJoin="Round"
+                                  Data="M8.5,1.5 L9.5,3.1 L11.3,3.5 L12.8,2.6 L14.4,4.2 L13.5,5.7 L13.9,7.5 L15.5,8.5 L13.9,9.5 L13.5,11.3 L14.4,12.8 L12.8,14.4 L11.3,13.5 L9.5,13.9 L8.5,15.5 L7.5,13.9 L5.7,13.5 L4.2,14.4 L2.6,12.8 L3.5,11.3 L3.1,9.5 L1.5,8.5 L3.1,7.5 L3.5,5.7 L2.6,4.2 L4.2,2.6 L5.7,3.5 L7.5,3.1 Z M8.5,6 A2.5,2.5 0 1 1 8.49,6" />
+                        </Button>
+                        <Button x:Name="CalibrationButton" IsEnabled="False"
+                                Margin="28,0,0,0" HorizontalAlignment="Left"
+                                Style="{StaticResource PracticeTransportButtonStyle}"
+                                ToolTip="{DynamicResource Practice_Latency}" Click="Calibrate_OnClick"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Button.RenderTransform><TranslateTransform X="10" /></Button.RenderTransform>
+                            <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource AccentBrush}"
+                                  StrokeThickness="1.5" Data="M 8,1 A 7,7 0 1 1 7.99,1 M 8,4 L 8,8 L 11,10" />
+                        </Button>
+                    </Grid>
+                    <ToggleButton x:Name="RhythmGameToggle" Margin="0,0,2,0"
+                                  Style="{StaticResource PracticeToggleIconButtonStyle}"
+                                  ToolTip="{DynamicResource Practice_RhythmGame}"
+                                  Click="RhythmGameToggle_OnClick">
+                        <Grid Width="17" Height="17">
+                            <Path x:Name="RhythmGameNoteIcon" Width="16" Height="16" Stretch="Uniform"
+                                  Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.75"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Data="M6,3 V12.2 C6,14.1 2.2,14.6 2.2,12.5 C2.2,10.6 6,10.2 6,12 M6,5 L14,3 V10.2 C14,12.1 10.2,12.6 10.2,10.5 C10.2,8.6 14,8.2 14,10 M6,7 L14,5" />
+                        </Grid>
+                    </ToggleButton>
                     <Button x:Name="ReturnBookmarkButton" IsEnabled="False" Style="{StaticResource PracticeTransportButtonStyle}"
                             ToolTip="{DynamicResource Practice_BookmarkReturn}" Click="ReturnToBookmark_OnClick">
-                        <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource PrimaryTextBrush}"
+                        <Path Width="17" Height="17" Stretch="Uniform" Stroke="{DynamicResource PrimaryTextBrush}"
                               StrokeThickness="1.7" Data="M 4,3 L 4,13 M 13,3 L 5,8 L 13,13 Z" />
-                    </Button>
-                    <Button Style="{StaticResource PracticeTransportButtonStyle}"
-                            ToolTip="{DynamicResource Practice_Latency}" Click="Calibrate_OnClick">
-                        <Path Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource PrimaryTextBrush}"
-                              StrokeThickness="1.5" Data="M 8,1 A 7,7 0 1 1 7.99,1 M 8,4 L 8,8 L 11,10" />
                     </Button>
                     <Button x:Name="StartPracticeButton" Margin="0,0,2,0"
                             Style="{StaticResource PracticeTransportButtonStyle}"

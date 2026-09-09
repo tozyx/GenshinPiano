@@ -15,6 +15,7 @@ internal sealed class CalibrationRoll : FrameworkElement
     private MemoryStream? _soundData;
     private long _lastBeat = -1;
     private bool _dragging;
+    private long _hitEmphasisStarted;
     public double DelayMilliseconds { get; private set; }
     public event EventHandler? DelayChanged;
     private double Top => 30;
@@ -71,6 +72,12 @@ internal sealed class CalibrationRoll : FrameworkElement
         InvalidateVisual();
     }
 
+    public void RegisterHit()
+    {
+        _hitEmphasisStarted = Stopwatch.GetTimestamp();
+        InvalidateVisual();
+    }
+
     private Brush Theme(string key, Color fallback) => TryFindResource(key) as Brush ?? new SolidColorBrush(fallback);
 
     protected override void OnRender(DrawingContext dc)
@@ -95,8 +102,10 @@ internal sealed class CalibrationRoll : FrameworkElement
         dc.PushClip(new RectangleGeometry(new Rect(0, Top, width, Math.Max(0, LineY - Top))));
         dc.DrawRoundedRectangle(accent, null, new Rect(width / 2 - 23, y - 24, 46, 24), 4, 4);
         dc.Pop();
-        var sinceHit = phase - (HitMs + DelayMilliseconds);
-        var emphasis = sinceHit >= 0 && sinceHit < 260 ? 1 - sinceHit / 260 : 0;
+        var emphasisElapsed = _hitEmphasisStarted == 0
+            ? double.PositiveInfinity
+            : Stopwatch.GetElapsedTime(_hitEmphasisStarted).TotalMilliseconds;
+        var emphasis = emphasisElapsed < 300 ? 1 - emphasisElapsed / 300 : 0;
         dc.PushOpacity(emphasis * .22);
         dc.DrawRectangle(marker, null, new Rect(12, LineY - 9, Math.Max(0, width - 24), 18));
         dc.Pop();
@@ -148,8 +157,10 @@ internal sealed class CalibrationRoll : FrameworkElement
             for (var i = 0; i < count; i++)
             {
                 var t = i / (double)rate;
-                var envelope = Math.Min(1, i / 100d) * Math.Exp(-t * 45);
-                writer.Write((short)(Math.Sin(2 * Math.PI * 880 * t) * envelope * 10000));
+                var envelope = Math.Min(1, i / 80d) * Math.Exp(-t * 30);
+                var body = Math.Sin(2 * Math.PI * (145 - 55 * t) * t);
+                var click = Math.Sin(2 * Math.PI * 950 * t) * Math.Exp(-t * 85) * .22;
+                writer.Write((short)((body + click) * envelope * 11500));
             }
         }
         stream.Position = 0;

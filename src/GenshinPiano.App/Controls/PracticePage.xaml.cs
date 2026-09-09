@@ -32,14 +32,30 @@ public partial class PracticePage : UserControl
     private int _navigationVersion;
     private bool _positioning;
     private bool _resumeClock;
+    private bool _rhythmGame;
+    private CancellationTokenSource? _scorePlaybackCts;
+    private Task? _scorePlaybackTask;
+    private int _scorePlaybackGeneration;
     private static readonly TimeSpan TimedPreRoll = TimeSpan.FromMilliseconds(1200);
     private static readonly TimeSpan ApproachLeadTime = TimeSpan.FromMilliseconds(1500);
+    private bool UsesClock => _timed || _rhythmGame;
 
     public PracticePage()
     {
         InitializeComponent();
         RestorePracticeSettings();
-        Surface.BookmarkChanged += (_, index) => _bookmark = index;
+        Surface.BookmarkChanged += (_, index) =>
+        {
+            _bookmark = index;
+            ReturnBookmarkButton.IsEnabled = index >= 0;
+        };
+        PreviewMouseRightButtonDown += (_, e) =>
+        {
+            _bookmark = -1;
+            Surface.SetBookmark(-1);
+            ReturnBookmarkButton.IsEnabled = false;
+            e.Handled = true;
+        };
 
         SetMode(PracticeSurfaceMode.VerticalRoll);
         Loaded += (_, _) =>
@@ -63,6 +79,7 @@ public partial class PracticePage : UserControl
         {
             var settings = app.UserSettingsService.Current.Practice;
             _inputDelayMs = settings.InputDelayMs;
+            PracticeHitSound.SetVolume(settings.RhythmHitVolume);
             PlaybackSpeedBox.SelectedIndex = settings.PlaybackSpeed switch
             {
                 0.25 => 0,
@@ -114,6 +131,7 @@ public partial class PracticePage : UserControl
     {
         _bookmark = -1;
         Surface.SetBookmark(-1);
+        ReturnBookmarkButton.IsEnabled = false;
         Reset(false);
         try
         {
@@ -171,6 +189,11 @@ public partial class PracticePage : UserControl
 
     private async Task PreviewAsync(GenshinKey key)
     {
+        if (_rhythmGame)
+        {
+            PracticeHitSound.Play();
+            return;
+        }
         if (System.Windows.Application.Current is not GenshinPiano.App.App app ||
             app.AuditionService is not { } auditionService ||
             _viewModel is not { } viewModel ||
@@ -194,13 +217,13 @@ public partial class PracticePage : UserControl
     private void Accept(GenshinKey key)
     {
         if (!_running || _index >= _steps.Count) return;
-        if (_timed)
+        if (UsesClock)
         {
             _timedPosition = CurrentTimedPosition();
             ExpireNotes();
             if (!_running || _index >= _steps.Count) return;
         }
-        if (_timed && !PracticeTiming.IsHit(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
+        if (UsesClock && !PracticeTiming.IsHit(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
         {
             _attempts++;
             _combo = 0;
@@ -230,28 +253,58 @@ public partial class PracticePage : UserControl
         if (++_index >= _steps.Count)
         {
             _running = false;
-            CancelTimer();
+            if (_rhythmGame)
+            {
+                if (_renderClockAttached) CompositionTarget.Rendering -= OnTimedRendering;
+                _renderClockAttached = false;
+            }
+            else
+            {
+                CancelTimer();
+            }
             Status("Practice_Complete");
         }
-        Refresh(!_timed);
+        Refresh(!UsesClock);
     }
 
-    private void StartPracticeButton_OnClick(object sender, RoutedEventArgs e)
+    private async void StartPracticeButton_OnClick(object sender, RoutedEventArgs e)
     {
         Surface.Focus();
         if (_positioning) return;
         if (_steps.Count == 0) { Status("Practice_NoNotes"); return; }
         if (_index >= _steps.Count) Reset(false);
+        if (!_running)
+        {
+            var version = ++_navigationVersion;
+            _positioning = true;
+            var step = _steps[Math.Min(_index, _steps.Count - 1)];
+            Surface.SetPausedSelection(_index, UsesClock);
+            Surface.SetRollCursorTick(UsesClock ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, true);
+            await Task.Delay(330);
+            if (version != _navigationVersion) return;
+            _positioning = false;
+            _resumeClock = false;
+        }
+        var resumed = _resumeClock;
         _running = !_running;
         if (!_running)
         {
-            if (_timed) _timedPosition = CurrentTimedPosition();
-            _resumeClock = _timed;
+            if (UsesClock) _timedPosition = CurrentTimedPosition();
+            _resumeClock = UsesClock;
             CancelTimer();
+            if (_steps.Count > 0 && _index < _steps.Count)
+            {
+                _timedPosition = _steps[_index].Offset;
+                Surface.SetRollCursorTick(_steps[_index].Tick, true);
+            }
             Status("Practice_Paused");
         }
-        else if (_timed) { Status("Practice_TimedActive"); StartTimer(); }
+        else if (UsesClock) { Status(_rhythmGame ? "Practice_RhythmGameActive" : "Practice_TimedActive"); StartTimer(); }
         else Status("Practice_FollowActive");
+        if (_running && _rhythmGame)
+        {
+            StartRhythmGamePlayback(resumed);
+        }
         Refresh(false);
     }
 
@@ -271,7 +324,8 @@ public partial class PracticePage : UserControl
         PausePractice();
         _resumeClock = false;
         _timed = timed;
-        Surface.SetTimedApproach(timed);
+        _matched.Clear();
+        Surface.SetTimedApproach(UsesClock);
         FollowModeButton.IsChecked = !timed;
         TimedModeButton.IsChecked = timed;
         if (IsLoaded)
@@ -280,7 +334,7 @@ public partial class PracticePage : UserControl
                 timed ? TimedModeButton : FollowModeButton,
                 PracticeModeTabsHost);
         Status("Practice_Ready");
-        _ = PositionAtCurrentAsync(false);
+        _ = PositionAtCurrentAsync();
         Surface.Focus();
     }
 
@@ -297,7 +351,7 @@ public partial class PracticePage : UserControl
 
     private void OnTimedRendering(object? sender, EventArgs e)
     {
-        if (!_running || !_timed || _index >= _steps.Count) return;
+        if (!_running || !UsesClock || _index >= _steps.Count) return;
         _timedPosition = CurrentTimedPosition();
         Surface.SetRollCursorTick(GetTickAt(_timedPosition), false);
         var remaining = _steps[_index].Offset - _timedPosition;
@@ -311,7 +365,9 @@ public partial class PracticePage : UserControl
     private TimeSpan CurrentTimedPosition() => _timedOrigin - TimedPreRoll +
         TimeSpan.FromTicks((long)(System.Diagnostics.Stopwatch.GetElapsedTime(_timedStarted).Ticks * _playbackSpeed));
 
-    private TimeSpan JudgmentPosition => PracticeTiming.Compensate(_timedPosition, _inputDelayMs, _playbackSpeed);
+    private TimeSpan JudgmentPosition => _rhythmGame
+        ? PracticeTiming.Compensate(_timedPosition, _inputDelayMs, _playbackSpeed)
+        : _timedPosition;
 
     private void ExpireNotes()
     {
@@ -361,11 +417,12 @@ public partial class PracticePage : UserControl
     {
         if (_renderClockAttached) CompositionTarget.Rendering -= OnTimedRendering;
         _renderClockAttached = false;
+        CancelScorePlayback();
     }
 
     private void PlaybackSpeedBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var wasRunning = _running && _timed;
+        var wasRunning = _running && UsesClock;
         var currentPosition = wasRunning ? CurrentTimedPosition() : _timedPosition;
         _playbackSpeed = PlaybackSpeedBox.SelectedIndex switch
         {
@@ -377,6 +434,7 @@ public partial class PracticePage : UserControl
         {
             _timedOrigin = currentPosition + TimedPreRoll;
             _timedStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (_rhythmGame) StartRhythmGamePlayback(resumed: true);
         }
         Surface?.Focus();
     }
@@ -401,6 +459,7 @@ public partial class PracticePage : UserControl
         {
             _practiceInstrument = instrument;
             Surface?.SetInstrumentVisual(instrument);
+            if (_running && _rhythmGame) StartRhythmGamePlayback(resumed: true);
         }
         Surface?.Focus();
     }
@@ -410,10 +469,11 @@ public partial class PracticePage : UserControl
         Surface.SetStepTicks(_steps.Select(x => x.Tick).ToArray());
         Surface.SetPracticeRunning(_running);
         Surface.SetPracticePosition(_steps.Select(x => x.Keys).ToArray(), _index);
-        if ((!_timed || (!_running && !_resumeClock)) && _steps.Count > 0)
+        Surface.SetPausedSelection(Math.Min(_index, _steps.Count - 1), UsesClock);
+        if ((!UsesClock || (!_running && !_resumeClock)) && _steps.Count > 0)
         {
             var step = _steps[Math.Min(_index, _steps.Count - 1)];
-            Surface.SetRollCursorTick(_timed ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, animateRoll);
+            Surface.SetRollCursorTick(UsesClock ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, animateRoll);
         }
         AnimatePracticePlayIcon(_running);
         Stats();
@@ -460,7 +520,12 @@ public partial class PracticePage : UserControl
 
     private void SetMode(PracticeSurfaceMode mode)
     {
+        if (mode != PracticeSurfaceMode.VerticalRoll && _rhythmGame)
+            SetRhythmGame(false);
         Surface.Mode = mode;
+        RhythmGameToggle.Visibility = mode == PracticeSurfaceMode.VerticalRoll
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         GameKeysModeButton.IsChecked = mode == PracticeSurfaceMode.GameKeys;
         VerticalRollModeButton.IsChecked = mode == PracticeSurfaceMode.VerticalRoll;
         if (IsLoaded)
@@ -473,15 +538,104 @@ public partial class PracticePage : UserControl
 
     private void PausePractice()
     {
+        _navigationVersion++;
+        _positioning = false;
         Surface.ClearPressedKeys();
+        CancelScorePlayback();
         if (!_running) return;
-        if (_timed) _timedPosition = CurrentTimedPosition();
+        if (UsesClock) _timedPosition = CurrentTimedPosition();
         _running = false;
-        _resumeClock = _timed;
+        _resumeClock = UsesClock;
         CancelTimer();
+        if (_steps.Count > 0 && _index < _steps.Count)
+        {
+            _timedPosition = _steps[_index].Offset;
+            Surface.SetRollCursorTick(_steps[_index].Tick, true);
+            Surface.SetPausedSelection(_index, UsesClock);
+        }
         Surface.SetPracticeRunning(false);
         AnimatePracticePlayIcon(false);
         Status("Practice_Paused");
+    }
+
+    private void RhythmGameToggle_OnClick(object sender, RoutedEventArgs e) =>
+        SetRhythmGame(RhythmGameToggle.IsChecked == true);
+
+    private void SetRhythmGame(bool enabled)
+    {
+        PausePractice();
+        _rhythmGame = enabled && Surface.Mode == PracticeSurfaceMode.VerticalRoll;
+        RhythmGameToggle.IsChecked = _rhythmGame;
+        Surface.SetRhythmGame(_rhythmGame);
+        Surface.SetTimedApproach(UsesClock);
+        AnimateRhythmGameControls();
+        Status("Practice_Ready");
+        _ = PositionAtCurrentAsync();
+        Surface.Focus();
+    }
+
+    private async void StartRhythmGamePlayback(bool resumed)
+    {
+        CancelScorePlayback();
+        var generation = _scorePlaybackGeneration;
+        var previous = _scorePlaybackTask;
+        if (previous is not null)
+        {
+            try { await previous; }
+            catch (OperationCanceledException) { }
+            catch (Exception exception) { AppLogger.Warning($"Previous practice playback failed: {exception.Message}"); }
+        }
+        if (generation != _scorePlaybackGeneration || !_running || !_rhythmGame ||
+            System.Windows.Application.Current is not App app ||
+            app.AuditionService is not { } service ||
+            _viewModel?.CurrentScore is not { } score)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _scorePlaybackCts = cancellation;
+        try
+        {
+            if (!resumed)
+            {
+                var remaining = _steps[Math.Min(_index, _steps.Count - 1)].Offset - CurrentTimedPosition();
+                if (remaining > TimeSpan.Zero)
+                    await Task.Delay(
+                        TimeSpan.FromTicks((long)(remaining.Ticks / _playbackSpeed)),
+                        cancellation.Token);
+            }
+            if (generation != _scorePlaybackGeneration) return;
+            var startTick = resumed
+                ? (long)Math.Max(0, GetTickAt(_timedPosition))
+                : _steps[Math.Min(_index, _steps.Count - 1)].Tick;
+            _scorePlaybackTask = service.PlayAsync(
+                score,
+                startTick,
+                _practiceInstrument,
+                naturalSustain: true,
+                cancellationToken: cancellation.Token,
+                playbackSpeed: _playbackSpeed);
+            await _scorePlaybackTask;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Rhythm game playback failed: {exception}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_scorePlaybackCts, cancellation))
+                _scorePlaybackCts = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelScorePlayback()
+    {
+        _scorePlaybackGeneration++;
+        _scorePlaybackCts?.Cancel();
+        _scorePlaybackCts = null;
     }
 
     private async void ReturnToBookmark_OnClick(object sender, RoutedEventArgs e)
@@ -489,10 +643,10 @@ public partial class PracticePage : UserControl
         if (_steps.Count == 0 || _bookmark < 0) return;
         Reset(false);
         _index = Math.Clamp(_bookmark, 0, _steps.Count - 1);
-        await PositionAtCurrentAsync(true);
+        await PositionAtCurrentAsync();
     }
 
-    private async Task PositionAtCurrentAsync(bool resume)
+    private async Task PositionAtCurrentAsync()
     {
         var version = ++_navigationVersion;
         _positioning = true;
@@ -500,11 +654,11 @@ public partial class PracticePage : UserControl
         await Task.Delay(330);
         if (version != _navigationVersion) return;
         _positioning = false;
-        if (resume && IsVisible) StartPracticeButton_OnClick(this, new RoutedEventArgs());
     }
 
     private void Calibrate_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!_rhythmGame) return;
         PausePractice();
         var dialog = new GenshinPiano.App.Dialogs.PracticeLatencyDialog(_inputDelayMs)
         {
@@ -515,6 +669,47 @@ public partial class PracticePage : UserControl
             _inputDelayMs = dialog.DelayMilliseconds;
             if (System.Windows.Application.Current is App app)
                 app.UserSettingsService.SetPracticeInputDelay(_inputDelayMs);
+        }
+        Surface.Focus();
+    }
+
+    private void AnimateRhythmGameControls()
+    {
+        var duration = TimeSpan.FromMilliseconds(220);
+        var easing = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        CalibrationButton.IsEnabled = _rhythmGame;
+        RhythmGameSettingsButton.IsEnabled = _rhythmGame;
+        CalibrationReveal.BeginAnimation(WidthProperty,
+            new DoubleAnimation(_rhythmGame ? 60 : 0, duration) { EasingFunction = easing });
+        CalibrationReveal.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(_rhythmGame ? 1 : 0, duration) { EasingFunction = easing });
+        if (CalibrationButton.RenderTransform is TranslateTransform translate)
+            translate.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(_rhythmGame ? 0 : 10, duration) { EasingFunction = easing });
+        if (RhythmGameSettingsButton.RenderTransform is TranslateTransform settingsTranslate)
+            settingsTranslate.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(_rhythmGame ? 0 : 18, duration) { EasingFunction = easing });
+        RhythmGameNoteIcon.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(_rhythmGame ? 1 : .78, duration) { EasingFunction = easing });
+    }
+
+    private void RhythmGameSettings_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!_rhythmGame || System.Windows.Application.Current is not App app) return;
+        var previousVolume = app.UserSettingsService.Current.Practice.RhythmHitVolume;
+        var dialog = new GenshinPiano.App.Dialogs.RhythmGameSettingsDialog(
+            previousVolume)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            app.UserSettingsService.SetPracticeRhythmHitVolume(dialog.HitVolume);
+            PracticeHitSound.SetVolume(dialog.HitVolume);
+        }
+        else
+        {
+            PracticeHitSound.SetVolume(previousVolume);
         }
         Surface.Focus();
     }

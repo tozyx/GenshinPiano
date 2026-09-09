@@ -27,14 +27,17 @@ public static class AuditionInstrumentIds
 
 public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutput? sampleOutput = null)
 {
-    private double _velocityGain = 1;
+    private const double ReferenceVelocityGain = 127d / 96d;
+    private double _velocityGain = ReferenceVelocityGain;
 
     public void SetVolume(int volume)
     {
         volume = Math.Clamp(volume, 0, 127);
-        Volatile.Write(ref _velocityGain, volume / 101.6);
-        output.SetVolume(volume);
-        sampleOutput?.SetVolume(volume);
+        var normalized = volume / 127d;
+        var perceptualVolume = (int)Math.Round(Math.Pow(normalized, .6) * 127);
+        Volatile.Write(ref _velocityGain, ReferenceVelocityGain);
+        output.SetVolume(perceptualVolume);
+        sampleOutput?.SetVolume(perceptualVolume);
     }
 
     public async Task PlayAsync(
@@ -44,8 +47,10 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
         bool naturalSustain,
         IProgress<AuditionProgress>? progress = null,
         CancellationToken cancellationToken = default,
-        long? endTick = null)
+        long? endTick = null,
+        double playbackSpeed = 1)
     {
+        playbackSpeed = double.IsFinite(playbackSpeed) ? Math.Clamp(playbackSpeed, 0.25, 2) : 1;
         var plan = ScoreAuditionPlanner.Create(score, naturalSustain);
         startTick = Math.Clamp(startTick, 0, plan.DurationTick);
         var playbackEndTick = Math.Clamp(endTick ?? plan.DurationTick, startTick, plan.DurationTick);
@@ -60,10 +65,11 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            while (startTime + stopwatch.Elapsed < endTime)
+            while (startTime + TimeSpan.FromTicks((long)(stopwatch.Elapsed.Ticks * playbackSpeed)) < endTime)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var absoluteTime = startTime + stopwatch.Elapsed;
+                var absoluteTime = startTime +
+                    TimeSpan.FromTicks((long)(stopwatch.Elapsed.Ticks * playbackSpeed));
                 while (eventIndex < events.Length && events[eventIndex].Offset <= absoluteTime)
                 {
                     var item = events[eventIndex++];

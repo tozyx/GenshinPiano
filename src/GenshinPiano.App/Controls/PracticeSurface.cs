@@ -30,14 +30,46 @@ public sealed class PracticeSurface : FrameworkElement
     private IReadOnlySet<GenshinKey> _targetKeys = new HashSet<GenshinKey>();
     private readonly Dictionary<GenshinKey, int> _wrongKeyVersions = [];
     private int _practiceIndex;
+    private double _filmPosition, _filmFrom, _filmTo;
+    private readonly Stopwatch _filmClock = new();
+    private bool _filmAnimating;
+
+    private void AnimateFilmTo(int index)
+    {
+        _filmFrom = _filmPosition;
+        _filmTo = index;
+        _filmClock.Restart();
+        if (_filmAnimating) return;
+        _filmAnimating = true;
+        CompositionTarget.Rendering += RenderFilm;
+    }
+
+    private void RenderFilm(object? sender, EventArgs e)
+    {
+        var progress = Math.Clamp(_filmClock.Elapsed.TotalMilliseconds / 320, 0, 1);
+        _filmPosition = _filmFrom + (_filmTo - _filmFrom) * (1 - Math.Pow(1 - progress, 3));
+        InvalidateVisual();
+        if (progress < 1) return;
+        CompositionTarget.Rendering -= RenderFilm;
+        _filmAnimating = false;
+        _filmClock.Stop();
+    }
     private long[] _stepTicks = [];
     private int _bookmarkIndex = -1;
+    private int _selectedStepIndex = -1;
+    private bool _hideCompletedNotes;
     private readonly List<(Rect Bounds, int Index)> _noteTargets = [];
     public event EventHandler<int>? BookmarkChanged;
     public void SetStepTicks(long[] ticks) => _stepTicks = ticks;
     public void SetBookmark(int index)
     {
         _bookmarkIndex = index;
+        InvalidateVisual();
+    }
+    public void SetPausedSelection(int index, bool hideCompletedNotes)
+    {
+        _selectedStepIndex = index;
+        _hideCompletedNotes = hideCompletedNotes;
         InvalidateVisual();
     }
     protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
@@ -54,6 +86,12 @@ public sealed class PracticeSurface : FrameworkElement
     private readonly Stopwatch _rollAnimationClock = new();
     private bool _isRollAnimating;
     private double _rollSpacing = 1;
+    private bool _rhythmGame;
+    private double _rhythmGameBlend;
+    private double _rhythmGameBlendFrom;
+    private double _rhythmGameBlendTo;
+    private readonly Stopwatch _rhythmGameBlendClock = new();
+    private bool _rhythmGameBlendAnimating;
     private double _hiddenCursorRatio = .18;
     private bool _isDraggingHiddenCursor;
     private DateTime _approachStarted;
@@ -93,6 +131,7 @@ public sealed class PracticeSurface : FrameworkElement
         var nextIndex = sequence.Count == 0 ? 0 : Math.Clamp(index, 0, sequence.Count - 1);
         var nextKeys = sequence.Count == 0 ? [] : sequence[nextIndex];
         var targetChanged = _practiceIndex != nextIndex || !_targetKeys.SetEquals(nextKeys);
+        if (_practiceIndex != nextIndex) AnimateFilmTo(nextIndex);
         _practiceSequence = sequence;
         _practiceIndex = nextIndex;
         _targetKeys = sequence.Count == 0
@@ -206,6 +245,32 @@ public sealed class PracticeSurface : FrameworkElement
     {
         _rollSpacing = Math.Clamp(spacing, 1, 2);
         InvalidateVisual();
+    }
+
+    public void SetRhythmGame(bool enabled)
+    {
+        _rhythmGame = enabled;
+        _rhythmGameBlendFrom = _rhythmGameBlend;
+        _rhythmGameBlendTo = enabled ? 1 : 0;
+        _rhythmGameBlendClock.Restart();
+        if (!_rhythmGameBlendAnimating)
+        {
+            _rhythmGameBlendAnimating = true;
+            CompositionTarget.Rendering += OnRhythmGameBlendFrame;
+        }
+    }
+
+    private void OnRhythmGameBlendFrame(object? sender, EventArgs e)
+    {
+        var progress = Math.Clamp(_rhythmGameBlendClock.Elapsed.TotalMilliseconds / 260, 0, 1);
+        var eased = progress < .5 ? 4 * progress * progress * progress
+            : 1 - Math.Pow(-2 * progress + 2, 3) / 2;
+        _rhythmGameBlend = _rhythmGameBlendFrom + (_rhythmGameBlendTo - _rhythmGameBlendFrom) * eased;
+        InvalidateVisual();
+        if (progress < 1) return;
+        CompositionTarget.Rendering -= OnRhythmGameBlendFrame;
+        _rhythmGameBlendAnimating = false;
+        _rhythmGameBlendClock.Stop();
     }
 
     private void OnRollAnimationFrame(object? sender, EventArgs e)
@@ -346,6 +411,19 @@ public sealed class PracticeSurface : FrameworkElement
         Cursor = Math.Abs(point.Y - GetHiddenCursorY()) <= 8 ? Cursors.SizeNS : null;
     }
 
+    protected override void OnMouseWheel(MouseWheelEventArgs e)
+    {
+        base.OnMouseWheel(e);
+        if (Mode != PracticeSurfaceMode.VerticalRoll || _practiceRunning || Score is null) return;
+        StopRollAnimation();
+        var step = Score.Timing.Ppq * (e.Delta > 0 ? 1d : -1d);
+        var maximum = Math.Max(0, Score.Tracks.SelectMany(track => track.Notes)
+            .Select(note => note.StartTick + note.DurationTick).DefaultIfEmpty(0).Max());
+        _rollCursorTick = Math.Clamp(_rollCursorTick + step, 0, maximum);
+        InvalidateVisual();
+        e.Handled = true;
+    }
+
     protected override void OnMouseLeave(MouseEventArgs e)
     {
         base.OnMouseLeave(e);
@@ -423,18 +501,20 @@ public sealed class PracticeSurface : FrameworkElement
         DrawingContext dc, double width, Brush accent, Brush ink, Brush muted, Brush background, Brush border)
     {
         if (_practiceSequence.Count == 0) return;
-        const int visibleRadius = 3;
+        const int visibleRadius = 4;
         var centerX = width / 2;
         var y = 82d;
         var slotWidth = Math.Clamp(width * .085, 58, 96);
         for (var offset = -visibleRadius; offset <= visibleRadius; offset++)
         {
-            var stepIndex = _practiceIndex + offset;
+            var stepIndex = (int)Math.Round(_filmPosition) + offset;
             if (stepIndex < 0 || stepIndex >= _practiceSequence.Count) continue;
-            var isCurrent = offset == 0;
-            var itemWidth = isCurrent ? slotWidth * 1.12 : slotWidth;
-            var itemHeight = isCurrent ? 48d : 40d;
-            var x = centerX + offset * (slotWidth + 10) - itemWidth / 2;
+            var distance = stepIndex - _filmPosition;
+            var focus = Math.Max(0, 1 - Math.Abs(distance));
+            var isCurrent = stepIndex == _practiceIndex;
+            var itemWidth = slotWidth * (1 + .12 * focus);
+            var itemHeight = 40 + 8 * focus;
+            var x = centerX + distance * (slotWidth + 10) - itemWidth / 2;
             var rect = new Rect(x, y, itemWidth, itemHeight);
             _noteTargets.Add((rect, stepIndex));
             var itemBrush = isCurrent
@@ -488,6 +568,9 @@ public sealed class PracticeSurface : FrameworkElement
             0, hiddenCursorY, ActualWidth, Math.Max(0, playLineY - hiddenCursorY + 2))));
         foreach (var note in notes)
         {
+            var completed = _hideCompletedNotes && _selectedStepIndex >= 0 &&
+                _selectedStepIndex < _stepTicks.Length && note.StartTick < _stepTicks[_selectedStepIndex];
+            if (completed && _practiceRunning) continue;
             if (!GenshinKeyMap.TryMapPitch(note.Pitch, Score?.Playback.Transpose ?? 0,
                     Score?.Playback.OutOfRangePolicy ?? OutOfRangePolicy.OctaveFold, out var key))
             {
@@ -498,16 +581,21 @@ public sealed class PracticeSurface : FrameworkElement
             if (keyIndex < 0) continue;
             var delta = note.StartTick - cursorTick;
             var y = playLineY - delta / visibleTicks * (playLineY - header);
-            var noteHeight = Math.Clamp(note.DurationTick / visibleTicks * (playLineY - header), 9, 90);
+            var naturalHeight = Math.Clamp(note.DurationTick / visibleTicks * (playLineY - header), 9, 90);
+            const double rhythmGameNoteHeight = 14;
+            var noteHeight = naturalHeight + (rhythmGameNoteHeight - naturalHeight) * _rhythmGameBlend;
             if (y + noteHeight < header || y - noteHeight > playLineY) continue;
             var rect = new Rect(keyIndex * laneWidth + 2, y - noteHeight, Math.Max(3, laneWidth - 4), noteHeight);
             var reveal = Math.Clamp((rect.Bottom - hiddenCursorY) / 52d, .08, 1);
-            dc.PushOpacity(reveal);
+            dc.PushOpacity(reveal * (completed ? .18 : 1));
             var stepIndex = Array.BinarySearch(_stepTicks, note.StartTick);
             var hitRect = Rect.Intersect(rect, new Rect(0, hiddenCursorY, ActualWidth, Math.Max(0, playLineY - hiddenCursorY)));
             if (stepIndex >= 0 && !hitRect.IsEmpty) _noteTargets.Add((hitRect, stepIndex));
-            dc.DrawRoundedRectangle(stepIndex >= 0 && stepIndex == _bookmarkIndex
-                ? GetBrush("PracticeCursorBrush", Colors.Coral) : accent, null, rect, 4, 4);
+            var marked = stepIndex >= 0 && stepIndex == _bookmarkIndex;
+            var selected = !_practiceRunning && stepIndex >= 0 && stepIndex == _selectedStepIndex;
+            var marker = GetBrush("PracticeCursorBrush", Colors.Coral);
+            dc.DrawRoundedRectangle(marked ? marker : accent,
+                selected ? new Pen(marker, 1.8) : null, rect, 4, 4);
             dc.Pop();
         }
         dc.Pop();

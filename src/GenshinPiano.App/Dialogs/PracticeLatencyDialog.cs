@@ -91,6 +91,12 @@ public sealed class PracticeLatencyDialog : Window
         }
         Add(_zh ? "重置" : "Reset", () => _roll.SetDelay(0));
         Add(_zh ? "保存" : "Save", () => DialogResult = true);
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) Close();
+            if (e.Key != Key.Space || e.IsRepeat) return;
+            _roll.RegisterHit();
+            e.Handled = true;
+        };
     }
 }
