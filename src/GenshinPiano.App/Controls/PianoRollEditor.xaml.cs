@@ -72,6 +72,13 @@ public partial class PianoRollEditor : UserControl
         IsVisibleChanged += (_, _) =>
         {
             if (!IsVisible && _auditionIsPlaying) PauseAudition();
+            if (IsVisible && _settingsService is not null)
+            {
+                var volume = _settingsService.Current.Editor.AuditionVolume;
+                if (Math.Abs(AuditionVolumeSlider.Value * 100 - volume) > 0.1)
+                    AuditionVolumeSlider.Value = volume / 100d;
+                SetAuditionVolume(volume);
+            }
         };
     }
 

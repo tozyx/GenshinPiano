@@ -8,7 +8,7 @@
     <RootNamespace>GenshinPiano.App</RootNamespace>
     <ApplicationIcon>Assets\Icons\GenshinPiano.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>3.0.1-preview.1</Version>
+    <Version>2026.0-dev</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />

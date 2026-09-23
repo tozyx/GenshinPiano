@@ -34,7 +34,10 @@ internal static class PracticeHitSound
     private static byte[] CreateWave(double volume)
     {
         const int rate = 44100;
-        const int samples = 5292;
+        // A short, muted wood-block style hit. Keeping the body below 1 kHz and
+        // filtering the transient makes repeated rhythm-game taps clear without
+        // the sharp, full bell character of the previous sound.
+        const int samples = 3969;
         using var stream = new MemoryStream();
         using (var writer = new BinaryWriter(stream, System.Text.Encoding.ASCII, true))
         {
@@ -50,19 +53,25 @@ internal static class PracticeHitSound
             writer.Write((short)16);
             writer.Write("data"u8.ToArray());
             writer.Write(samples * 2);
+            double filteredNoise = 0;
+            uint noiseState = 0x6d2b79f5;
             for (var index = 0; index < samples; index++)
             {
                 var time = index / (double)rate;
-                var attack = Math.Min(1, index / 32d);
-                var fundamental = Math.Sin(2 * Math.PI * 880 * time) * Math.Exp(-time * 34);
-                var overtone = Math.Sin(2 * Math.PI * 1760 * time + .35) * Math.Exp(-time * 58) * .34;
-                var sparkle = Math.Sin(2 * Math.PI * 2640 * time + .8) * Math.Exp(-time * 92) * .13;
-                var transient = index < 180
-                    ? (((index * 1103515245L + 12345) & 0xffff) / 32767.5 - 1) *
-                      Math.Exp(-time * 180) * .08
-                    : 0;
+                var attack = Math.Min(1, index / 18d);
+                var body = Math.Sin(2 * Math.PI * 410 * time) * Math.Exp(-time * 43) * .72;
+                var woodyResonance = Math.Sin(2 * Math.PI * 615 * time + .22) *
+                                      Math.Exp(-time * 64) * .24;
+                var lowerBody = Math.Sin(2 * Math.PI * 255 * time + .7) *
+                                Math.Exp(-time * 38) * .13;
+
+                noiseState = noiseState * 1664525u + 1013904223u;
+                var rawNoise = (noiseState / (double)uint.MaxValue) * 2 - 1;
+                filteredNoise += (rawNoise - filteredNoise) * .18;
+                var transient = filteredNoise * Math.Exp(-time * 190) * .12;
                 var perceptualGain = Math.Pow(Math.Clamp(volume, 0, 1), .55);
-                var sample = (fundamental + overtone + sparkle + transient) * attack * 15500 * perceptualGain;
+                var sample = (body + woodyResonance + lowerBody + transient) *
+                             attack * 14200 * perceptualGain;
                 writer.Write((short)Math.Clamp(sample, short.MinValue, short.MaxValue));
             }
         }

@@ -531,7 +531,7 @@
 
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <ComboBox x:Name="PitchLayoutComboBox"
-                              Width="82"
+                               Width="92"
                               Height="30"
                               ToolTip="{DynamicResource Editor_PitchLayout}"
                               SelectedIndex="0"
@@ -552,7 +552,7 @@
                                FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="SnapComboBox"
-                              Width="124"
+                               Width="136"
                               Height="30"
                               SelectedIndex="2"
                               SelectionChanged="SnapComboBox_OnSelectionChanged">
@@ -567,7 +567,7 @@
                                FontSize="12"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
                     <ComboBox x:Name="NewNoteLengthComboBox"
-                              Width="96"
+                               Width="108"
                               Height="30"
                               SelectedIndex="4"
                               SelectionChanged="NewNoteLengthComboBox_OnSelectionChanged">
@@ -582,7 +582,7 @@
                             VerticalAlignment="Center"
                             Background="{DynamicResource BorderBrush}" />
                     <ComboBox x:Name="AuditionInstrumentComboBox"
-                              Width="88"
+                               Width="168"
                               Height="30"
                               Margin="12,0,0,0"
                               SelectedIndex="0"
@@ -939,7 +939,7 @@
                             SmallChange="0.01"
                             LargeChange="0.1"
                             TickFrequency="0.1"
-                            Style="{StaticResource AuditionHorizontalVolumeSliderStyle}"
+                            Style="{StaticResource SharedAuditionHorizontalVolumeSliderStyle}"
                             SizeChanged="AuditionVolumeSlider_OnSizeChanged"
                             PreviewMouseLeftButtonDown="AuditionVolumeSlider_OnPreviewMouseLeftButtonDown"
                             PreviewMouseMove="AuditionVolumeSlider_OnPreviewMouseMove"

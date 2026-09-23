@@ -18,7 +18,11 @@
                 BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1">
             <Grid>
-                <StackPanel>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="170" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,18,0">
                     <TextBlock Text="{DynamicResource Practice_PageEyebrow}"
                                FontSize="11"
                                Foreground="{DynamicResource SecondaryTextBrush}" />
@@ -28,40 +32,107 @@
                                FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
-                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               Text="{DynamicResource Practice_PlaybackSpeed}" />
-                    <ComboBox x:Name="PlaybackSpeedBox" Width="72" Margin="0,0,10,0"
-                              SelectedIndex="2" SelectionChanged="PlaybackSpeedBox_OnSelectionChanged">
-                        <ComboBoxItem Tag="0.25">25%</ComboBoxItem>
-                        <ComboBoxItem Tag="0.5">50%</ComboBoxItem>
-                        <ComboBoxItem Tag="1">100%</ComboBoxItem>
-                        <ComboBoxItem Tag="1.25">125%</ComboBoxItem>
-                    </ComboBox>
-                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               Text="{DynamicResource Practice_NoteSpacing}" />
-                    <ComboBox x:Name="NoteSpacingBox" Width="72" Margin="0,0,10,0"
-                              SelectedIndex="0" SelectionChanged="NoteSpacingBox_OnSelectionChanged">
-                        <ComboBoxItem Tag="1">100%</ComboBoxItem>
-                        <ComboBoxItem Tag="1.25">125%</ComboBoxItem>
-                        <ComboBoxItem Tag="1.5">150%</ComboBoxItem>
-                        <ComboBoxItem Tag="2">200%</ComboBoxItem>
-                    </ComboBox>
-                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource SecondaryTextBrush}"
-                               Text="{DynamicResource Practice_Instrument}" />
-                    <ComboBox x:Name="PracticeInstrumentBox" Width="112" Margin="0,0,10,0"
-                              SelectedIndex="0" SelectionChanged="PracticeInstrumentBox_OnSelectionChanged">
-                        <ComboBoxItem Content="{DynamicResource Audition_WindsongLyre}" Tag="-1" />
-                        <ComboBoxItem Content="{DynamicResource Audition_FloralZither}" Tag="-2" />
-                        <ComboBoxItem Content="{DynamicResource Audition_OldFloralZither}" Tag="-3" />
-                        <ComboBoxItem Content="{DynamicResource Audition_VintageLyre}" Tag="-4" />
-                        <ComboBoxItem Content="{DynamicResource Audition_Ukulele}" Tag="-5" />
-                        <ComboBoxItem Content="{DynamicResource Audition_LingeringEuphonia}" Tag="-6" />
-                        <ComboBoxItem Content="{DynamicResource Audition_LeapingSpiritPiano}" Tag="-7" />
-                    </ComboBox>
+                <StackPanel Grid.ColumnSpan="2" Panel.ZIndex="2"
+                            Margin="0,0,367,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                            <Border x:Name="PlaybackSpeedOption" Margin="0,0,8,0" ClipToBounds="True"
+                                    MouseEnter="PracticeOption_OnMouseEnter" MouseLeave="PracticeOption_OnMouseLeave">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{DynamicResource Practice_PlaybackSpeed}" />
+                                    <Grid Width="0" Opacity="0" IsHitTestVisible="False" ClipToBounds="True">
+                                        <ComboBox x:Name="PlaybackSpeedBox" Width="96"
+                                                  HorizontalAlignment="Left"
+                                                  SelectedIndex="2" SelectionChanged="PlaybackSpeedBox_OnSelectionChanged"
+                                                  PreviewMouseLeftButtonDown="PracticeOptionCombo_OnPreviewMouseLeftButtonDown"
+                                                  DropDownClosed="PracticeOption_OnDropDownClosed">
+                                    <ComboBoxItem Tag="0.25">25%</ComboBoxItem>
+                                    <ComboBoxItem Tag="0.5">50%</ComboBoxItem>
+                                    <ComboBoxItem Tag="1">100%</ComboBoxItem>
+                                    <ComboBoxItem Tag="1.25">125%</ComboBoxItem>
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="NoteSpacingOption" Margin="0,0,8,0" ClipToBounds="True"
+                                    MouseEnter="PracticeOption_OnMouseEnter" MouseLeave="PracticeOption_OnMouseLeave">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{DynamicResource Practice_NoteSpacing}" />
+                                    <Grid Width="0" Opacity="0" IsHitTestVisible="False" ClipToBounds="True">
+                                        <ComboBox x:Name="NoteSpacingBox" Width="96"
+                                                  HorizontalAlignment="Left"
+                                                  SelectedIndex="0" SelectionChanged="NoteSpacingBox_OnSelectionChanged"
+                                                  PreviewMouseLeftButtonDown="PracticeOptionCombo_OnPreviewMouseLeftButtonDown"
+                                                  DropDownClosed="PracticeOption_OnDropDownClosed">
+                                    <ComboBoxItem Tag="1">100%</ComboBoxItem>
+                                    <ComboBoxItem Tag="1.25">125%</ComboBoxItem>
+                                    <ComboBoxItem Tag="1.5">150%</ComboBoxItem>
+                                    <ComboBoxItem Tag="2">200%</ComboBoxItem>
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="InstrumentOption" Margin="0,0,8,0" ClipToBounds="True"
+                                    MouseEnter="PracticeOption_OnMouseEnter" MouseLeave="PracticeOption_OnMouseLeave">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{DynamicResource Practice_Instrument}" />
+                                    <Grid Width="0" Opacity="0" IsHitTestVisible="False" ClipToBounds="True">
+                                        <ComboBox x:Name="PracticeInstrumentBox" Width="168"
+                                                  HorizontalAlignment="Left"
+                                                  SelectedIndex="0" SelectionChanged="PracticeInstrumentBox_OnSelectionChanged"
+                                                  PreviewMouseLeftButtonDown="PracticeOptionCombo_OnPreviewMouseLeftButtonDown"
+                                                  DropDownClosed="PracticeOption_OnDropDownClosed">
+                                    <ComboBoxItem Content="{DynamicResource Audition_WindsongLyre}" Tag="-1" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_FloralZither}" Tag="-2" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_OldFloralZither}" Tag="-3" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_VintageLyre}" Tag="-4" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_Ukulele}" Tag="-5" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_LingeringEuphonia}" Tag="-6" />
+                                    <ComboBoxItem Content="{DynamicResource Audition_LeapingSpiritPiano}" Tag="-7" />
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                            <Border x:Name="PracticeVolumeOption" Padding="4,0" ClipToBounds="True"
+                                    MouseEnter="PracticeVolumeOption_OnMouseEnter"
+                                    MouseLeave="PracticeVolumeOption_OnMouseLeave">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,6,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource SecondaryTextBrush}"
+                                               Text="{DynamicResource Audition_Volume}" />
+                                    <Grid x:Name="PracticeVolumeReveal" Width="0" Opacity="0"
+                                          IsHitTestVisible="False" ClipToBounds="True">
+                                        <Grid Width="170" Height="28">
+                                            <Border Height="4" Margin="6,0"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource BorderBrush}"
+                                                    CornerRadius="2" />
+                                            <Border x:Name="PracticeVolumeValueTrack"
+                                                    Width="0" Height="4" Margin="6,0,0,0"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    Background="{DynamicResource AccentBrush}"
+                                                    CornerRadius="2" />
+                                            <Slider x:Name="PracticeVolumeSlider" Width="170"
+                                                    Minimum="0" Maximum="1" Value="0.8"
+                                                    SmallChange="0.01" LargeChange="0.1" TickFrequency="0.1"
+                                                    Style="{StaticResource SharedAuditionHorizontalVolumeSliderStyle}"
+                                                    SizeChanged="PracticeVolumeSlider_OnSizeChanged"
+                                                    MouseEnter="PracticeVolumeSlider_OnMouseEnter"
+                                                    MouseLeave="PracticeVolumeSlider_OnMouseLeave"
+                                                    PreviewMouseLeftButtonDown="PracticeVolumeSlider_OnPreviewMouseLeftButtonDown"
+                                                    PreviewMouseMove="PracticeVolumeSlider_OnPreviewMouseMove"
+                                                    PreviewMouseLeftButtonUp="PracticeVolumeSlider_OnPreviewMouseLeftButtonUp"
+                                                    ValueChanged="PracticeVolumeSlider_OnValueChanged" />
+                                        </Grid>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right" Orientation="Horizontal">
                     <Grid x:Name="PracticeModeTabsHost" Width="155" Height="29" Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="FollowModeButton" Width="76"
@@ -82,6 +153,10 @@
                             <Border.RenderTransform><TranslateTransform X="9" /></Border.RenderTransform>
                         </Border>
                     </Grid>
+                    <Border Width="2" Height="25" Margin="0,0,10,0"
+                            VerticalAlignment="Center"
+                            Background="{DynamicResource AccentBrush}"
+                            CornerRadius="1" Opacity="0.8" />
                     <Grid x:Name="ViewTabsHost" Width="180" Height="31">
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="GameKeysModeButton" Width="88"
