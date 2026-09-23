@@ -4,6 +4,34 @@
 
 GenshinPiano v3 是面向 Windows 的原神乐器编曲与演奏工具。目前正在使用 C#、.NET 10 LTS 和 WPF 完全重构。
 
+## 软件预览
+
+### 曲谱编辑与试听
+
+使用 21 键、88 键或曲谱音域卷帘编辑 `.gpiano` 曲谱，并直接完成试听、节拍调整、音色选择和播放检查。
+
+<p align="center">
+  <img src="docs/images/editor-zh.png" alt="GenshinPiano 中文曲谱编辑界面" width="100%" />
+</p>
+
+### 练习与音游
+
+在垂直卷帘和游戏按键界面之间切换，支持跟弹、节奏与音游练习，并可调整播放速度、读谱间距、乐器和全局试听音量。
+
+<p align="center">
+  <img src="docs/images/practice-roll-zh.png" alt="GenshinPiano 垂直卷帘练习界面" width="49%" />
+  <img src="docs/images/practice-keys-zh.png" alt="GenshinPiano 游戏按键练习界面" width="49%" />
+</p>
+
+### OCR 与主题
+
+可选 OCR 附加包支持简谱与印刷五线谱识别；界面同时提供浅色、深色主题以及中英文切换。
+
+<p align="center">
+  <img src="docs/images/ocr-import-zh.png" alt="GenshinPiano OCR 曲谱识别界面" width="49%" />
+  <img src="docs/images/dark-theme-zh.png" alt="GenshinPiano 深色主题" width="49%" />
+</p>
+
 ## 目标
 
 - 使用 UTF-8 JSON `.gpiano` 作为可编辑工程格式

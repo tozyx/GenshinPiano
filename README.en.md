@@ -4,6 +4,34 @@ English | [简体中文](README.md)
 
 GenshinPiano v3 is a Windows application for arranging and performing music with instruments in Genshin Impact. It is being completely rebuilt with C#, .NET 10 LTS, and WPF.
 
+## Preview
+
+### Score editing and audition
+
+Edit `.gpiano` scores in 21-key, 88-key, or score-range piano-roll views, then audition the result, adjust the beat, choose an instrument, and check playback in one place.
+
+<p align="center">
+  <img src="docs/images/editor-en.png" alt="GenshinPiano score editor in English" width="100%" />
+</p>
+
+### Practice and rhythm game
+
+Switch between vertical-roll and game-key views for follow, timed, and rhythm-game practice, with controls for playback speed, note spacing, instrument, and global audition volume.
+
+<p align="center">
+  <img src="docs/images/practice-roll-en.png" alt="GenshinPiano vertical-roll practice view" width="49%" />
+  <img src="docs/images/practice-keys-en.png" alt="GenshinPiano game-key practice view" width="49%" />
+</p>
+
+### OCR and themes
+
+The optional OCR add-on recognizes numbered notation and printed staff notation. The interface also supports light and dark themes and can be switched between English and Chinese.
+
+<p align="center">
+  <img src="docs/images/ocr-import-en.png" alt="GenshinPiano OCR import window" width="49%" />
+  <img src="docs/images/dark-theme-en.png" alt="GenshinPiano dark theme" width="49%" />
+</p>
+
 ## Goals
 
 - Use UTF-8 JSON `.gpiano` files as the editable project format
