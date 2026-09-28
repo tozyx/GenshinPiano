@@ -1,8 +1,36 @@
-# GenshinPiano v3
+<p align="center">
+  <img src="src/GenshinPiano.App/Assets/Icons/GenshinPiano-256.png" alt="GenshinPiano 图标" width="120" />
+</p>
 
-[English](README.en.md) | 简体中文
+<h1 align="center">GenshinPiano</h1>
 
-GenshinPiano v3 是面向 Windows 的原神乐器编曲与演奏工具。目前正在使用 C#、.NET 10 LTS 和 WPF 完全重构。
+<p align="center">
+  面向 Windows 的原神乐器编曲、练习与演奏工具
+</p>
+
+<p align="center">
+  <a href="https://github.com/tozyx/GenshinPiano">
+    <img src="https://img.shields.io/badge/language-C%23-512BD4?logo=csharp&logoColor=white" alt="C#" />
+  </a>
+  <a href="https://dotnet.microsoft.com/">
+    <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10" />
+  </a>
+  <a href="https://learn.microsoft.com/dotnet/desktop/wpf/">
+    <img src="https://img.shields.io/badge/UI-WPF-0078D4?logo=windows&logoColor=white" alt="WPF" />
+  </a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4?logo=windows11&logoColor=white" alt="Windows 10/11" />
+  <img src="https://img.shields.io/badge/architecture-x64-5C6BC0" alt="x64" />
+  <a href="https://github.com/tozyx/GenshinPiano/releases/latest">
+    <img src="https://img.shields.io/github/v/release/tozyx/GenshinPiano?include_prereleases&sort=semver" alt="Latest release" />
+  </a>
+  <a href="https://github.com/tozyx/GenshinPiano/blob/v3.0/LICENSE">
+    <img src="https://img.shields.io/github/license/tozyx/GenshinPiano" alt="MIT License" />
+  </a>
+</p>
+<p align="center">
+  <strong>简体中文</strong> ·
+  <a href="README.en.md">English</a>
+</p>
 
 ## 软件预览
 
