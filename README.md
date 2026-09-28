@@ -9,23 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tozyx/GenshinPiano">
-    <img src="https://img.shields.io/badge/language-C%23-512BD4?logo=csharp&logoColor=white" alt="C#" />
-  </a>
-  <a href="https://dotnet.microsoft.com/">
-    <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10" />
-  </a>
-  <a href="https://learn.microsoft.com/dotnet/desktop/wpf/">
-    <img src="https://img.shields.io/badge/UI-WPF-0078D4?logo=windows&logoColor=white" alt="WPF" />
-  </a>
+  <a href="https://github.com/tozyx/GenshinPiano"><img src="https://img.shields.io/badge/language-C%23-512BD4?logo=csharp&logoColor=white" alt="C#" /></a>
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white" alt=".NET 10" /></a>
+  <a href="https://learn.microsoft.com/dotnet/desktop/wpf/"><img src="https://img.shields.io/badge/UI-WPF-0078D4?logo=windows&logoColor=white" alt="WPF" /></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4?logo=windows11&logoColor=white" alt="Windows 10/11" />
   <img src="https://img.shields.io/badge/architecture-x64-5C6BC0" alt="x64" />
-  <a href="https://github.com/tozyx/GenshinPiano/releases/latest">
-    <img src="https://img.shields.io/github/v/release/tozyx/GenshinPiano?include_prereleases&sort=semver" alt="Latest release" />
-  </a>
-  <a href="https://github.com/tozyx/GenshinPiano/blob/v3.0/LICENSE">
-    <img src="https://img.shields.io/github/license/tozyx/GenshinPiano" alt="MIT License" />
-  </a>
+  <a href="https://github.com/tozyx/GenshinPiano/releases/latest"><img src="https://img.shields.io/github/v/release/tozyx/GenshinPiano?include_prereleases&sort=semver" alt="Latest release" /></a>
+  <a href="https://github.com/tozyx/GenshinPiano/blob/v3.0/LICENSE"><img src="https://img.shields.io/github/license/tozyx/GenshinPiano" alt="MIT License" /></a>
 </p>
 <p align="center">
   <strong>简体中文</strong> ·

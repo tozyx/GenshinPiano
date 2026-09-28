@@ -299,17 +299,43 @@ public sealed class ScorePlaybackPlannerTests
             countdownSeconds: 3,
             progress,
             cancellation.Token);
-        await Task.Delay(80);
+
+        await WaitUntilAsync(
+            () => progress.Events.Any(item =>
+                item.Phase == PlaybackPhase.Countdown && item.CountdownSeconds == 3),
+            "The initial safety countdown did not start.");
+
         focusGuard.IsFocused = false;
-        await Task.Delay(80);
+
+        await WaitUntilAsync(
+            () => progress.Events.Any(item =>
+                item.Phase == PlaybackPhase.WaitingForTarget &&
+                item.PauseReason == PlaybackPauseReason.TargetNotFocused),
+            "Playback did not observe the target focus loss.");
+
         focusGuard.IsFocused = true;
-        await Task.Delay(80);
+
+        await WaitUntilAsync(
+            () => progress.Events.Count(item =>
+                item.Phase == PlaybackPhase.Countdown && item.CountdownSeconds == 3) >= 2,
+            "The safety countdown did not restart after focus returned.");
 
         Assert.True(progress.Events.Count(item =>
             item.Phase == PlaybackPhase.Countdown && item.CountdownSeconds == 3) >= 2);
 
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => playback);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, string failureMessage)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), failureMessage);
     }
 
     private sealed class RecordingKeyboardInput : IKeyboardInput
