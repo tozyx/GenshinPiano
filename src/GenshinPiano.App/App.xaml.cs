@@ -27,6 +27,7 @@ public partial class App : System.Windows.Application
     private WindowsKeyboardInput? _keyboardInput;
     private WindowsMidiOutput? _midiOutput;
     private WindowsSampleAuditionOutput? _sampleAuditionOutput;
+    private int _audioWarmupGeneration;
     private HttpClient? _updateMetadataHttpClient;
     private HttpClient? _updateDownloadHttpClient;
     private SingleInstanceCoordinator? _singleInstance;
@@ -259,6 +260,17 @@ public partial class App : System.Windows.Application
 
         MainWindow = mainWindow;
         mainWindow.Show();
+        mainWindow.Activated += (_, _) => _ = WarmActiveAudioAsync(mainWindow);
+        if (_sampleAuditionOutput is not null)
+        {
+            _sampleAuditionOutput.OutputDeviceChanged += () =>
+            {
+                if (!Dispatcher.HasShutdownStarted)
+                    Dispatcher.BeginInvoke(new Action(() => _ = WarmActiveAudioAsync(mainWindow)));
+            };
+            _ = InitializeAudioCacheAsync();
+            if (mainWindow.IsActive) _ = WarmActiveAudioAsync(mainWindow);
+        }
         _singleInstance.StartListening(request =>
             Dispatcher.BeginInvoke(new Action(async () =>
                 await mainWindow.HandleSingleInstanceRequestAsync(request))));
@@ -286,6 +298,49 @@ public partial class App : System.Windows.Application
 
 
         AppLogger.Info("Application startup completed.");
+    }
+
+    private async Task InitializeAudioCacheAsync()
+    {
+        try
+        {
+            // Decode common samples without holding the Bluetooth audio endpoint.
+            await Task.Delay(350);
+            if (_sampleAuditionOutput is not { } sampleOutput) return;
+            await sampleOutput.PreloadAsync(AuditionInstrumentIds.WindsongLyre);
+            var editorInstrument = UserSettingsService.Current.Editor.AuditionInstrument;
+            if (AuditionInstrumentIds.IsSampled(editorInstrument) &&
+                editorInstrument != AuditionInstrumentIds.WindsongLyre)
+                await sampleOutput.PreloadAsync(editorInstrument);
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Startup instrument preload failed: {exception.Message}");
+        }
+    }
+
+    private async Task WarmActiveAudioAsync(MainWindow window)
+    {
+        var generation = Interlocked.Increment(ref _audioWarmupGeneration);
+        try
+        {
+            // Debounce the multiple notifications emitted by one Bluetooth switch.
+            await Task.Delay(300);
+            if (generation != Volatile.Read(ref _audioWarmupGeneration) ||
+                !window.IsActive || _sampleAuditionOutput is not { } sampleOutput) return;
+            var instrument = sampleOutput.LastPreparedInstrument;
+            if (!AuditionInstrumentIds.IsSampled(instrument))
+            {
+                instrument = UserSettingsService.Current.Editor.AuditionInstrument;
+                if (!AuditionInstrumentIds.IsSampled(instrument))
+                    instrument = AuditionInstrumentIds.WindsongLyre;
+            }
+            await sampleOutput.PrepareAsync(instrument);
+        }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Audio endpoint warmup failed: {exception.Message}");
+        }
     }
 
     private static string? FindSupportedStartupPath(IEnumerable<string> arguments)

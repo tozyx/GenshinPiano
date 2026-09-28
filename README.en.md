@@ -102,6 +102,8 @@ For practice views, timing judgments, latency calibration, and marked-note resum
 
 [Practice and rhythm-game guide](docs/PRACTICE.md#english)
 
+Have a feature suggestion or found a bug? Please open a [GitHub Issue](https://github.com/tozyx/GenshinPiano/issues).
+
 ## Portable Configuration
 
 The application runs in portable mode. User settings are stored in `config/settings.json` beside the executable. When distributing a ZIP package, extract the entire package to a directory where the user has write permission. Installing it directly under `Program Files` is not recommended.
@@ -114,7 +116,7 @@ The application runs in portable mode. User settings are stored in `config/setti
 - A dedicated practice page with game-key and vertical-roll views, follow/timed practice, a draggable hidden-note cursor, playback-speed control, and adjustable note spacing
 - An optional vertical-roll rhythm-game layer with full-score autoplay, timing-only input judgments, fixed-size note blocks, hit sounds, input-offset calibration, and hit-sound volume control
 - Click-to-mark practice positions, paused current-note selection, and return-to-marker navigation that remains paused until the user starts
-- Seven sampled 21-key game instruments; sampled audio and built-in MIDI share a perceptual volume curve, and sample peaks are loudness-normalized
+- Seven sampled 21-key game instruments; sampled audio and built-in MIDI share a perceptual volume curve, while pre-decoding and polyphonic mixing improve dense passages, first-note response, and Bluetooth device switching
 - Safe in-game keyboard performance with target-window detection, a three-second countdown, focus-loss pause, global Esc pause, and guaranteed key release
 - Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
@@ -123,6 +125,12 @@ The application runs in portable mode. User settings are stored in `config/setti
 - GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.
+
+## Acknowledgements and Third-Party Projects
+
+Thanks to [DryWetMIDI](https://github.com/melanchall/drywetmidi) for MIDI file handling and [NAudio](https://github.com/naudio/NAudio) for local audio decoding and mixing. The optional OCR add-on uses [RapidOcrNet](https://github.com/BobLd/RapidOcrNet), [ONNX Runtime](https://github.com/microsoft/onnxruntime), and [Oemer](https://github.com/BreezeWhite/oemer); its numbered-notation model weights are derived from [OrpheusNet](https://github.com/Akane0721/OrpheusNet). Tests use [xUnit](https://github.com/xunit/xunit).
+
+See the [instrument sample attribution](src/GenshinPiano.App/Assets/Audio/THIRD-PARTY-NOTICE.md) for audio sources and their respective licenses, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for additional notices. We thank the authors and contributors of these projects.
 
 ## Score Resource Notice
 The score files in this directory are provided to demonstrate and test GenshinPiano features, including score editing, file loading, local audition, format conversion, and in-game performance.

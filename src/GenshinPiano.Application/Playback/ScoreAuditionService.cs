@@ -28,6 +28,9 @@ public static class AuditionInstrumentIds
 public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutput? sampleOutput = null)
 {
     private const double ReferenceVelocityGain = 127d / 96d;
+    // The Windows MIDI synthesizer has limited output headroom. Keep its bus at
+    // full scale and attenuate the sampled-instrument bus by roughly 6 dB.
+    private const double SampleBusGain = 0.5;
     private double _velocityGain = ReferenceVelocityGain;
 
     public void SetVolume(int volume)
@@ -37,8 +40,13 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
         var perceptualVolume = (int)Math.Round(Math.Pow(normalized, .6) * 127);
         Volatile.Write(ref _velocityGain, ReferenceVelocityGain);
         output.SetVolume(perceptualVolume);
-        sampleOutput?.SetVolume(perceptualVolume);
+        sampleOutput?.SetVolume((int)Math.Round(perceptualVolume * SampleBusGain));
     }
+
+    public Task PrepareAsync(int instrument, CancellationToken cancellationToken = default) =>
+        AuditionInstrumentIds.IsSampled(instrument) && sampleOutput is not null
+            ? sampleOutput.PrepareAsync(instrument, cancellationToken)
+            : output.PrepareAsync(Math.Clamp(instrument, 0, 127), cancellationToken);
 
     public async Task PlayAsync(
         ScoreDocument score,
@@ -61,15 +69,27 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
             .ToArray();
         var eventIndex = 0;
         var sampled = AuditionInstrumentIds.IsSampled(instrument) && sampleOutput is not null;
-        if (!sampled) output.SetInstrument(Math.Clamp(instrument, 0, 127));
+        await PrepareAsync(instrument, cancellationToken).ConfigureAwait(false);
         var stopwatch = Stopwatch.StartNew();
+        var completed = false;
         try
         {
-            while (startTime + TimeSpan.FromTicks((long)(stopwatch.Elapsed.Ticks * playbackSpeed)) < endTime)
+            // The final note-off is scheduled exactly at endTime. A loop guarded by
+            // "now < endTime" can exit before dispatching it (or even the last short
+            // note-on when the scheduler wakes late).
+            while (eventIndex < events.Length)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var absoluteTime = startTime +
                     TimeSpan.FromTicks((long)(stopwatch.Elapsed.Ticks * playbackSpeed));
+                if (events[eventIndex].Offset > absoluteTime)
+                {
+                    var remaining = (events[eventIndex].Offset - absoluteTime).TotalMilliseconds / playbackSpeed;
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Clamp(remaining, 1, 8)), cancellationToken)
+                        .ConfigureAwait(false);
+                    continue;
+                }
+
                 while (eventIndex < events.Length && events[eventIndex].Offset <= absoluteTime)
                 {
                     var item = events[eventIndex++];
@@ -94,8 +114,9 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
                     absoluteTime,
                     endTime,
                     Stopwatch.GetTimestamp()));
-                await Task.Delay(16, cancellationToken).ConfigureAwait(false);
             }
+
+            completed = true;
 
             progress?.Report(new AuditionProgress(
                 playbackEndTick,
@@ -107,7 +128,9 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
         finally
         {
             output.AllNotesOff();
-            sampleOutput?.AllNotesOff();
+            // Samples have their own natural tail. Only a user interruption should
+            // silence them; stopping at the score's last note-off clips that note.
+            if (!completed) sampleOutput?.AllNotesOff();
         }
     }
 
@@ -120,7 +143,7 @@ public sealed class ScoreAuditionService(IMidiOutput output, ISampleAuditionOutp
     {
         pitch = Math.Clamp(pitch, 0, 127);
         var sampled = AuditionInstrumentIds.IsSampled(instrument) && sampleOutput is not null;
-        if (!sampled) output.SetInstrument(Math.Clamp(instrument, 0, 127));
+        await PrepareAsync(instrument, cancellationToken).ConfigureAwait(false);
         var adjustedVelocity = (int)Math.Round(
             Math.Clamp(velocity, 1, 127) * Volatile.Read(ref _velocityGain));
         if (sampled) sampleOutput!.NoteOn(instrument, pitch, Math.Clamp(adjustedVelocity, 1, 127));

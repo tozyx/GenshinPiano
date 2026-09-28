@@ -45,6 +45,9 @@ public partial class PianoRollEditor : UserControl
     private long _nextAuditionFrameTimestamp;
     private long _lastAuditionTextTimestamp;
     private bool _auditionRenderingAttached;
+    private TempoSegment[] _auditionTempoSegments = [];
+
+    private readonly record struct TempoSegment(long StartTick, double StartSeconds, double TicksPerSecond);
 
     public PianoRollViewModel EditorViewModel { get; } = new();
 
@@ -633,25 +636,28 @@ public partial class PianoRollEditor : UserControl
         var playbackEndPosition = GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(
             playbackEndTick,
             Score.Timing);
-        var initialSampleTimestamp = Stopwatch.GetTimestamp();
-        _latestAuditionProgress = new AuditionProgress(
-            _auditionTick,
-            playbackEndTick,
-            playbackStartPosition,
-            playbackEndPosition,
-            initialSampleTimestamp);
-        _auditionProgressTimestamp = initialSampleTimestamp;
-        StartAuditionRendering();
-        var progress = new Progress<AuditionProgress>(item =>
-        {
-            _latestAuditionProgress = item;
-            _auditionProgressTimestamp = item.SampleTimestamp > 0
-                ? item.SampleTimestamp
-                : Stopwatch.GetTimestamp();
-        });
-
         try
         {
+            await _auditionService.PrepareAsync(instrument, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            var initialSampleTimestamp = Stopwatch.GetTimestamp();
+            _latestAuditionProgress = new AuditionProgress(
+                _auditionTick,
+                playbackEndTick,
+                playbackStartPosition,
+                playbackEndPosition,
+                initialSampleTimestamp);
+            _auditionProgressTimestamp = initialSampleTimestamp;
+            _auditionTempoSegments = CreateTempoSegments(Score.Timing);
+            StartAuditionRendering();
+            var progress = new Progress<AuditionProgress>(item =>
+            {
+                _latestAuditionProgress = item;
+                _auditionProgressTimestamp = item.SampleTimestamp > 0
+                    ? item.SampleTimestamp
+                    : Stopwatch.GetTimestamp();
+            });
+
             do
             {
                 await _auditionService.PlayAsync(
@@ -718,6 +724,7 @@ public partial class PianoRollEditor : UserControl
         }
 
         _latestAuditionProgress = null;
+        _auditionTempoSegments = [];
     }
 
     private void CompositionTarget_OnRendering(object? sender, EventArgs e) =>
@@ -766,7 +773,7 @@ public partial class PianoRollEditor : UserControl
             interpolatedPosition = progress.Duration;
         }
 
-        var tick = TimeToTick(interpolatedPosition, Score.Timing, progress.DurationTick);
+        var tick = TimeToTick(interpolatedPosition, _auditionTempoSegments, progress.DurationTick);
         _auditionTick = tick;
         Surface.PlaybackTick = tick;
         UpdatePlaybackCursor(tick);
@@ -781,24 +788,41 @@ public partial class PianoRollEditor : UserControl
         }
     }
 
-    private static long TimeToTick(TimeSpan time, TimingDefinition timing, long maximumTick)
+    private static TempoSegment[] CreateTempoSegments(TimingDefinition timing)
     {
-        long low = 0;
-        var high = Math.Max(0, maximumTick);
-        while (low < high)
+        var changes = timing.TempoMap.OrderBy(change => change.Tick).ToArray();
+        if (changes.Length == 0) return [];
+        var segments = new TempoSegment[changes.Length];
+        double seconds = 0;
+        for (var index = 0; index < changes.Length; index++)
         {
-            var middle = low + (high - low + 1) / 2;
-            if (GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(middle, timing) <= time)
+            if (index > 0)
             {
-                low = middle;
+                seconds += (changes[index].Tick - changes[index - 1].Tick) /
+                           segments[index - 1].TicksPerSecond;
             }
-            else
-            {
-                high = middle - 1;
-            }
+            segments[index] = new TempoSegment(changes[index].Tick, seconds,
+                changes[index].Bpm * timing.Ppq / 60d);
         }
+        return segments;
+    }
 
-        return low;
+    private static long TimeToTick(TimeSpan time, TempoSegment[] segments, long maximumTick)
+    {
+        if (segments.Length == 0) return 0;
+        var seconds = time.TotalSeconds;
+        var left = 0;
+        var right = segments.Length;
+        while (left < right)
+        {
+            var middle = left + (right - left) / 2;
+            if (segments[middle].StartSeconds <= seconds) left = middle + 1;
+            else right = middle;
+        }
+        var segment = segments[Math.Max(0, left - 1)];
+        var tick = segment.StartTick + (long)Math.Floor(
+            Math.Max(0, seconds - segment.StartSeconds) * segment.TicksPerSecond + 1e-7);
+        return Math.Clamp(tick, 0, maximumTick);
     }
 
     private void AuditionStopButton_OnClick(object sender, RoutedEventArgs e)
@@ -825,6 +849,7 @@ public partial class PianoRollEditor : UserControl
         }
 
         _auditionIsPlaying = isPlaying;
+        Surface.UsePlaybackCache = isPlaying;
         BpmTextBox.IsEnabled = !isPlaying;
         BpmDisplayButton.IsEnabled = !isPlaying;
         AuditionInstrumentComboBox.IsEnabled = !isPlaying;
@@ -1415,7 +1440,9 @@ public partial class PianoRollEditor : UserControl
             _continuousFollowActive = true;
         }
 
-        EditorScrollViewer.ScrollToHorizontalOffset(Math.Max(0, x - anchor));
+        var target = Math.Max(0, x - anchor);
+        if (Math.Abs(target - EditorScrollViewer.HorizontalOffset) < 0.1) return;
+        EditorScrollViewer.ScrollToHorizontalOffset(target);
     }
 
     private async Task EnsurePlaybackHeadVisibleAsync(long tick)

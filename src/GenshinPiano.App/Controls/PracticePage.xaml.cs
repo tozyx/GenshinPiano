@@ -65,7 +65,11 @@ public partial class PracticePage : UserControl
         Loaded += (_, _) =>
         {
             Attach();
-            if (IsVisible) InitializeSelectionIndicators();
+            if (IsVisible)
+            {
+                InitializeSelectionIndicators();
+                _ = WarmPracticeAudioAsync();
+            }
         };
         IsVisibleChanged += (_, args) =>
         {
@@ -73,6 +77,7 @@ public partial class PracticePage : UserControl
             {
                 SyncGlobalAuditionVolume();
                 Dispatcher.BeginInvoke(InitializeSelectionIndicators);
+                _ = WarmPracticeAudioAsync();
             }
             else PausePractice();
         };
@@ -507,6 +512,17 @@ public partial class PracticePage : UserControl
             AppLogger.Warning($"Practice key preview failed: {exception.Message}");
         }
     }
+
+    private async Task WarmPracticeAudioAsync()
+    {
+        if (!IsLoaded || !IsVisible ||
+            System.Windows.Application.Current is not App { AuditionService: { } service }) return;
+        try { await service.PrepareAsync(_practiceInstrument); }
+        catch (Exception exception)
+        {
+            AppLogger.Warning($"Practice audio warmup failed: {exception.Message}");
+        }
+    }
     private void Accept(GenshinKey key)
     {
         if (!_running || _index >= _steps.Count) return;
@@ -571,6 +587,19 @@ public partial class PracticePage : UserControl
             var version = ++_navigationVersion;
             _positioning = true;
             var step = _steps[Math.Min(_index, _steps.Count - 1)];
+            var preparation = _rhythmGame &&
+                System.Windows.Application.Current is App { AuditionService: { } service }
+                ? service.PrepareAsync(_practiceInstrument)
+                : Task.CompletedTask;
+            try { await preparation; }
+            catch (Exception exception)
+            {
+                _positioning = false;
+                AppLogger.Warning($"Practice audio preparation failed: {exception}");
+                PracticeStatusText.Text = exception.Message;
+                return;
+            }
+            if (version != _navigationVersion) return;
             Surface.SetPausedSelection(_index, UsesClock);
             Surface.SetRollCursorTick(UsesClock ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, true);
             await Task.Delay(330);
@@ -753,6 +782,7 @@ public partial class PracticePage : UserControl
             _practiceInstrument = instrument;
             Surface?.SetInstrumentVisual(instrument);
             if (_running && _rhythmGame) StartRhythmGamePlayback(resumed: true);
+            else _ = WarmPracticeAudioAsync();
         }
         Surface?.Focus();
     }

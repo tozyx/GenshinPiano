@@ -15,11 +15,15 @@
     <ProjectReference Include="..\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Assets\Icons\GenshinPiano.ico" />
     <Resource Include="Assets\Icons\GenshinPiano-256.png" />
     <Resource Include="Assets\Security\UpdateSigningPublicKey.xml" />
     <Content Include="Assets\Audio\**\*.*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\Practice\**\*.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
     <AssemblyMetadata Include="GenshinPianoSelfContained" Value="$(SelfContained)" />
   </ItemGroup>
 </Project>

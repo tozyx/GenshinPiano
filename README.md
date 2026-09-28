@@ -91,6 +91,8 @@
 
 [练习与音游指南](docs/PRACTICE.md)
 
+有功能建议或发现问题？欢迎在 [GitHub Issues](https://github.com/tozyx/GenshinPiano/issues) 中提出。
+
 ## 便携配置
 
 程序以便携模式运行，用户设置保存在可执行文件同目录下的 `config/settings.json`。发布 ZIP 包时应整体解压到用户具有写权限的目录，不建议直接放入 `Program Files`。
@@ -103,7 +105,7 @@
 - 独立练习页面：支持游戏按键与垂直卷帘、跟弹与节奏练习、可拖动上隐游标、播放速度与读谱间距调节
 - 垂直卷帘音游开关：完整曲谱自动播放，按键只进行时机判定；支持固定音符块、判定反馈音、输入延迟校准和反馈音量设置
 - 可点击音符设置练习标记，暂停时选择当前待弹音符，返回标记后保持暂停并可从目标位置继续
-- 七种 21 键游戏乐器采样，采样与内置 MIDI 使用统一的感知音量映射；采样峰值经过响度标准化
+- 七种 21 键游戏乐器采样，采样与内置 MIDI 使用统一的感知音量映射；采样预解码与多声部混音兼顾密集音符、首音响应和蓝牙设备切换
 - 安全的游戏内按键演奏：目标窗口检测、3 秒倒计时、失焦暂停、全局 Esc 暂停及结束时强制释放按键
 - 直接打开或批量转换 MIDI，兼容导入旧版 `.GenshinPiano` 曲谱
 - 曲谱分析、21 键音域调整、智能按下时长优化及短按时长生成
@@ -112,6 +114,12 @@
 - GitHub/GitCode 双更新源、断点下载、RSA 签名验证、无感更新、更新日志与手动回滚
 
 旧版格式没有保存 BPM。批量转换目前按 120 BPM、480 PPQ 导入，旧版时值保存为节奏跨度，并以“自然”规则生成 80% 的实际按键保持时间；输出目录中已有的同名 `.gpiano` 默认跳过。
+
+## 致谢与第三方项目
+
+感谢 [DryWetMIDI](https://github.com/melanchall/drywetmidi) 提供 MIDI 文件处理能力，[NAudio](https://github.com/naudio/NAudio) 支持本地音频解码与混音。可选 OCR 附加包使用 [RapidOcrNet](https://github.com/BobLd/RapidOcrNet)、[ONNX Runtime](https://github.com/microsoft/onnxruntime) 和 [Oemer](https://github.com/BreezeWhite/oemer)，简谱模型权重源自 [OrpheusNet](https://github.com/Akane0721/OrpheusNet)。测试使用 [xUnit](https://github.com/xunit/xunit)。
+
+乐器采样的来源及各自授权见[音色素材声明](src/GenshinPiano.App/Assets/Audio/THIRD-PARTY-NOTICE.md)；其他第三方声明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。感谢以上项目的作者与贡献者。
 
 ## 曲谱资源说明
 本目录中的曲谱文件用于展示和测试 GenshinPiano 的曲谱编辑、文件读取、本地试听、格式转换及游戏内演奏功能。
