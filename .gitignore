@@ -28,6 +28,10 @@ publish/*
 *update-signing-private*.xml
 *update-signing-private*.pem
 
+# Local release launchers (keep on disk, never commit)
+/build-release.bat
+/build-release-framework.bat
+
 # OS-generated files
 Thumbs.db
 Desktop.ini
