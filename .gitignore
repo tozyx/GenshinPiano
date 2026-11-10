@@ -45,3 +45,5 @@ appsettings.local.json
 
 # Local score library
 /samples/songs/
+docs/images/cover-zh.png
+docs/images/practice-gif-zh.gif
