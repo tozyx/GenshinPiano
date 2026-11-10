@@ -5,6 +5,8 @@ namespace GenshinPiano.Application.Workspace;
 
 public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string initialTitle)
 {
+    private long _documentSession;
+
     public ScoreDocument CurrentScore { get; private set; } = ScoreDocument.CreateEmpty(initialTitle);
 
     public string? CurrentPath { get; private set; }
@@ -13,6 +15,7 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
 
     public void CreateNew(string title)
     {
+        _documentSession++;
         CurrentScore = ScoreDocument.CreateEmpty(title);
         CurrentPath = null;
         IsDirty = false;
@@ -21,6 +24,7 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
     public async Task LoadAsync(string path, CancellationToken cancellationToken = default)
     {
         var score = await serializer.LoadAsync(path, cancellationToken);
+        _documentSession++;
         var fileTitle = Path.GetFileNameWithoutExtension(path);
         var titleChanged = !string.Equals(
             score.Metadata.Title,
@@ -33,7 +37,8 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
         IsDirty = titleChanged;
     }
 
-    public async Task SaveAsync(string? path = null, CancellationToken cancellationToken = default)
+    // Returns false if the workspace switched documents while the snapshot was being written.
+    public async Task<bool> SaveAsync(string? path = null, CancellationToken cancellationToken = default)
     {
         var targetPath = path ?? CurrentPath;
         if (string.IsNullOrWhiteSpace(targetPath))
@@ -41,9 +46,15 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
             throw new InvalidOperationException("首次保存曲谱时必须指定路径。");
         }
 
-        await serializer.SaveAsync(CurrentScore, targetPath, cancellationToken);
-        CurrentPath = Path.GetFullPath(targetPath);
-        IsDirty = false;
+        var fullPath = Path.GetFullPath(targetPath);
+        var session = _documentSession;
+        var snapshot = CurrentScore;
+        await serializer.SaveAsync(snapshot, fullPath, cancellationToken);
+        if (session != _documentSession) return false;
+
+        CurrentPath = fullPath;
+        if (ReferenceEquals(CurrentScore, snapshot)) IsDirty = false;
+        return true;
     }
 
     public async Task RenameStoredScoreAsync(
@@ -58,6 +69,7 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
             Path.GetFullPath(CurrentPath),
             sourceFullPath,
             StringComparison.OrdinalIgnoreCase);
+        var session = _documentSession;
         var score = isCurrentScore
             ? CurrentScore
             : await serializer.LoadAsync(sourceFullPath, cancellationToken);
@@ -83,8 +95,13 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
             }
             catch
             {
-                if (File.Exists(temporaryPath) && !File.Exists(sourceFullPath))
+                if (File.Exists(temporaryPath))
                 {
+                    File.Move(temporaryPath, sourceFullPath);
+                }
+                else if (File.Exists(destinationFullPath))
+                {
+                    File.Move(destinationFullPath, temporaryPath);
                     File.Move(temporaryPath, sourceFullPath);
                 }
 
@@ -97,11 +114,18 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
             File.Delete(sourceFullPath);
         }
 
-        if (isCurrentScore)
+        if (isCurrentScore && session == _documentSession)
         {
-            CurrentScore = renamedScore;
             CurrentPath = destinationFullPath;
-            IsDirty = false;
+            if (ReferenceEquals(CurrentScore, score))
+            {
+                CurrentScore = renamedScore;
+                IsDirty = false;
+            }
+            else
+            {
+                RelabelCurrentScore(title);
+            }
         }
     }
 
@@ -115,6 +139,7 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
     public void ImportScore(ScoreDocument score)
     {
         ArgumentNullException.ThrowIfNull(score);
+        _documentSession++;
         CurrentScore = score;
         CurrentPath = null;
         IsDirty = true;
@@ -131,6 +156,7 @@ public sealed class ScoreWorkspace(IScoreDocumentSerializer serializer, string i
     public void RestoreScore(ScoreDocument score, string? originalPath)
     {
         ArgumentNullException.ThrowIfNull(score);
+        _documentSession++;
         CurrentScore = score;
         CurrentPath = string.IsNullOrWhiteSpace(originalPath)
             ? null

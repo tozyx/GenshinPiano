@@ -33,3 +33,7 @@ jobs:
 
       - name: Test
         run: dotnet test tests/GenshinPiano.Core.Tests/GenshinPiano.Core.Tests.csproj -c Release --no-build --no-restore -p:NuGetAudit=false
+
+      - name: Build unsigned test ZIP
+        shell: pwsh
+        run: ./tools/Build-UnsignedAppPackage.ps1

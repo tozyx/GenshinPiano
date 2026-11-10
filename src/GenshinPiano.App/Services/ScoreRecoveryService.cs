@@ -31,18 +31,27 @@ public sealed class ScoreRecoveryService(IScoreDocumentSerializer serializer)
         CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(_directory);
-        var temporaryScorePath = ScorePath + ".tmp";
-        var temporaryMetadataPath = MetadataPath + ".tmp";
+        var suffix = $".{Guid.NewGuid():N}.tmp";
+        var temporaryScorePath = ScorePath + suffix;
+        var temporaryMetadataPath = MetadataPath + suffix;
+        try
+        {
+            await serializer.SaveAsync(score, temporaryScorePath, cancellationToken);
+            var metadata = new RecoveryMetadata(originalPath, DateTimeOffset.Now);
+            await File.WriteAllTextAsync(
+                temporaryMetadataPath,
+                JsonSerializer.Serialize(metadata, MetadataOptions),
+                cancellationToken);
 
-        await serializer.SaveAsync(score, temporaryScorePath, cancellationToken);
-        var metadata = new RecoveryMetadata(originalPath, DateTimeOffset.Now);
-        await File.WriteAllTextAsync(
-            temporaryMetadataPath,
-            JsonSerializer.Serialize(metadata, MetadataOptions),
-            cancellationToken);
-
-        File.Move(temporaryScorePath, ScorePath, true);
-        File.Move(temporaryMetadataPath, MetadataPath, true);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporaryScorePath, ScorePath, true);
+            File.Move(temporaryMetadataPath, MetadataPath, true);
+        }
+        finally
+        {
+            TryDelete(temporaryScorePath);
+            TryDelete(temporaryMetadataPath);
+        }
     }
 
     public async Task<ScoreRecoverySnapshot?> LoadAsync(CancellationToken cancellationToken = default)

@@ -24,6 +24,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly IMidiScoreImporter _midiScoreImporter;
     private readonly ScoreRecoveryService _recoveryService;
     private CancellationTokenSource? _autosaveCancellation;
+    private bool _isWritingScore;
     private string _scoreTitle;
     private string _statusKey = "Status_Ready";
     private object?[] _statusArguments = [];
@@ -572,16 +573,25 @@ public sealed class MainWindowViewModel : ObservableObject
             return false;
         }
 
+        if (_isWritingScore) return false;
+        _isWritingScore = true;
         try
         {
             SetStatus("Status_Saving");
-            await _workspace.SaveAsync(path);
-            CurrentSourcePath = Path.GetFullPath(path);
-            CancelAutosave();
-            _recoveryService.Discard();
+            if (!await _workspace.SaveAsync(path)) return false;
+            CurrentSourcePath = _workspace.CurrentPath;
+            if (_workspace.IsDirty)
+            {
+                ScheduleAutosave();
+            }
+            else
+            {
+                CancelAutosave();
+                _recoveryService.Discard();
+            }
             OnPropertyChanged(nameof(IsDirty));
             OnPropertyChanged(nameof(WindowTitle));
-            SetStatus("Status_Saved", path);
+            SetStatus(_workspace.IsDirty ? "Status_SavedEarlierVersion" : "Status_Saved", path);
             if (ScoreFolder.Length > 0 && string.Equals(
                     Path.GetDirectoryName(CurrentSourcePath),
                     ScoreFolder,
@@ -589,13 +599,17 @@ public sealed class MainWindowViewModel : ObservableObject
             {
                 await RefreshScoreFolderAsync();
             }
-            return true;
+            return !_workspace.IsDirty;
         }
         catch (Exception exception)
         {
             AppLogger.Error($"Failed to save score '{path}'.", exception);
             SetStatus("Status_SaveFailed", exception.Message);
             return false;
+        }
+        finally
+        {
+            _isWritingScore = false;
         }
     }
 

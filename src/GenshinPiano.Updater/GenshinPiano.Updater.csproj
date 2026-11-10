@@ -6,4 +6,7 @@
     <RootNamespace>GenshinPiano.Updater</RootNamespace>
     <ApplicationIcon>..\GenshinPiano.App\Assets\Icons\GenshinPiano.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="GenshinPiano.Core.Tests" />
+  </ItemGroup>
 </Project>

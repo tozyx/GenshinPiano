@@ -10,7 +10,7 @@ public sealed class UpdateInstallerService
 {
     // Optional components have their own lifecycle and are deliberately not shipped in the
     // application archive. Preserve them when the application updater swaps the installation.
-    private static readonly string[] PreservedEntries = ["config", "songs", "logs", "update-cache", "addons"];
+    private static readonly string[] PreservedEntries = ["config", "songs", "logs", "update-cache", "addons", "data"];
 
     public static bool HasRollback => FindLatestRollback() is not null;
 
@@ -52,8 +52,6 @@ public sealed class UpdateInstallerService
     {
         var staging = FindLatestRollback() ??
             throw new InvalidOperationException("No rollback backup is available.");
-        var completedMarker = Path.Combine(AppContext.BaseDirectory, "update-cache", "update-completed.json");
-        if (File.Exists(completedMarker)) File.Delete(completedMarker);
         return await CreatePlanAsync(staging, "rollback", cancellationToken);
     }
 

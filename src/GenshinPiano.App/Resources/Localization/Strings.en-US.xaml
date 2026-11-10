@@ -248,6 +248,7 @@
     <system:String x:Key="Status_OpenFailed">Open failed: {0}</system:String>
     <system:String x:Key="Status_Saving">Saving score…</system:String>
     <system:String x:Key="Status_Saved">Saved to {0}</system:String>
+    <system:String x:Key="Status_SavedEarlierVersion">Saved an earlier version to {0}; newer edits are unsaved</system:String>
     <system:String x:Key="Status_SaveFailed">Save failed: {0}</system:String>
     <system:String x:Key="Status_RecoveryRestored">Restored the previous unsaved score</system:String>
     <system:String x:Key="Dialog_RecoveryTitle">Restore unsaved score</system:String>

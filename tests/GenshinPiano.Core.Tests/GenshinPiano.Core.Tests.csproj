@@ -16,5 +16,6 @@
     <ProjectReference Include="..\..\src\GenshinPiano.Core\GenshinPiano.Core.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" />
   </ItemGroup>
 </Project>

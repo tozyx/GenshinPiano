@@ -248,6 +248,7 @@
     <system:String x:Key="Status_OpenFailed">打开失败：{0}</system:String>
     <system:String x:Key="Status_Saving">正在保存曲谱…</system:String>
     <system:String x:Key="Status_Saved">已保存到 {0}</system:String>
+    <system:String x:Key="Status_SavedEarlierVersion">已保存先前的版本到 {0}；之后的修改尚未保存</system:String>
     <system:String x:Key="Status_SaveFailed">保存失败：{0}</system:String>
     <system:String x:Key="Status_RecoveryRestored">已恢复上次未保存的曲谱</system:String>
     <system:String x:Key="Dialog_RecoveryTitle">恢复未保存的曲谱</system:String>

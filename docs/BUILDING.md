@@ -130,7 +130,19 @@ GitHub CI 不执行该脚本，只验证不依赖 OCR 模型的普通 Release �
 - `tools/Publish-OcrPythonRuntime.ps1`：生成精简 CPU 便携 Runtime
 - `tools/Publish-OcrAddon.ps1`：构建 OCR 引擎、组合 Runtime 并生成发布资产
 
-### 6. 准备正式发布
+### 6. 从干净克隆验证打包
+
+无需签名私钥或 OCR 运行环境即可生成应用测试包，默认输出到
+`artifacts/package-check/GenshinPiano-0.0.0-test-win-x64-framework-unsigned.zip`：
+
+```powershell
+.\tools\Build-UnsignedAppPackage.ps1
+```
+
+测试包包含主程序、独立更新器和示例曲谱，需要 .NET 10 Desktop Runtime。
+CI 会执行该脚本。无签名测试包不能用于应用内更新。
+
+正式发布命令使用维护者本地的 BAT 启动脚本；这两个脚本不随 Git 克隆分发。
 
 两个发布脚本都要求以下目录存在并至少包含一个曲谱文件：
 
@@ -287,6 +299,12 @@ MusicXML into `ScoreDocument`. GitHub CI remains secret-free and only restores, 
 regular solution; it does not publish releases or download OCR models.
 
 ### Publish packages
+
+A clean clone can build an unsigned, framework-dependent test ZIP with
+`pwsh -File tools/Build-UnsignedAppPackage.ps1`. The CI job runs the same script.
+The ZIP includes the application, standalone updater, and sample scores. It is
+not accepted by the in-app updater. The signing launchers below are local
+maintainer files and are not included in the Git checkout.
 
 Self-contained package (includes .NET; Native AOT C++ prerequisites required for the updater):
 

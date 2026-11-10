@@ -60,6 +60,7 @@ public sealed class JsonScoreDocumentSerializer(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(score);
+        cancellationToken.ThrowIfCancellationRequested();
         var currentScore = score.SchemaVersion == ScoreDocument.CurrentSchemaVersion
             ? score
             : score with { SchemaVersion = ScoreDocument.CurrentSchemaVersion };
@@ -67,18 +68,26 @@ public sealed class JsonScoreDocumentSerializer(
         EnsureValid(materializedScore);
 
         var fullPath = Path.GetFullPath(path);
-        var directory = Path.GetDirectoryName(fullPath);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
         var json = JsonSerializer.Serialize(materializedScore, SerializerOptions);
-        await File.WriteAllTextAsync(
-            fullPath,
-            json + Environment.NewLine,
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-            cancellationToken);
+        var temporaryPath = Path.Combine(directory, $".gpiano-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(
+                temporaryPath,
+                json + Environment.NewLine,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporaryPath, fullPath, overwrite: true);
+        }
+        finally
+        {
+            try { File.Delete(temporaryPath); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     private static void EnsureValid(ScoreDocument score)
