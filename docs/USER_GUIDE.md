@@ -55,6 +55,7 @@
 - `Shift + 滚轮`：横向滚动。
 - `Ctrl + Shift + 滚轮`：垂直缩放。
 - 底部可调整 BPM、自然延音、音量和本地试听音色。
+- 游戏内采样音色在列表中始终显示；它们适用于“21 键”视图，在“88 键”和“曲谱音域”视图中会显示为不可选，悬停可查看说明。切回“21 键”即可使用。
 - “设置 → 卷帘帧率”可选择 30 FPS、60 FPS 或垂直同步。
 
 ### 练习与音游
@@ -171,6 +172,9 @@ button, use **File → Open**, or drag a `.gpiano` / `.mid` file onto the main w
 - `Ctrl + wheel`: horizontal zoom; `Shift + wheel`: horizontal scroll;
   `Ctrl + Shift + wheel`: vertical zoom.
 - BPM, sustain, volume, instrument, and render frame rate can be adjusted in the editor/settings.
+- Sampled game instruments always remain in the list. They are selectable in the 21-key view;
+  in 88-key and score-range views they are disabled with an explanatory tooltip. Switch back to
+  21 keys to use them.
 
 ### Practice and rhythm game
 

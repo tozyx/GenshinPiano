@@ -365,7 +365,7 @@ public partial class PianoRollEditor
     private void UpdateSampleInstrumentAvailability(PianoRollPitchLayoutMode mode)
     {
         if (WindsongLyreInstrumentItem is null || FloralZitherInstrumentItem is null) return;
-        var visibility = mode == PianoRollPitchLayoutMode.Genshin21 ? Visibility.Visible : Visibility.Collapsed;
+        var enabled = mode == PianoRollPitchLayoutMode.Genshin21;
         foreach (var item in new[]
                  {
                      WindsongLyreInstrumentItem, FloralZitherInstrumentItem,
@@ -374,9 +374,13 @@ public partial class PianoRollEditor
                      LeapingSpiritPianoInstrumentItem,
                  })
         {
-            item.Visibility = visibility;
+            item.Visibility = Visibility.Visible;
+            item.IsEnabled = enabled;
+            if (enabled) item.ClearValue(ToolTipProperty);
+            else item.SetResourceReference(ToolTipProperty, "Audition_GameInstrument21Only");
+            ToolTipService.SetShowOnDisabled(item, true);
         }
-        if (visibility == Visibility.Collapsed &&
+        if (!enabled &&
             AuditionInstrumentComboBox.SelectedItem is ComboBoxItem { Tag: string tag } &&
             int.TryParse(tag, out var instrument) && AuditionInstrumentIds.IsSampled(instrument))
         {

@@ -439,4 +439,5 @@
     <system:String x:Key="AiImport_Warning_Rounded">{0} · Some times cannot be represented exactly at 480 PPQ and were rounded to ticks.</system:String>
     <system:String x:Key="AiImport_Warning_More">{0} · {1} additional review notes omitted. Check the score in smaller sections.</system:String>
     <system:String x:Key="AiImport_Warning_TrailingRest">{0} · Trailing rests do not create notes; playback currently ends after the last sounding note.</system:String>
+    <system:String x:Key="Audition_GameInstrument21Only">Game instruments use 21-key samples. Switch to the 21-key view to select them.</system:String>
 </ResourceDictionary>

@@ -439,4 +439,5 @@
     <system:String x:Key="AiImport_Warning_Rounded">{0} · 部分时间不能精确表示为 480 PPQ，已量化到相邻 tick。</system:String>
     <system:String x:Key="AiImport_Warning_More">{0} · 另有 {1} 条提示未显示，请分段检查。</system:String>
     <system:String x:Key="AiImport_Warning_TrailingRest">{0} · 尾部纯休止不会生成音符；当前播放会在最后一个发声音符结束处停止。</system:String>
+    <system:String x:Key="Audition_GameInstrument21Only">游戏内音色使用 21 键采样。请切换到“21 键”视图后选择使用。</system:String>
 </ResourceDictionary>
