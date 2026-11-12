@@ -147,6 +147,51 @@ public sealed class OcrPackageInstallTests
         Assert.Equal(canUpdate,check.CanUpdate);
     }
 
+    [Theory]
+    [InlineData(null, "1.0.0", true, false)]
+    [InlineData("0.7.0", "0.8.0", true, false)]
+    [InlineData("0.7.0", "1.0.0", true, false)]
+    [InlineData("1.0.0", "0.7.0", false, true)]
+    [InlineData("1.0.0", null, false, true)]
+    public async Task CachedCheckUsesManuallyChangedInstalledVersion(
+        string? initialVersion, string? installedVersion, bool isCurrent, bool canUpdate)
+    {
+        using var box = new Sandbox();
+        var target = Path.Combine(box.Root, "addons", "ocr");
+        if (initialVersion is not null) Addon(target, initialVersion);
+        var source = new Source(new("addon.ocr.win-x64", UpdatePackageKind.OptionalComponent,
+            new(0,8,0), "ocr.zip", 0, new string('a',64), new Uri("https://test.invalid/ocr.zip")));
+        var downloader = new Downloader("unused.zip");
+        var manager = new OcrAddonPackageManager(source, downloader, new Verified(),
+            new ExternalOcrAddonService(target), box.Root);
+        Assert.Null(manager.LastCheck);
+        Assert.Equal(0, source.Calls);
+        var original = await manager.CheckForUpdatesAsync();
+
+        // Simulate extracting/replacing/removing the plug-in outside the application.
+        if (installedVersion is not null) Addon(target, installedVersion);
+        else Directory.Delete(target, true);
+
+        var current = Assert.IsType<OcrAddonUpdateCheck>(manager.LastCheck);
+        Assert.Equal(installedVersion, current.InstalledVersion);
+        Assert.Equal(isCurrent, current.IsCurrent);
+        Assert.Equal(canUpdate, current.CanUpdate);
+        Assert.Same(original.Manifest, current.Manifest);
+        Assert.Same(original.Package, current.Package);
+        Assert.Equal(original.CheckedAt, current.CheckedAt);
+        Assert.Equal(1, source.Calls);
+        Assert.Equal(0, downloader.Calls);
+
+        // An update selected before the manual installation must never downgrade it.
+        if (isCurrent)
+        {
+            var result = await manager.InstallCheckedUpdateAsync(original, new Progress<double>());
+            Assert.False(result.Updated);
+            Assert.Equal(installedVersion, result.Version);
+            Assert.Equal(0, downloader.Calls);
+        }
+    }
+
     private sealed class OfflineSource : IUpdateSource
     {
         public Task<UpdateManifest?> GetLatestAsync(string channel,CancellationToken cancellationToken) =>

@@ -29,7 +29,13 @@ public sealed class OcrAddonPackageManager(
     private readonly object _runtimeLock = new();
     private int _recognitions;
     private bool _isInstalling;
-    public OcrAddonUpdateCheck? LastCheck { get; private set; }
+    private OcrAddonUpdateCheck? _lastCheck;
+
+    // Cache remote metadata, but compare it with the runtime currently installed on disk.
+    // A manual installation does not go through this manager or raise StatusChanged.
+    public OcrAddonUpdateCheck? LastCheck => _lastCheck is { } check
+        ? check with { InstalledVersion = addonService.FindInstalledAddon()?.EngineVersion }
+        : null;
     public bool IsInstalling { get { lock (_runtimeLock) return _isInstalling; } }
     public bool IsRecognizing { get { lock (_runtimeLock) return _recognitions > 0; } }
     public event EventHandler? StatusChanged;
@@ -78,7 +84,7 @@ public sealed class OcrAddonPackageManager(
             installed = addonService.FindInstalledAddon()?.EngineVersion;
             result = new(installed, null, null, DateTimeOffset.UtcNow, error.Message);
         }
-        LastCheck = result;
+        _lastCheck = result;
         StatusChanged?.Invoke(this, EventArgs.Empty);
         return result;
     }
@@ -109,7 +115,7 @@ public sealed class OcrAddonPackageManager(
                 SemanticVersion.TryParse(installed.EngineVersion, out var installedVersion) &&
                 package.Version.CompareTo(installedVersion) <= 0)
             {
-                LastCheck = check with { InstalledVersion = installed.EngineVersion };
+                _lastCheck = check with { InstalledVersion = installed.EngineVersion };
                 return new OcrAddonInstallResult(false, installed.EngineVersion, manifest.SourceName);
             }
             var downloaded = await downloader.DownloadAsync(package, progress, cancellationToken);
@@ -118,7 +124,7 @@ public sealed class OcrAddonPackageManager(
             await InstallAsync(downloaded, package.Version, cancellationToken);
             installed = addonService.FindInstalledAddon() ??
                 throw new InvalidDataException("The installed OCR add-on is not compatible with this application.");
-            LastCheck = check with { InstalledVersion = installed.EngineVersion };
+            _lastCheck = check with { InstalledVersion = installed.EngineVersion };
             return new OcrAddonInstallResult(true, installed.EngineVersion, manifest.SourceName);
         }
         finally

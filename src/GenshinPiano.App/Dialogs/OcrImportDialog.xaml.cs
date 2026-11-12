@@ -39,13 +39,15 @@ public partial class OcrImportDialog : Window
         InitializeComponent();
         Closing += OnClosing;
         Closed += OnClosed;
+        Activated += (_, _) => UpdateAddonStatus();
         LoadOptions();
         UpdateAddonStatus();
         _packageManager.StatusChanged += PackageManager_OnStatusChanged;
         Loaded += async (_, _) =>
         {
+            var check = _packageManager.LastCheck;
             if (_settings.Current.Update.NetworkAccessEnabled &&
-                (_packageManager.LastCheck is null || DateTimeOffset.UtcNow - _packageManager.LastCheck.CheckedAt > TimeSpan.FromMinutes(5)))
+                (check is null || DateTimeOffset.UtcNow - check.CheckedAt > TimeSpan.FromMinutes(5)))
                 await CheckAddonVersionAsync();
         };
     }

@@ -29,6 +29,7 @@ public partial class UpdateSelectionDialog : Window
         _updates.PropertyChanged += Status_OnChanged;
         _ocr.StatusChanged += Ocr_OnChanged;
         Closing += OnClosing;
+        Activated += (_, _) => Refresh();
         Closed += (_, _) => { _updates.PropertyChanged -= Status_OnChanged; _ocr.StatusChanged -= Ocr_OnChanged; };
         Refresh();
     }
