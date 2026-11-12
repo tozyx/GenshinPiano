@@ -88,11 +88,13 @@ public partial class OcrImportDialog : Window
         var addon = _service.FindInstalledAddon();
         AddonStatusText.Text = addon is null
             ? string.Format(GetText("Ocr_AddonMissing"), Path.Combine(AppContext.BaseDirectory, "addons", "ocr"))
-            : string.Format(GetText("Ocr_AddonReady"), addon.EngineVersion);
+            : string.Format(GetText(addon.IsResourcePackage ? "Ocr_ResourcesReady" :
+                addon.UsesBundledEngine ? "Ocr_LegacyResourcesReady" : "Ocr_AddonReady"), addon.EngineVersion);
         var check = _packageManager.LastCheck;
         var status = _versionCancellation is not null ? GetText("Ocr_AddonChecking") :
             check is null ? GetText("Update_NotChecked") : check.ErrorMessage is not null
                 ? string.Format(GetText("Update_CheckFailed"), check.ErrorMessage)
+                : check.RequiresMigration ? string.Format(GetText("Ocr_ResourceMigrationAvailable"), check.Package?.Version)
                 : check.IsCurrent ? GetText("Update_AlreadyCurrent")
                 : string.Format(GetText("Ocr_AddonUpdateAvailable"), check.Package?.Version);
         AddonStatusText.Text += Environment.NewLine + status;

@@ -85,6 +85,27 @@ public sealed class UpdateInfrastructureTests
         Assert.Equal("ocr-addons-0.8.0-win-x64.zip", Assert.Single(manifest.Packages).FileName);
     }
 
+    [Theory]
+    [InlineData(false, "ocr-addons-9.0.0-win-x64.zip", "addon.ocr.win-x64")]
+    [InlineData(true, "ocr-resources-1.0.0-win-x64.zip", "addon.ocr.resources.win-x64")]
+    public async Task OcrResourceAndLegacyReleaseSourcesDoNotMixPackageFormats(bool resourcesOnly, string expectedName, string expectedId)
+    {
+        var names = new[] { "ocr-addons-9.0.0-win-x64.zip", "ocr-resources-1.0.0-win-x64.zip" };
+        var assets = names.SelectMany(name => new[] { "", ".sha256", ".sig" }.Select(suffix => new
+        {
+            name = name + suffix, browser_download_url = "https://download.test/" + name + suffix, size = 100,
+        })).ToArray();
+        var releases = System.Text.Json.JsonSerializer.Serialize(new[] { new { tag_name = "v3.1.0", assets } });
+        using var client = new HttpClient(new StubHttpHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith(".sha256", StringComparison.Ordinal) ? TextResponse(new string('a', 64)) :
+            request.RequestUri.AbsolutePath.EndsWith(".sig", StringComparison.Ordinal) ? TextResponse(Convert.ToBase64String(new byte[384])) : JsonResponse(releases)));
+        var source = new OcrAddonReleaseSource(client, "test", new Uri("https://api.test/releases"), resourcesOnly);
+        var manifest = await source.GetLatestAsync("stable", CancellationToken.None);
+        var package = Assert.Single(manifest!.Packages);
+        Assert.Equal(expectedName, package.FileName);
+        Assert.Equal(expectedId, package.Id);
+    }
+
     [Fact]
     public async Task OcrAddonSource_SelectsNewestSignedComponentIndependentOfReleaseTag()
     {

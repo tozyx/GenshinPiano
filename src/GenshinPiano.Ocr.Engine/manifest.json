@@ -1,11 +1,14 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "protocolVersion": 1,
-  "engineVersion": "1.0.0",
-  "executable": "GPianoOcrEngine.exe",
-  "launchMode": "file",
+  "resourceVersion": "1.0.0",
+  "engineCompatibilityVersion": 1,
   "staffBackend": "smt",
+  "smtModelSha256": "f6612885a8d7015bef5ab7f045a37a0f667575f4b65b324a353cf348d6edc752",
   "requiredFiles": [
+    "native/onnxruntime.dll",
+    "native/onnxruntime_providers_shared.dll",
+    "native/libSkiaSharp.dll",
     "staff-omr/smt/crispembed.exe",
     "staff-omr/smt/crispembed.dll",
     "staff-omr/smt/ggml.dll",

@@ -7,6 +7,14 @@ public static class OcrProtocol
     public const int CurrentVersion = 1;
 }
 
+public static class OcrResourceContract
+{
+    public const int SchemaVersion = 2;
+    public const int EngineCompatibilityVersion = 1;
+    public const string PackageId = "addon.ocr.resources.win-x64";
+    public const string LegacyPackageId = "addon.ocr.win-x64";
+}
+
 public enum OcrNotationHint
 {
     Auto,
@@ -59,7 +67,9 @@ public sealed record OcrAddonDescriptor(
     string EngineVersion,
     int ProtocolVersion,
     string ExecutablePath,
-    OcrAddonLaunchMode LaunchMode = OcrAddonLaunchMode.Stdio);
+    OcrAddonLaunchMode LaunchMode = OcrAddonLaunchMode.Stdio,
+    bool UsesBundledEngine = false,
+    bool IsResourcePackage = false);
 
 public interface IOcrAddonService
 {

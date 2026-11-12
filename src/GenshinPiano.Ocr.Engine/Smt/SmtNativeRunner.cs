@@ -12,13 +12,13 @@ internal static class SmtNativeRunner
     public const string ModelSha256="f6612885a8d7015bef5ab7f045a37a0f667575f4b65b324a353cf348d6edc752";
     public static readonly string[] RuntimeFiles=["crispembed.exe","crispembed.dll","ggml.dll","ggml-base.dll","ggml-cpu.dll","msvcp140.dll","vcruntime140.dll","vcruntime140_1.dll",ModelName];
 
-    public static async Task ValidateAsync(string root,CancellationToken cancellationToken)
+    public static async Task ValidateAsync(string root,CancellationToken cancellationToken,string? expectedModelSha256=null)
     {
         foreach (var name in RuntimeFiles)
             if (!File.Exists(Path.Combine(root,name))) throw new FileNotFoundException($"SMT runtime file is missing: {name}");
         await using var model=File.OpenRead(Path.Combine(root,ModelName));
         var hash=await SHA256.HashDataAsync(model,cancellationToken);
-        if (!Convert.ToHexString(hash).Equals(ModelSha256,StringComparison.OrdinalIgnoreCase))
+        if (!Convert.ToHexString(hash).Equals(expectedModelSha256 ?? ModelSha256,StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The SMT model failed integrity verification. Reinstall the OCR add-on.");
     }
 

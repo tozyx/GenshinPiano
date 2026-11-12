@@ -9,11 +9,11 @@ namespace GenshinPiano.App.Services;
 public sealed record OcrAddonInstallResult(bool Updated, string Version, string SourceName);
 
 public sealed record OcrAddonUpdateCheck(string? InstalledVersion, UpdateManifest? Manifest,
-    UpdatePackage? Package, DateTimeOffset CheckedAt, string? ErrorMessage = null)
+    UpdatePackage? Package, DateTimeOffset CheckedAt, string? ErrorMessage = null, bool RequiresMigration = false)
 {
     public bool CanUpdate => ErrorMessage is null && Package is not null &&
-        (!SemanticVersion.TryParse(InstalledVersion, out var current) || Package.Version.CompareTo(current) > 0);
-    public bool IsCurrent => ErrorMessage is null && Package is not null &&
+        (RequiresMigration || !SemanticVersion.TryParse(InstalledVersion, out var current) || Package.Version.CompareTo(current) > 0);
+    public bool IsCurrent => !RequiresMigration && ErrorMessage is null && Package is not null &&
         SemanticVersion.TryParse(InstalledVersion, out var current) && Package.Version.CompareTo(current) <= 0;
 }
 
@@ -33,9 +33,18 @@ public sealed class OcrAddonPackageManager(
 
     // Cache remote metadata, but compare it with the runtime currently installed on disk.
     // A manual installation does not go through this manager or raise StatusChanged.
-    public OcrAddonUpdateCheck? LastCheck => _lastCheck is { } check
-        ? check with { InstalledVersion = addonService.FindInstalledAddon()?.EngineVersion }
-        : null;
+    public OcrAddonUpdateCheck? LastCheck
+    {
+        get
+        {
+            if (_lastCheck is not { } check) return null;
+            var installed = addonService.FindInstalledAddon();
+            return check with { InstalledVersion = installed?.EngineVersion, RequiresMigration = NeedsMigration(check.Package, installed) };
+        }
+    }
+
+    private static bool NeedsMigration(UpdatePackage? package, OcrAddonDescriptor? installed) =>
+        package?.Id == OcrResourceContract.PackageId && installed is { IsResourcePackage: false };
     public bool IsInstalling { get { lock (_runtimeLock) return _isInstalling; } }
     public bool IsRecognizing { get { lock (_runtimeLock) return _recognitions > 0; } }
     public event EventHandler? StatusChanged;
@@ -72,11 +81,13 @@ public sealed class OcrAddonPackageManager(
         {
             var manifest = await source.GetLatestAsync("stable", cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            installed = addonService.FindInstalledAddon()?.EngineVersion;
+            var installedAddon = addonService.FindInstalledAddon();
+            installed = installedAddon?.EngineVersion;
             var package = manifest?.Packages.FirstOrDefault(candidate =>
-                candidate.Kind == UpdatePackageKind.OptionalComponent && candidate.Id == "addon.ocr.win-x64");
+                candidate.Kind == UpdatePackageKind.OptionalComponent &&
+                candidate.Id is OcrResourceContract.PackageId or OcrResourceContract.LegacyPackageId);
             result = new(installed, manifest, package, DateTimeOffset.UtcNow,
-                package is null ? "No compatible OCR add-on package was found." : null);
+                package is null ? "No compatible OCR add-on package was found." : null, NeedsMigration(package, installedAddon));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception error)
@@ -111,7 +122,7 @@ public sealed class OcrAddonPackageManager(
             var manifest = check.Manifest ?? throw new InvalidDataException("No compatible OCR add-on package was found.");
             var package = check.Package ??
                 throw new InvalidDataException("The release does not contain a compatible OCR add-on package.");
-            if (installed is not null &&
+            if (installed is not null && !NeedsMigration(package, installed) &&
                 SemanticVersion.TryParse(installed.EngineVersion, out var installedVersion) &&
                 package.Version.CompareTo(installedVersion) <= 0)
             {
@@ -121,10 +132,10 @@ public sealed class OcrAddonPackageManager(
             var downloaded = await downloader.DownloadAsync(package, progress, cancellationToken);
             if (!await verifier.VerifyAsync(package, downloaded, cancellationToken))
                 throw new InvalidDataException("The OCR add-on failed integrity or signature verification.");
-            await InstallAsync(downloaded, package.Version, cancellationToken);
+            await InstallAsync(downloaded, package.Version, package.Id == OcrResourceContract.PackageId, cancellationToken);
             installed = addonService.FindInstalledAddon() ??
                 throw new InvalidDataException("The installed OCR add-on is not compatible with this application.");
-            _lastCheck = check with { InstalledVersion = installed.EngineVersion };
+            _lastCheck = check with { InstalledVersion = installed.EngineVersion, RequiresMigration = false };
             return new OcrAddonInstallResult(true, installed.EngineVersion, manifest.SourceName);
         }
         finally
@@ -136,7 +147,7 @@ public sealed class OcrAddonPackageManager(
     }
 
     private async Task InstallAsync(
-        string archivePath, SemanticVersion expectedVersion, CancellationToken cancellationToken)
+        string archivePath, SemanticVersion expectedVersion, bool resourcePackage, CancellationToken cancellationToken)
     {
         var cacheRoot = Path.Combine(installRoot, "update-cache", "ocr-addon");
         var token = Guid.NewGuid().ToString("N");
@@ -148,7 +159,7 @@ public sealed class OcrAddonPackageManager(
         try
         {
             await ExtractSafelyAsync(archivePath, stagingRoot, cancellationToken);
-            ValidateStaging(extractedAddon, expectedVersion);
+            ValidateStaging(extractedAddon, expectedVersion, resourcePackage);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             if (Directory.Exists(target))
             {
@@ -176,9 +187,11 @@ public sealed class OcrAddonPackageManager(
         }
     }
 
-    private static void ValidateStaging(string directory, SemanticVersion expectedVersion)
+    private static void ValidateStaging(string directory, SemanticVersion expectedVersion, bool resourcePackage)
     {
-        _ = OcrAddonPackageValidator.Validate(directory,expectedVersion.ToString());
+        var descriptor = OcrAddonPackageValidator.Validate(directory,expectedVersion.ToString());
+        if (descriptor.IsResourcePackage != resourcePackage)
+            throw new InvalidDataException("The OCR package format does not match its component identifier.");
     }
 
     private static async Task ExtractSafelyAsync(

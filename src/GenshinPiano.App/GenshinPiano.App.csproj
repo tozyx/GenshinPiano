@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <StartupObject>GenshinPiano.App.Program</StartupObject>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>GenshinPiano</AssemblyName>
     <RootNamespace>GenshinPiano.App</RootNamespace>
@@ -13,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
+    <ProjectReference Include="..\GenshinPiano.Ocr.Engine\GenshinPiano.Ocr.Engine.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
@@ -26,4 +28,14 @@
     <Content Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
     <AssemblyMetadata Include="GenshinPianoSelfContained" Value="$(SelfContained)" />
   </ItemGroup>
+  <Target Name="ExcludeOptionalOcrNativeBuildAssets" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)' == 'onnxruntime' Or '%(Filename)' == 'onnxruntime_providers_shared' Or '%(Filename)' == 'libSkiaSharp'" />
+    </ItemGroup>
+  </Target>
+  <Target Name="ExcludeOptionalOcrPublishAssets" AfterTargets="ComputeFilesToPublish" BeforeTargets="GenerateSingleFileBundle">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'onnxruntime' Or '%(Filename)' == 'onnxruntime_providers_shared' Or '%(Filename)' == 'libSkiaSharp'" />
+    </ItemGroup>
+  </Target>
 </Project>

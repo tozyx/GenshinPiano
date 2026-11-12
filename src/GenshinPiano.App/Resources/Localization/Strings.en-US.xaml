@@ -34,8 +34,11 @@
     <system:String x:Key="Menu_ImportMidiBatch">Batch convert MIDI…</system:String>
     <system:String x:Key="Menu_ImportOcrImage">Recognize score image…</system:String>
     <system:String x:Key="Ocr_Title">OCR score recognition - beta</system:String>
-    <system:String x:Key="Ocr_AddonMissing">No compatible OCR add-on is installed. Extract the add-on to: {0}</system:String>
+    <system:String x:Key="Ocr_AddonMissing">Compatible OCR resources are not installed. Extract the resource package to: {0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR add-on ready, engine version {0}</system:String>
+    <system:String x:Key="Ocr_ResourcesReady">OCR resources ready, resource version {0}. The recognition engine updates with the application.</system:String>
+    <system:String x:Key="Ocr_LegacyResourcesReady">Using the built-in engine with compatible legacy OCR add-on {0}.</system:String>
+    <system:String x:Key="Ocr_ResourceMigrationAvailable">Switch to OCR resources {0}, without another engine or .NET runtime.</system:String>
     <system:String x:Key="Ocr_DownloadAddon">Download add-on</system:String>
     <system:String x:Key="Ocr_CheckAddonUpdate">Check component update</system:String>
     <system:String x:Key="Ocr_NetworkDisabled">Network access is disabled. Enable it in Settings first.</system:String>
@@ -70,7 +73,7 @@
     <system:String x:Key="Ocr_AppendFailed">Could not append the result. Check note timing and data. The current score was not changed.</system:String>
     <system:String x:Key="Status_OcrAppended">Appended {0} OCR notes using the current tempo and meter. Press Ctrl+Z to undo.</system:String>
     <system:String x:Key="Status_OcrNothingToAppend">No notes to append, or editing is unavailable. The current score was not changed.</system:String>
-    <system:String x:Key="Ocr_Analyzing">The OCR add-on is analyzing the image…</system:String>
+    <system:String x:Key="Ocr_Analyzing">The OCR worker is analyzing the image…</system:String>
     <system:String x:Key="Ocr_StagePreparing">Preparing the image…</system:String>
     <system:String x:Key="Ocr_StageWatermark">Removing watermarks…</system:String>
     <system:String x:Key="Ocr_StageTextDetection">Detecting notation and separating rows…</system:String>

@@ -11,10 +11,10 @@ using GenshinPiano.Infrastructure.Ocr;
 using GenshinPiano.Infrastructure.Updates;
 
 var options=new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented=true,Converters={new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)} };
-if (args.Length==0) throw new ArgumentException("Commands: recognize <addon> <image> <output.json> [Staff|Numbered] [cancel-ms]; verify <zip> <public-key>; install <zip> <public-key> <install-root>");
+if (args.Length==0) throw new ArgumentException("Commands: recognize <addon> <image> <output.json> [Staff|Numbered] [cancel-ms] [host-executable]; verify <zip> <public-key>; install <zip> <public-key> <install-root> [host-executable]");
 if (args[0]=="recognize")
 {
-    var service=new ExternalOcrAddonService(args[1],TimeSpan.FromMinutes(5));
+    var service=new ExternalOcrAddonService(args[1],TimeSpan.FromMinutes(5),workerExecutablePath:args.Length>6?args[6]:null);
     using var cancellation=new CancellationTokenSource();
     if (args.Length>5 && int.Parse(args[5])>0) cancellation.CancelAfter(int.Parse(args[5]));
     var watch=Stopwatch.StartNew();
@@ -40,9 +40,9 @@ else if (args[0] is "verify" or "install")
     var publicKey=File.ReadAllText(args[2]);
     var checksum=File.ReadAllText(zip+".sha256").Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries)[0];
     var signature=File.ReadAllText(zip+".sig").Trim();
-    if (!SemanticVersion.TryParse(Regex.Match(Path.GetFileName(zip),@"ocr-addons-(.+)-win-x64\.zip").Groups[1].Value,out var version))
+    if (!SemanticVersion.TryParse(Regex.Match(Path.GetFileName(zip),@"^ocr-(?:addons|resources)-(.+)-win-x64\.zip$").Groups[1].Value,out var version))
         throw new InvalidDataException("Invalid OCR package filename.");
-    var package=new UpdatePackage("addon.ocr.win-x64",UpdatePackageKind.OptionalComponent,version,Path.GetFileName(zip),new FileInfo(zip).Length,checksum,new Uri(zip),true,signature);
+    var package=new UpdatePackage(Path.GetFileName(zip).StartsWith("ocr-resources-",StringComparison.OrdinalIgnoreCase)?OcrResourceContract.PackageId:OcrResourceContract.LegacyPackageId,UpdatePackageKind.OptionalComponent,version,Path.GetFileName(zip),new FileInfo(zip).Length,checksum,new Uri(zip),true,signature);
     var verifier=new SignedUpdatePackageVerifier(publicKey);
     var verified=await verifier.VerifyAsync(package,zip,CancellationToken.None);
     if (!verified) throw new InvalidDataException("Package signature/checksum validation failed.");
@@ -51,7 +51,7 @@ else if (args[0] is "verify" or "install")
     if (args[0]=="install")
     {
         var root=Path.GetFullPath(args[3]);
-        var host=new ExternalOcrAddonService(Path.Combine(root,"addons","ocr"));
+        var host=new ExternalOcrAddonService(Path.Combine(root,"addons","ocr"),workerExecutablePath:args.Length>4?args[4]:null);
         var manager=new OcrAddonPackageManager(new LocalSource(package),new LocalDownload(zip),verifier,host,root);
         var result=await manager.DownloadAndInstallAsync(new Progress<double>());
         Console.WriteLine(JsonSerializer.Serialize(new { verified,hasPython,installed=result.Version,result.Updated },options));

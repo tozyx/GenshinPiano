@@ -10,6 +10,12 @@ internal sealed record OcrAddonManifest
 
     public string EngineVersion { get; init; } = string.Empty;
 
+    public string ResourceVersion { get; init; } = string.Empty;
+
+    public int EngineCompatibilityVersion { get; init; }
+
+    public string SmtModelSha256 { get; init; } = string.Empty;
+
     public string Executable { get; init; } = string.Empty;
 
     public OcrAddonLaunchMode LaunchMode { get; init; } = OcrAddonLaunchMode.Stdio;

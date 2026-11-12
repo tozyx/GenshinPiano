@@ -34,8 +34,11 @@
     <system:String x:Key="Menu_ImportMidiBatch">批量转换 MIDI…</system:String>
     <system:String x:Key="Menu_ImportOcrImage">图片OMR识别…</system:String>
     <system:String x:Key="Ocr_Title">OCR 曲谱识别-beta</system:String>
-    <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 附加包。请将附加包解压到：{0}</system:String>
+    <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 资源包。请将资源包解压到：{0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR 附加包已就绪，引擎版本 {0}</system:String>
+    <system:String x:Key="Ocr_ResourcesReady">OCR 资源已就绪，资源版本 {0}；识别引擎随主程序更新。</system:String>
+    <system:String x:Key="Ocr_LegacyResourcesReady">正在使用内置识别引擎，兼容旧 OCR 附加包 {0}。</system:String>
+    <system:String x:Key="Ocr_ResourceMigrationAvailable">可切换为独立 OCR 资源包 {0}，不再重复携带识别程序和 .NET。</system:String>
     <system:String x:Key="Ocr_DownloadAddon">下载附加包</system:String>
     <system:String x:Key="Ocr_CheckAddonUpdate">检查组件更新</system:String>
     <system:String x:Key="Ocr_NetworkDisabled">联网功能已关闭，请先在“设置”中允许联网。</system:String>
@@ -70,7 +73,7 @@
     <system:String x:Key="Ocr_AppendFailed">无法拼接，请检查曲谱的时值和音符数据。当前曲谱未改动。</system:String>
     <system:String x:Key="Status_OcrAppended">已在曲谱末尾拼接 {0} 个 OCR 音符，沿用当前速度与拍号；可按 Ctrl+Z 撤销。</system:String>
     <system:String x:Key="Status_OcrNothingToAppend">没有可拼接的音符，或当前无法编辑；当前曲谱未改动。</system:String>
-    <system:String x:Key="Ocr_Analyzing">正在由 OCR 附加包分析图片…</system:String>
+    <system:String x:Key="Ocr_Analyzing">正在由 OCR 工作进程分析图片…</system:String>
     <system:String x:Key="Ocr_StagePreparing">正在预处理图片…</system:String>
     <system:String x:Key="Ocr_StageWatermark">正在去除水印…</system:String>
     <system:String x:Key="Ocr_StageTextDetection">正在检测曲谱并分离谱行…</system:String>

@@ -14,7 +14,7 @@ internal sealed class StaffNotationRecognizer
     public async Task<OcrAnalysisResult> RecognizeAsync(OcrAnalysisRequest request,CancellationToken cancellationToken)
     {
         if (!File.Exists(request.ImagePath)) return Failure("image_not_found","The source image does not exist.");
-        var runtime=Path.Combine(AppContext.BaseDirectory,"staff-omr","smt");
+        var runtime=Path.Combine(OcrResourceEnvironment.Root,"staff-omr","smt");
         var work=Path.Combine(Path.GetTempPath(),"GenshinPiano-SMT-"+Guid.NewGuid().ToString("N"));
         string? diagnostics=null;
         Directory.CreateDirectory(work);
@@ -26,7 +26,7 @@ internal sealed class StaffNotationRecognizer
         }
         try
         {
-            await SmtNativeRunner.ValidateAsync(runtime,cancellationToken);
+            await SmtNativeRunner.ValidateAsync(runtime,cancellationToken,OcrResourceEnvironment.SmtModelSha256);
             OcrProgressReporter.Report(OcrProgressStage.Preparing,0.03);
             GrayImage image;
             SmtLayout layout;

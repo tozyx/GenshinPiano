@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using GenshinPiano.Application.Updates;
+using GenshinPiano.Application.Ocr;
 
 namespace GenshinPiano.Infrastructure.Updates;
 
@@ -9,7 +10,8 @@ namespace GenshinPiano.Infrastructure.Updates;
 public sealed partial class OcrAddonReleaseSource(
     HttpClient httpClient,
     string sourceName,
-    Uri releasesEndpoint) : IUpdateSource, INamedUpdateSource
+    Uri releasesEndpoint,
+    bool resourcesOnly = false) : IUpdateSource, INamedUpdateSource
 {
     public string SourceName => sourceName;
 
@@ -66,18 +68,19 @@ public sealed partial class OcrAddonReleaseSource(
         return new UpdateManifest(1, channel, selected.Version, DateTimeOffset.UtcNow,
         [
             new UpdatePackage(
-                "addon.ocr.win-x64", UpdatePackageKind.OptionalComponent, selected.Version,
+                resourcesOnly ? OcrResourceContract.PackageId : OcrResourceContract.LegacyPackageId,
+                UpdatePackageKind.OptionalComponent, selected.Version,
                 selected.Zip.Name, selected.Zip.Size, checksum, selected.Zip.Uri,
                 Optional: true, Signature: signature),
         ], sourceName);
     }
 
-    private static IEnumerable<(SemanticVersion Version, ReleaseAsset Zip, ReleaseAsset Sha, ReleaseAsset Sig)>
+    private IEnumerable<(SemanticVersion Version, ReleaseAsset Zip, ReleaseAsset Sha, ReleaseAsset Sig)>
         CollectPackages(IReadOnlyList<ReleaseAsset> assets, string channel)
     {
         foreach (var zip in assets)
         {
-            var match = PackageNameRegex().Match(zip.Name);
+            var match = (resourcesOnly ? ResourcePackageNameRegex() : PackageNameRegex()).Match(zip.Name);
             if (!match.Success || !SemanticVersion.TryParse(match.Groups["version"].Value, out var version))
                 continue;
             if (string.Equals(channel, "stable", StringComparison.OrdinalIgnoreCase) &&
@@ -124,6 +127,10 @@ public sealed partial class OcrAddonReleaseSource(
     [GeneratedRegex(@"^ocr-addons-(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)-win-x64\.zip$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex PackageNameRegex();
+
+    [GeneratedRegex(@"^ocr-resources-(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?)-win-x64\.zip$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex ResourcePackageNameRegex();
 
     private sealed record ReleaseAsset(string Name, Uri Uri, long Size);
 }

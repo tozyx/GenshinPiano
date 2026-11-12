@@ -63,7 +63,12 @@ internal sealed class JianpuRecognizer
         // RapidOcrNet 2.0.0 throws from Dispose when its optional classifier
         // model is not initialized. This one-request worker is reclaimed on exit.
         var ocr = new RapidOcr();
-        ocr.InitModels();
+        var models = Path.Combine(OcrResourceEnvironment.Root, "models", "v5");
+        ocr.InitModels(
+            detPath: Path.Combine(models, "ch_PP-OCRv5_mobile_det.onnx"),
+            clsPath: Path.Combine(models, "ch_ppocr_mobile_v2.0_cls_infer.onnx"),
+            recPath: Path.Combine(models, "latin_PP-OCRv5_rec_mobile_infer.onnx"),
+            keysPath: Path.Combine(models, "ppocrv5_latin_dict.txt"));
         var options = RapidOcrOptions.Default with
         {
             // Preserve small notation glyphs instead of shrinking a whole long
@@ -284,7 +289,7 @@ internal sealed class JianpuRecognizer
         List<GlyphCandidate> candidates)
     {
         var modelPath = Path.Combine(
-            AppContext.BaseDirectory,
+            OcrResourceEnvironment.Root,
             "models",
             "orpheusnet",
             "orpheusnet-middle.onnx");
@@ -368,7 +373,7 @@ internal sealed class JianpuRecognizer
         IReadOnlyList<NotationRow> seedRows)
     {
         var modelPath = Path.Combine(
-            AppContext.BaseDirectory,
+            OcrResourceEnvironment.Root,
             "models",
             "orpheusnet",
             "orpheusnet-middle.onnx");

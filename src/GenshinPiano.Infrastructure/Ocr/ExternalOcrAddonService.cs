@@ -17,12 +17,14 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
 
     private readonly string _addonDirectory;
     private readonly TimeSpan _timeout;
+    private readonly string? _workerExecutablePath;
 
-    public ExternalOcrAddonService(string addonDirectory, TimeSpan? timeout = null)
+    public ExternalOcrAddonService(string addonDirectory, TimeSpan? timeout = null, string? workerExecutablePath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(addonDirectory);
         _addonDirectory = Path.GetFullPath(addonDirectory);
         _timeout = timeout ?? TimeSpan.FromMinutes(30);
+        _workerExecutablePath = workerExecutablePath is null ? null : Path.GetFullPath(workerExecutablePath);
         if (_timeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -31,7 +33,20 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
 
     public OcrAddonDescriptor? FindInstalledAddon()
     {
-        try { return OcrAddonPackageValidator.Validate(_addonDirectory); }
+        try
+        {
+            var addon = OcrAddonPackageValidator.Validate(_addonDirectory);
+            if (_workerExecutablePath is not null && File.Exists(_workerExecutablePath))
+            {
+                // OCR 1.0.0 full packages contain a compatible resource layout as well.
+                var compatibleLegacyResources = addon.LaunchMode == OcrAddonLaunchMode.File &&
+                    OcrAddonPackageValidator.RequiredResources.All(name => File.Exists(Path.Combine(_addonDirectory,
+                        name.StartsWith("native/", StringComparison.Ordinal) ? name[7..] : name)));
+                if (addon.UsesBundledEngine || compatibleLegacyResources)
+                    return addon with { ExecutablePath = _workerExecutablePath, UsesBundledEngine = true, LaunchMode = OcrAddonLaunchMode.File };
+            }
+            return addon.UsesBundledEngine ? null : addon;
+        }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         { return null; }
     }
@@ -170,14 +185,24 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
             var startInfo = new ProcessStartInfo
             {
                 FileName = addon.ExecutablePath,
-                WorkingDirectory = _addonDirectory,
-                UseShellExecute = true,
+                WorkingDirectory = addon.UsesBundledEngine ? Path.GetDirectoryName(addon.ExecutablePath)! : _addonDirectory,
+                UseShellExecute = !addon.UsesBundledEngine,
+                CreateNoWindow = addon.UsesBundledEngine,
                 WindowStyle = ProcessWindowStyle.Hidden,
                 ErrorDialog = false,
             };
-            startInfo.ArgumentList.Add("--launch-worker");
-            startInfo.ArgumentList.Add("--worker-pid");
-            startInfo.ArgumentList.Add(workerPidPath);
+            if (addon.UsesBundledEngine)
+            {
+                startInfo.ArgumentList.Add("--ocr-worker");
+                startInfo.ArgumentList.Add("--resources");
+                startInfo.ArgumentList.Add(_addonDirectory);
+            }
+            else
+            {
+                startInfo.ArgumentList.Add("--launch-worker");
+                startInfo.ArgumentList.Add("--worker-pid");
+                startInfo.ArgumentList.Add(workerPidPath);
+            }
             startInfo.ArgumentList.Add("--request");
             startInfo.ArgumentList.Add(requestPath);
             startInfo.ArgumentList.Add("--response");
@@ -191,25 +216,32 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(_timeout);
 
-            launcher = Process.Start(startInfo) ??
-                       throw new InvalidOperationException("The OCR add-on launcher could not be started.");
-            await launcher.WaitForExitAsync(timeout.Token);
-            if (launcher.ExitCode != 0)
+            if (addon.UsesBundledEngine)
             {
-                throw new InvalidOperationException(
-                    $"The OCR add-on launcher exited with code {launcher.ExitCode}.");
+                process = Process.Start(startInfo) ?? throw new InvalidOperationException("The OCR worker could not be started.");
             }
+            else
+            {
+                launcher = Process.Start(startInfo) ??
+                    throw new InvalidOperationException("The OCR add-on launcher could not be started.");
+                await launcher.WaitForExitAsync(timeout.Token);
+                if (launcher.ExitCode != 0)
+                {
+                    throw new InvalidOperationException(
+                        $"The OCR add-on launcher exited with code {launcher.ExitCode}.");
+                }
 
-            var workerPid = await ReadWorkerPidAsync(workerPidPath, timeout.Token);
-            try
-            {
-                process = Process.GetProcessById(workerPid);
-            }
-            catch (ArgumentException)
-            {
-                // A very small request can finish before the host obtains its
-                // Process object. The response file is authoritative below.
-                process = null;
+                var workerPid = await ReadWorkerPidAsync(workerPidPath, timeout.Token);
+                try
+                {
+                    process = Process.GetProcessById(workerPid);
+                }
+                catch (ArgumentException)
+                {
+                    // A very small request can finish before the host obtains its
+                    // Process object. The response file is authoritative below.
+                    process = null;
+                }
             }
 
             var progressOffset = 0L;

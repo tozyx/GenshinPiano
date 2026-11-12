@@ -30,8 +30,8 @@ if not exist "%SIGNING_KEY%" (
   goto finish
 )
 
-echo Publishing the standalone OCR add-on %VERSION%...
-"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0Publish-OcrAddon.ps1" ^
+echo Publishing OCR resources %VERSION%...
+"%POWERSHELL_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0Publish-OcrResources.ps1" ^
   -Version "%VERSION%" ^
   -AddonRootDirectory "%REPO_ROOT%\publish\addons" ^
   -ArtifactsDirectory "%REPO_ROOT%\publish" ^
@@ -41,11 +41,11 @@ echo Publishing the standalone OCR add-on %VERSION%...
 set "EXIT_CODE=%ERRORLEVEL%"
 if not "%EXIT_CODE%"=="0" (
   echo.
-  echo OCR add-on packaging failed.
+  echo OCR resource packaging failed.
   goto finish
 )
 echo.
-echo OCR add-on packaging completed. Output directory:
+echo OCR resource packaging completed. Output directory:
 echo "%REPO_ROOT%\publish"
 
 :finish
@@ -59,12 +59,12 @@ echo Usage: %~nx0 [VERSION] [SMT_RESOURCE_DIR] [VC_RUNTIME_DIR]
 echo.
 echo Requires .NET 10 SDK and GENSHINPIANO_UPDATE_SIGNING_KEY.
 echo Uses PowerShell 7 when available, otherwise built-in Windows PowerShell 5.1.
-echo Default OCR version: 1.0.0 - edit the VERSION default in this BAT to change it.
+echo Default OCR resource version: 1.0.0 - edit the VERSION default in this BAT to change it.
 echo Example: %~nx0 1.0.1
-echo Default SMT resources: publish\smt-experiment
+echo Default SMT resources: publish\smt-resource
 echo Required resources: crispembed-windows-x86_64.zip and smt-grandstaff-q8_0.gguf
 echo The model may also be in the resource directory's models subfolder.
 echo Default VC runtime directory: Windows System32
-echo The selected version is applied to the build, packaged manifest, and ZIP name.
+echo The selected version is applied to the resource manifest and ZIP name. The OCR engine ships with the application.
 endlocal
 exit /b 0

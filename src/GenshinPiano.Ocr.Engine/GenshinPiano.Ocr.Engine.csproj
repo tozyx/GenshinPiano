@@ -1,15 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!--
-      The OCR engine communicates through file IPC, with redirected stdio kept
-      for compatibility with older hosts. It is intentionally built as a
-      Windows executable so launching the add-on does not create a transient
-      Console Window Host. Its executable and version
-      metadata deliberately avoid the main GenshinPiano process identity so
-      Windows Task Manager does not fold the short-lived OCR worker into the
-      main application's process group.
-    -->
-    <OutputType>WinExe</OutputType>
+    <!-- Managed OCR code ships in the application. Only its worker mode loads resources. -->
+    <OutputType>Library</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AssemblyName>GPianoOcrEngine</AssemblyName>
@@ -19,18 +11,11 @@
     <Description>GPiano OCR Engine</Description>
     <Company>tozyx</Company>
     <Authors>tozyx</Authors>
-    <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\GenshinPiano.Core\GenshinPiano.Core.csproj" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.3" />
-    <PackageReference Include="RapidOcrNet" Version="2.0.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="models\orpheusnet\*.onnx"
-          CopyToOutputDirectory="PreserveNewest"
-          TargetPath="models\orpheusnet\%(Filename)%(Extension)" />
+    <PackageReference Include="RapidOcrNet" Version="2.0.0" ExcludeAssets="build;buildTransitive" />
   </ItemGroup>
 </Project>

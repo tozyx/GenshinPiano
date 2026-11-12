@@ -72,6 +72,7 @@ public partial class UpdateSelectionDialog : Window
             check.Package?.Version.ToString() ?? Text("Update_UnknownVersion"));
         OcrStatusText.Text = _ocrOperationMessage ?? (check.ErrorMessage is not null
             ? Text("Update_CheckFailed", check.ErrorMessage)
+            : check.RequiresMigration ? Text("Ocr_ResourceMigrationAvailable", check.Package?.Version)
             : Text(check.IsCurrent ? "Update_AlreadyCurrent" : "Update_NewVersionAvailable"));
         if (_ocr.IsRecognizing) OcrStatusText.Text += Environment.NewLine + Text("Update_OcrRecognitionBusy");
         else if (_ocr.IsInstalling && _installation is null) OcrStatusText.Text += Environment.NewLine + Text("Update_OcrInstalling");

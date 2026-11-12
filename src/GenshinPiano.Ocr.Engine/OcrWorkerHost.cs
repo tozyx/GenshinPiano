@@ -1,26 +1,27 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Diagnostics;
-using System.Globalization;
-using System.Text;
 using GenshinPiano.Application.Ocr;
 
 namespace GenshinPiano.Ocr.Engine;
 
-internal static class Program
+public static class OcrWorkerHost
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    public static async Task<int> Main(string[] args)
+    private static string? _resourceRoot;
+
+    public static async Task<int> RunAsync(string[] args)
     {
         WindowsProcessIdentity.Configure();
 
-        if (args.Contains("--launch-worker", StringComparer.Ordinal))
+        var resourceIndex = Array.IndexOf(args, "--resources");
+        if (resourceIndex >= 0 && resourceIndex + 1 < args.Length)
         {
-            return LaunchBackgroundWorker(args);
+            _resourceRoot = args[resourceIndex + 1];
+            args = args.Take(resourceIndex).Concat(args.Skip(resourceIndex + 2)).ToArray();
         }
 
         if (args.Contains("--stdio", StringComparer.Ordinal))
@@ -34,64 +35,8 @@ internal static class Program
         }
 
         Console.Error.WriteLine(
-            "This executable is an add-on and must be started with --stdio or file IPC arguments.");
+            "OCR worker mode requires --resources and --stdio or file IPC arguments.");
         return 2;
-    }
-
-    private static int LaunchBackgroundWorker(string[] args)
-    {
-        var workerArguments = new List<string>(args.Length);
-        string? workerPidPath = null;
-        for (var index = 0; index < args.Length; index++)
-        {
-            switch (args[index])
-            {
-                case "--launch-worker":
-                    break;
-                case "--worker-pid" when index + 1 < args.Length:
-                    workerPidPath = args[++index];
-                    break;
-                default:
-                    workerArguments.Add(args[index]);
-                    break;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(workerPidPath) ||
-            string.IsNullOrWhiteSpace(Environment.ProcessPath))
-        {
-            return 2;
-        }
-
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = Environment.ProcessPath,
-                WorkingDirectory = AppContext.BaseDirectory,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            };
-            foreach (var argument in workerArguments)
-            {
-                startInfo.ArgumentList.Add(argument);
-            }
-
-            using var worker = Process.Start(startInfo) ??
-                               throw new InvalidOperationException("The OCR worker could not be started.");
-            var pidPath = Path.GetFullPath(workerPidPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(pidPath)!);
-            File.WriteAllText(
-                pidPath,
-                worker.Id.ToString(CultureInfo.InvariantCulture),
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            return 0;
-        }
-        catch
-        {
-            return 1;
-        }
     }
 
     private static async Task<int> RunStdioAsync()
@@ -147,6 +92,7 @@ internal static class Program
 
     private static async Task<OcrAnalysisResult> AnalyzeAsync(OcrAnalysisRequest request)
     {
+        OcrResourceEnvironment.Configure(_resourceRoot ?? throw new InvalidDataException("The OCR resource directory was not specified."));
         var recognizer = new JianpuRecognizer();
         return await recognizer.RecognizeAsync(request, CancellationToken.None);
     }

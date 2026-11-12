@@ -159,7 +159,8 @@ public partial class App : System.Windows.Application
         var midiScoreImporter = new DryWetMidiScoreImporter();
         MidiBatchConversionService = new MidiBatchConversionService(midiScoreImporter, serializer);
         OcrAddonService = new ExternalOcrAddonService(
-            Path.Combine(AppContext.BaseDirectory, "addons", "ocr"));
+            Path.Combine(AppContext.BaseDirectory, "addons", "ocr"),
+            workerExecutablePath: Path.Combine(AppContext.BaseDirectory, "GenshinPiano.exe"));
         var assembly = typeof(App).Assembly;
         var informationalVersion = assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
@@ -189,10 +190,10 @@ public partial class App : System.Windows.Application
         [
             new OcrAddonReleaseSource(
                 _updateMetadataHttpClient, "GitCode",
-                new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases")),
+                new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true),
             new OcrAddonReleaseSource(
                 _updateMetadataHttpClient, "GitHub",
-                new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases")),
+                new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true),
         ], diagnostic: AppLogger.Info);
         OcrAddonPackageManager = new OcrAddonPackageManager(
             ocrSource,
