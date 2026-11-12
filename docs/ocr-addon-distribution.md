@@ -6,6 +6,22 @@ machine.
 
 ## Published assets
 
+The application launchers `build-release.bat` and `build-release-framework.bat` build only application
+packages. Use the independent local launcher `build-ocr-addon.bat` to package OCR; all three launchers
+are ignored by Git. The OCR launcher requires PowerShell 7, the .NET 10 SDK, and
+`GENSHINPIANO_UPDATE_SIGNING_KEY` pointing to the existing private signing key outside the repository.
+It reads the OCR project version (currently `1.0.0`) and verifies it matches `manifest.json`.
+
+```cmd
+build-ocr-addon.bat
+build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+```
+
+Optional arguments override the SMT resource and x64 VC runtime directories. Defaults are
+`publish\smt-experiment` and Windows `System32`. Output is `publish\addons\ocr` and the three assets
+below. For clean clones without the local BAT, see the direct PowerShell command in
+[Building](BUILDING.md#9-发布输出).
+
 Attach these three files to a GitHub and/or GitCode release:
 
 - `ocr-addons-<version>-win-x64.zip`

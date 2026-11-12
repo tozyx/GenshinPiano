@@ -1,6 +1,8 @@
 # SMT 接入与 OCR 0.9.0
 
-2026-11-11：SMT 已接入正式 OCR 引擎。此前的实验、准确度比较和照片鲁棒性文档保留为研究记录，本说明描述实际发布行为。
+2026-11-11：SMT 已接入正式 OCR 引擎。此前的实验、准确度比较和照片鲁棒性文档保留为研究记录。本说明的包体积、准确度及兼容性实测针对当时的 0.9.0 包。
+
+2026-11-12：源码中的 OCR 项目与 manifest 版本已同步为 `1.0.0`。应用发布 BAT 不再构建 OCR；单独运行本地 `build-ocr-addon.bat` 打包插件。下面的 0.9.0 数据保留为历史实测，不代表已生成 1.0.0 发布包。
 
 ## 主程序与识别流程
 
@@ -20,6 +22,15 @@
 应用更新仍保留整个 `addons` 目录；OCR 更新整目录替换组件，因此升级后旧 Python 文件不会残留。包仍需连同 `.sha256`、`.sig` 上传到 Release 后，线上更新源才会发现；本次仅生成本地资产。
 
 ## 构建产物
+
+独立打包入口（本地脚本，已加入 `.gitignore`）：
+
+```cmd
+build-ocr-addon.bat
+build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+```
+
+需要 PowerShell 7、.NET 10 SDK 和 `GENSHINPIANO_UPDATE_SIGNING_KEY`。参数是 SMT 资源目录和 VC 运行库目录，不是版本号。默认输出到 `publish/addons/ocr`，并在 `publish` 下生成当前插件版本的 ZIP、校验和及签名。也可直接使用已跟踪的 PowerShell 脚本：
 
 ```powershell
 .\tools\Publish-OcrAddon.ps1 `

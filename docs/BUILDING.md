@@ -128,9 +128,13 @@ GitHub CI 不执行模型部署脚本，只验证普通 Release 构建和测试�
 测试包包含主程序、独立更新器和示例曲谱，需要 .NET 10 Desktop Runtime。
 CI 会执行该脚本。无签名测试包不能用于应用内更新。
 
-正式发布命令使用维护者本地的 BAT 启动脚本；这两个脚本不随 Git 克隆分发。
+正式发布命令使用维护者本地的 BAT 启动脚本；三个脚本均被 `.gitignore` 忽略，不随 Git 克隆分发：
 
-两个发布脚本都要求以下目录存在并至少包含一个曲谱文件：
+- `build-release.bat`：仅构建自包含主程序、更新器及应用签名包。
+- `build-release-framework.bat`：仅构建框架依赖主程序、更新器及应用签名包。
+- `build-ocr-addon.bat`：独立构建 OCR 插件及其签名包。
+
+两个应用发布脚本都要求以下目录存在并至少包含一个曲谱文件；OCR 独立打包不需要曲谱库：
 
 ```text
 publish\songs
@@ -177,7 +181,7 @@ build-release-framework.bat 3.0.1-preview.1
 
 ### 9. 发布输出
 
-脚本会在 `publish` 下生成：
+两个应用发布脚本不再调用 OCR 打包，也不依赖 OCR 模型或原生资源。它们分别在 `publish` 下生成：
 
 ```text
 GenshinPiano-win-x64\
@@ -188,19 +192,49 @@ GenshinPiano-<version>-win-x64.zip.sig
 GenshinPiano-<version>-win-x64-framework.zip
 GenshinPiano-<version>-win-x64-framework.zip.sha256
 GenshinPiano-<version>-win-x64-framework.zip.sig
+```
+
+OCR 插件单独打包（需要 PowerShell 7、.NET 10 SDK 和同一签名私钥环境变量）：
+
+```cmd
+build-ocr-addon.bat
+```
+
+该脚本从 OCR 项目的 `Version` 读取插件版本，要求它与 `manifest.json` 的 `engineVersion` 一致；当前两者均为 `1.0.0`。无需传入主程序版本。
+
+默认从 `publish\smt-experiment` 读取 `crispembed-windows-x86_64.zip` 和 `smt-grandstaff-q8_0.gguf`（模型也可放在其 `models` 子目录）。默认从 Windows `System32` 读取三个 x64 VC 运行库 DLL。也可依次指定资源目录、VC 运行库目录：
+
+```cmd
+build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+build-ocr-addon.bat --help
+```
+
+独立 OCR 打包会在 `publish` 下生成：
+
+```text
 addons\ocr\
 ocr-addons-<ocr-version>-win-x64.zip
 ocr-addons-<ocr-version>-win-x64.zip.sha256
 ocr-addons-<ocr-version>-win-x64.zip.sig
 ```
 
-应用 ZIP 与 OCR ZIP 是彼此独立的下载项。将每个 ZIP 连同对应的 `.sha256` 和 `.sig` 一起上传到 GitHub/GitCode Release。不要把 `publish\addons` 手动塞回主程序 ZIP。
+应用 ZIP 与 OCR ZIP 是彼此独立的下载项，可分别发布。将每个 ZIP 连同对应的 `.sha256` 和 `.sig` 一起上传到 GitHub/GitCode Release。不要把 `publish\addons` 手动塞回主程序 ZIP。
+
+从干净克隆发布 OCR 时，可直接调用已跟踪的 PowerShell 脚本（无需本地 BAT）：
+
+```powershell
+pwsh -NoProfile -File .\tools\Publish-OcrAddon.ps1 `
+    -AddonRootDirectory .\publish\addons `
+    -ArtifactsDirectory .\publish `
+    -PrivateKeyPath $env:GENSHINPIANO_UPDATE_SIGNING_KEY `
+    -SmtTrialDirectory "D:\ocr-assets"
+```
 
 ### 10. 版本来源
 
 - 主程序开发版本：`src/GenshinPiano.App/GenshinPiano.App.csproj`
-- OCR 引擎版本：`src/GenshinPiano.Ocr.Engine/GenshinPiano.Ocr.Engine.csproj`
-- 发布 ZIP 版本：传给 BAT 的第一个参数
+- OCR 引擎与插件 ZIP 版本：`src/GenshinPiano.Ocr.Engine/GenshinPiano.Ocr.Engine.csproj`，与其 `manifest.json` 保持一致
+- 应用 ZIP 版本：传给两个应用 BAT 的第一个参数；OCR BAT 的参数为资源目录，不是版本号
 
 发布时应确保主程序项目版本、BAT 参数和 Release 标签符合预期。OCR 版本独立管理，远程下载器从 `ocr-addons-<version>-win-x64.zip` 文件名读取组件版本。
 
@@ -296,9 +330,24 @@ Framework-dependent package (requires .NET 10 Desktop Runtime on the target mach
 build-release-framework.bat 3.0.1-preview.1
 ```
 
-Both scripts create application ZIP/checksum/signature artifacts and an independently versioned OCR
-add-on ZIP/checksum/signature set under `publish`. Upload every ZIP together with its matching
-`.sha256` and `.sig` files. The OCR add-on is not part of the application ZIP.
+These two scripts build only the application, updater, and application ZIP/checksum/signature set.
+They do not package OCR or require OCR assets. Package the OCR add-on independently with PowerShell 7:
+
+```cmd
+build-ocr-addon.bat
+build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+build-ocr-addon.bat --help
+```
+
+The optional arguments are the SMT resource directory and x64 VC runtime directory, defaulting to
+`publish\smt-experiment` and Windows `System32`. The add-on version comes from the OCR project and must
+match `manifest.json` (currently `1.0.0`); it is independent of the application version. The launcher
+uses `GENSHINPIANO_UPDATE_SIGNING_KEY` and creates `publish\addons\ocr` plus the OCR ZIP, checksum,
+and signature. All three BAT launchers are local, ignored files. Contributors without them can run
+the tracked `tools/Publish-OcrAddon.ps1` directly as shown above.
+
+Upload each application or OCR ZIP together with its matching `.sha256` and `.sig` files. The OCR
+add-on is not part of the application ZIP, and the packages can be released separately.
 
 See [OCR add-on distribution](ocr-addon-distribution.md) and
 [OCR protocol](ocr-addon-protocol.md) for component-specific details.
