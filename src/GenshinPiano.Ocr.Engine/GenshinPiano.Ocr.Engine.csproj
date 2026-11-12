@@ -19,7 +19,7 @@
     <Description>GPiano OCR Engine</Description>
     <Company>tozyx</Company>
     <Authors>tozyx</Authors>
-    <Version>0.9.0</Version>
+    <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
