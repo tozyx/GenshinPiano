@@ -16,6 +16,7 @@ public partial class OcrImportDialog : Window
     private readonly IUserSettingsService _settings;
     private readonly WindowsNotificationService _notifications;
     private readonly WindowsTaskbarProgressService _taskbarProgress;
+    private readonly Func<bool>? _canImport;
     private CancellationTokenSource? _analysisCancellation;
     private CancellationTokenSource? _downloadCancellation;
     private CancellationTokenSource? _versionCancellation;
@@ -29,13 +30,15 @@ public partial class OcrImportDialog : Window
         OcrAddonPackageManager packageManager,
         IUserSettingsService settings,
         WindowsNotificationService notifications,
-        WindowsTaskbarProgressService taskbarProgress)
+        WindowsTaskbarProgressService taskbarProgress,
+        Func<bool>? canImport = null)
     {
         _service = service;
         _packageManager = packageManager;
         _settings = settings;
         _notifications = notifications;
         _taskbarProgress = taskbarProgress;
+        _canImport = canImport;
         InitializeComponent();
         Closing += OnClosing;
         Closed += OnClosed;
@@ -57,6 +60,8 @@ public partial class OcrImportDialog : Window
     public string? ImagePath { get; private set; }
 
     public bool AutoMapTo21Keys => AutoMapTo21CheckBox.IsChecked == true;
+
+    public bool AppendToCurrentScore => ImportModeComboBox.SelectedItem is ComboBoxItem { Tag: "Append" };
 
     public bool CanSelectImage => !_closed && _analysisCancellation is null;
 
@@ -331,6 +336,7 @@ public partial class OcrImportDialog : Window
         WatermarkComboBox.IsEnabled = !busy;
         AccompanimentCheckBox.IsEnabled = !busy;
         AutoMapTo21CheckBox.IsEnabled = !busy;
+        ImportModeComboBox.IsEnabled = !busy;
         CancelButton.Content = GetText(busy ? "Ocr_CancelAnalysis" : "Common_Cancel");
         DownloadAddonButton.IsEnabled = !busy && _downloadCancellation is null && _versionCancellation is null &&
             !_packageManager.IsInstalling && _settings.Current.Update.NetworkAccessEnabled;
@@ -376,6 +382,12 @@ public partial class OcrImportDialog : Window
     {
         if (Result?.Success != true || Result.Score is null)
         {
+            return;
+        }
+
+        if (_canImport?.Invoke() == false)
+        {
+            ResultText.Text = GetText("Ocr_ImportPlaybackBusy");
             return;
         }
 

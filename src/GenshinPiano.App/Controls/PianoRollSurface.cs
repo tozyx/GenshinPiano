@@ -445,6 +445,16 @@ public sealed class PianoRollSurface : Control
         }
     }
 
+    public ScoreAppendResult? AppendScore(ScoreDocument incoming)
+    {
+        if (!IsEditingEnabled || Score is null) return null;
+        var result = _viewModel.AppendScore(incoming);
+        if (result is null) return null;
+        SynchronizeViewModelScore();
+        SelectedNoteChanged?.Invoke(this, EventArgs.Empty);
+        return result;
+    }
+
     public void RedoEdit()
     {
         if (IsEditingEnabled)

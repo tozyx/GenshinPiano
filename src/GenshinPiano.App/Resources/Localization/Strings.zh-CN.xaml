@@ -62,6 +62,14 @@
     <system:String x:Key="Ocr_ImageFilter">曲谱图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|所有文件|*.*</system:String>
     <system:String x:Key="Ocr_Analyze">开始识别</system:String>
     <system:String x:Key="Ocr_Import">导入结果</system:String>
+    <system:String x:Key="Ocr_ImportMode">导入方式</system:String>
+    <system:String x:Key="Ocr_ReplaceScore">替换当前曲谱</system:String>
+    <system:String x:Key="Ocr_AppendScore">拼接到末尾</system:String>
+    <system:String x:Key="Ocr_AppendHelp">拼接按声部顺序追加到对应音轨，多出的声部新建音轨。沿用当前曲谱的速度和拍号，保留标题与文件路径，支持 Ctrl+Z 撤销。不会引入识别结果中的速度或拍号变化。</system:String>
+    <system:String x:Key="Ocr_ImportPlaybackBusy">请先停止播放或本地试听，再导入识别结果；识别结果已保留在此窗口。</system:String>
+    <system:String x:Key="Ocr_AppendFailed">无法拼接，请检查曲谱的时值和音符数据。当前曲谱未改动。</system:String>
+    <system:String x:Key="Status_OcrAppended">已在曲谱末尾拼接 {0} 个 OCR 音符，沿用当前速度与拍号；可按 Ctrl+Z 撤销。</system:String>
+    <system:String x:Key="Status_OcrNothingToAppend">没有可拼接的音符，或当前无法编辑；当前曲谱未改动。</system:String>
     <system:String x:Key="Ocr_Analyzing">正在由 OCR 附加包分析图片…</system:String>
     <system:String x:Key="Ocr_StagePreparing">正在预处理图片…</system:String>
     <system:String x:Key="Ocr_StageWatermark">正在去除水印…</system:String>

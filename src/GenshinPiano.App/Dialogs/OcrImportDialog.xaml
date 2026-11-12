@@ -143,10 +143,27 @@
                                   Content="{DynamicResource Ocr_IncludeAccompaniment}" />
                 </Grid>
 
-                <ToggleButton x:Name="AutoMapTo21CheckBox" Grid.Row="4" Margin="0,12,0,0"
-                              HorizontalAlignment="Left"
-                              Style="{StaticResource OcrToggleStyle}"
-                              Content="{DynamicResource Ocr_AutoMapTo21}" />
+                <StackPanel Grid.Row="4" Margin="0,12,0,0">
+                    <ToggleButton x:Name="AutoMapTo21CheckBox" HorizontalAlignment="Left"
+                                  Style="{StaticResource OcrToggleStyle}"
+                                  Content="{DynamicResource Ocr_AutoMapTo21}" />
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="82" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Text="{DynamicResource Ocr_ImportMode}" />
+                        <ComboBox x:Name="ImportModeComboBox" Grid.Column="1" Height="36" SelectedIndex="0">
+                            <ComboBox.ToolTip>
+                                <ToolTip MaxWidth="380">
+                                    <TextBlock Text="{DynamicResource Ocr_AppendHelp}" TextWrapping="Wrap" />
+                                </ToolTip>
+                            </ComboBox.ToolTip>
+                            <ComboBoxItem Tag="Replace" Content="{DynamicResource Ocr_ReplaceScore}" />
+                            <ComboBoxItem Tag="Append" Content="{DynamicResource Ocr_AppendScore}" />
+                        </ComboBox>
+                    </Grid>
+                </StackPanel>
 
                 <ProgressBar x:Name="AnalysisProgress" Grid.Row="5" Height="5" Margin="0,16,0,0"
                              Minimum="0" Maximum="1" Value="0"

@@ -90,6 +90,8 @@ public partial class PianoRollEditor : UserControl
 
     public void UndoEdit() => Surface.UndoEdit();
 
+    public ScoreAppendResult? AppendScore(ScoreDocument incoming) => Surface.AppendScore(incoming);
+
     public void RedoEdit() => Surface.RedoEdit();
 
     public void SetPitchLabelMode(PitchLabelMode mode)

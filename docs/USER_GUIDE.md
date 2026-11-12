@@ -100,11 +100,13 @@
 1. 打开“导入 → OCR 曲谱识别”。
 2. 首次使用时点击“下载附加包”；软件会从 GitCode/GitHub 下载、校验签名并安装 OCR 引擎。
 3. 明确选择“简谱”或“五线谱”，再选择图片、水印抑制强度及是否识别伴奏。软件不会自动猜测谱面类型。
-4. 点击“开始识别”，完成后检查音符数量和置信度，再导入卷帘。
+4. 点击“开始识别”，完成后检查音符数量和提示。在“导入方式”中选择“替换当前曲谱”或“拼接到末尾”，再导入卷帘。
+
+“拼接到末尾”适合分多页识别同一首曲子：接在当前所有音轨最后一个音符的节奏时值结束处，保留新页面开头的休止，不自动补齐到小节线。按声部顺序追加到已有音轨，多出的声部新建音轨；已有音轨的音色与静音设置保留。不同 PPQ 会按节拍换算。拼接沿用当前曲谱的速度、拍号和播放设置，保留标题与文件路径，标记为未保存，并支持 `Ctrl+Z` / `Ctrl+Y` 撤销与重做。识别结果中的速度或拍号变化不会带入；末尾纯休止无法从当前曲谱模型中恢复，必要时手动调整连接处的间隔。
 
 简谱路线使用 RapidOCR、数字分类与几何后处理，识别数字、上下音高点、升降号、延音线、节拍线、谱行/声部和伴奏。五线谱路线使用插件内的原生 SMT CPU 后端，按钢琴谱行识别并重建音高、时值、声部和小节结构，不需要安装 Python。两条路线由“谱面类型”下拉框选择。
 
-默认关闭“自动映射到原神 21 键”：识别结果会切换到 88 键卷帘，保留升降音及完整音域。启用后，导入结果会切换到 21 键并执行一次可撤销的自动映射；无法合理映射的半音或严重越界音符可能被忽略。谱面类型、水印模式、伴奏和自动映射选项都会保存到便携配置中。
+默认关闭“自动映射到原神 21 键”：识别结果会切换到 88 键卷帘，保留升降音及完整音域。启用后，替换导入会切换到 21 键；拼接则仅映射新增音符，保留当前视图和已有音符。无法合理映射的半音或严重越界音符可能被忽略。谱面类型、水印模式、伴奏和自动映射选项都会保存到便携配置中。
 
 五线谱目前支持清晰、平直的钢琴扫描谱和电子谱截图，暂不支持拍照谱矫正。无法完整定位谱表或仍存在明显结构异常时，会提示更换图片；识别成功后仍需人工试听和校对。支持范围与识别原理见 [OCR 插件](OCR.md)。
 
@@ -221,9 +223,18 @@ not request elevation automatically.
   numbered or staff notation; the application does not auto-detect the notation type. Numbered
   notation uses the OCR/post-processing pipeline, while staff notation uses the bundled native CPU
   SMT backend to recognize piano systems and reconstruct the score. No Python installation is needed.
+- Choose **Replace current score** or **Append to end** in **Import mode**. Appending is useful for
+  successive pages: it starts after the last note's full rhythmic duration across all tracks and
+  preserves the new page's leading rests without rounding up to a bar line. Voices append to tracks
+  in order; extra voices create tracks, and existing instruments/mute settings are retained.
+  PPQ differences are converted to beats. Current tempo, meter, playback settings, title, and file
+  path are preserved. The edit is unsaved and supports Ctrl+Z/Ctrl+Y. Incoming tempo/meter changes
+  are not imported. Trailing rests are not represented in the current score model; adjust the join
+  manually if a page ends with silence.
 - With **Auto-map to 21 keys** disabled, results open in the 88-key roll and preserve accidentals and
-  the full pitch range. Enabling it switches to 21 keys and applies one undoable mapping operation;
-  unmappable accidentals or notes far outside the range may be ignored. OCR choices are persisted.
+  the full pitch range. When enabled, replacement opens the 21-key view; appending maps only incoming
+  notes and retains the current view and existing notes. Unmappable accidentals or notes far outside
+  the range may be ignored. Notation, watermark, accompaniment, and mapping choices are persisted.
 - Staff recognition supports clear, flat piano scans and rendered sheet images. Photograph
   correction is unsupported; incomplete layouts and unresolved structural anomalies are rejected.
   Always review and audition imported results. The dialog displays add-on version status and offers

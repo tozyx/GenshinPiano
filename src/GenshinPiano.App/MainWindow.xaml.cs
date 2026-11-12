@@ -1201,7 +1201,8 @@ public partial class MainWindow : Window
             app.OcrAddonPackageManager,
             app.UserSettingsService,
             app.NotificationService,
-            app.TaskbarProgressService);
+            app.TaskbarProgressService,
+            canImport: () => !viewModel.IsPlaying && !_isLocalAuditionPlaying);
         if (initialImagePath is not null) dialog.TrySelectImage(initialImagePath);
         _ocrImportDialog = dialog;
         bool accepted;
@@ -1233,6 +1234,31 @@ public partial class MainWindow : Window
             return;
         }
 
+        var score = dialog.AutoMapTo21Keys ? ScoreEditor.MapToGenshinRange(recognizedScore).Score : recognizedScore;
+        if (dialog.AppendToCurrentScore)
+        {
+            try
+            {
+                var appended = PianoRollEditor.AppendScore(score);
+                if (appended is null)
+                {
+                    viewModel.NotifyStatus("Status_OcrNothingToAppend");
+                    return;
+                }
+                viewModel.NotifyStatus("Status_OcrAppended", appended.AddedNotes);
+                if (!dialog.AutoMapTo21Keys) PianoRollEditor.SetPitchLayoutMode(PianoRollPitchLayoutMode.Piano88);
+                ShowWorkspacePage(showPractice: false);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or OverflowException or ArgumentException)
+            {
+                AppLogger.Error("Failed to append OCR result.", exception);
+                viewModel.NotifyStatus("Ocr_AppendFailed");
+                MessageBox.Show(this, (string)FindResource("Ocr_AppendFailed"),
+                    (string)FindResource("Ocr_Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            return;
+        }
+
         if (viewModel.IsDirty)
         {
             var unsavedDialog = new UnsavedChangesDialog { Owner = this };
@@ -1254,11 +1280,6 @@ public partial class MainWindow : Window
             }
         }
 
-        var score = recognizedScore;
-        if (dialog.AutoMapTo21Keys)
-        {
-            score = ScoreEditor.MapToGenshinRange(score).Score;
-        }
         viewModel.ImportOcrScore(score, imagePath);
         PianoRollEditor.SetPitchLayoutMode(
             dialog.AutoMapTo21Keys

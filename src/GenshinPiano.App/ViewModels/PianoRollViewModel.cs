@@ -202,6 +202,13 @@ public sealed class PianoRollViewModel
             : 0;
     }
 
+    public ScoreAppendResult? AppendScore(ScoreDocument incoming)
+    {
+        if (Score is null) return null;
+        var result = ScoreConcatenator.Append(Score, incoming);
+        return result.AddedNotes > 0 && Commit(result.Score) ? result : null;
+    }
+
     public int GenerateShortPressDurations()
     {
         if (Score is null)
