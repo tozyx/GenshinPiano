@@ -106,6 +106,12 @@
 
 “设置 → 通知 → OCR 完成时通知”可以控制软件未聚焦时的 Windows 通知。
 
+### AI 辅助识谱
+
+在“导入 → AI 辅助识谱”中复制提示词，与谱图一起发给大模型。将返回的 JSON 文本粘贴到窗口，或选择 JSON 文件，点击“解析并检查”。核对音符数量和提示后导入，结果保留原音高并进入 88 键卷帘。
+
+此功能无需 OCR 插件。它使用专用识谱 JSON，不直接读取任意聊天内容；格式错误会指出字段位置，检查结果可复制回大模型修正。导入会检查当前未保存修改。格式说明见 [曲谱识别](OCR.md)。
+
 ### 更新、回滚与联网
 
 - “设置 → 更新”可控制联网、自动更新和是否接收预览版。
@@ -207,6 +213,12 @@ not request elevation automatically.
   correction is unsupported; incomplete layouts and unresolved structural anomalies are rejected.
   Always review and audition imported results. The dialog displays add-on version status and offers
   installation/updates. See [OCR component](OCR.md#english) for its scope and interface.
+
+### AI-assisted score import
+
+Choose **Import → AI-assisted score import**, copy the prompt, and send it with score images to your model. Paste the returned JSON or open a JSON file, choose **Parse and check**, and review the note counts and messages before importing. Original pitches open in the 88-key roll.
+
+No OCR add-on is required. This uses a dedicated score JSON format, not arbitrary chat text. Errors identify field locations, and the review report can be copied back to the model for correction. Existing unsaved changes are checked before replacement. See [Score recognition](OCR.md#english) for the format.
 
 ### Updates and support
 

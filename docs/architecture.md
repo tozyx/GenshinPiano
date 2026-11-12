@@ -65,6 +65,8 @@ MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换�
 
 OCR 模型和原生运行时位于 `addons/ocr`，不嵌入主程序 ZIP。主程序通过版本化 manifest 发现插件，通过文件 IPC 调用引擎，并验证返回曲谱。识别任务和插件替换互斥，避免运行时被正在执行的任务占用。详见 [OCR 插件](OCR.md)。
 
+AI 辅助识谱通过 `IAiScoreImporter` 将外部模型返回的小节/声部 JSON 转换为同一曲谱模型。文本与文件共用 `AiScoreJsonImporter`，窗口只处理输入、校验展示和导入确认，后续 API 请求可复用该转换层。
+
 更新流程分别管理主程序与 OCR 的版本和安装过程，共用下载校验能力。主程序通过独立更新器替换程序；OCR 在组件目录中暂存、校验和替换。详见 [更新机制](UPDATES.md)。
 
 ### 配置与持久化
@@ -143,6 +145,8 @@ See [Practice and rhythm-game guide](PRACTICE.md#english) for controls.
 ### OCR and update boundaries
 
 OCR models and native runtimes reside in `addons/ocr` and are excluded from the application ZIP. The host discovers the add-on through a versioned manifest, invokes it through file IPC, and validates its returned score. Recognition and add-on replacement are mutually exclusive so that an active task's runtime cannot be replaced. See [OCR component](OCR.md#english).
+
+AI-assisted import uses `IAiScoreImporter` to convert external model output, expressed as measures/voices, into the same score model. Text and files share `AiScoreJsonImporter`; the dialog handles input, review, and confirmation. Future API requests can reuse this conversion layer.
 
 Application and OCR updates manage versions and installation separately while sharing download verification. A separate updater replaces application files; OCR is staged, validated, and replaced within the component directory. See [Updates and component management](UPDATES.md#english).
 

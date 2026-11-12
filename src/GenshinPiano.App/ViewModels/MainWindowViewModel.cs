@@ -275,6 +275,18 @@ public sealed class MainWindowViewModel : ObservableObject
         SetStatus("Status_OcrImported", score.Tracks.Sum(track => track.Notes.Count));
     }
 
+    public void ImportAiScore(ScoreDocument score)
+    {
+        ArgumentNullException.ThrowIfNull(score);
+        CancelAutosave();
+        _recoveryService.Discard();
+        _workspace.ImportScore(score);
+        CurrentSourcePath = null;
+        RefreshFromWorkspace();
+        ScheduleAutosave();
+        SetStatus("AiImport_Imported", score.Tracks.Sum(track => track.Notes.Count));
+    }
+
     private void CreateNew()
     {
         CancelAutosave();

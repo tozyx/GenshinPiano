@@ -424,6 +424,8 @@
                 <Separator />
                 <MenuItem Header="{DynamicResource Menu_ImportOcrImage}"
                           Click="ImportOcrImageMenuItem_OnClick" />
+                <MenuItem Header="{DynamicResource AiImport_Title}"
+                          Click="ImportAiScoreMenuItem_OnClick" />
             </MenuItem>
             <MenuItem Header="{DynamicResource Menu_Settings}"
                       SubmenuOpened="SettingsMenuItem_OnSubmenuOpened"

@@ -124,6 +124,7 @@ The application runs in portable mode. User settings are stored in `config/setti
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
 - Experimental score OCR with an explicit numbered/staff selector: numbered notation supports watermark suppression, row/voice analysis, rhythm and tie reconstruction; native CPU SMT handles clear, flat piano scans and rendered sheet images with row recognition and bounded retries. Results can remain on the 88-key roll or be mapped to 21 keys. Photograph correction is unsupported, and unresolved structural anomalies cause recognition to fail
 - Dark/light themes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
+- AI-assisted score import: copy a prompt for an external vision model, paste its score JSON or open a JSON file, then validate and confirm import; no OCR add-on required
 - GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 
 The legacy format does not store BPM. Batch conversion currently imports files at 120 BPM and 480 PPQ, preserves legacy values as rhythmic spans, and generates an 80% key-hold duration using the Natural articulation rule. Existing `.gpiano` files with the same name in the output directory are skipped by default.

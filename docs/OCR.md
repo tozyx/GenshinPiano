@@ -1,4 +1,4 @@
-# OCR 插件
+# 曲谱识别与 AI 导入
 
 [简体中文](#简体中文) | [English](#english)
 
@@ -67,6 +67,24 @@ addons/ocr/
 
 操作入口见 [用户指南](USER_GUIDE.md)，构建与资源准备见 [工具说明](../tools/README.md)。
 
+### AI 辅助识谱导入
+
+“导入 → AI 辅助识谱”可复制识谱提示词。将提示词与谱图发送给支持图片的大模型，再把结果粘贴到窗口，或选择 UTF-8 JSON 文件。两种来源使用同一个解析器，不要求安装 OCR 附加包，也不会由软件自动发送图片。解析后显示小节、声部、音符数量与核对提示；存在提示时需确认后导入。导入以 88 键视图保留原始音高，保存时使用正常的 `.gpiano` 格式。
+
+识谱 JSON 与 `.gpiano` 是不同格式。固定 `format="genshinpiano-score"`、`version=1`；包含 `title`、`timeSignature`、`complete` 和 `measures`，可提供 `author`、`bpm` 和 `warnings`。未知速度可填 `bpm=null`，软件以 120 BPM 试听并提示核对。`complete=false` 的结果会被拒绝导入。
+
+每个小节以 `number` 从 1 连续编号，并包含 `notes`。事件使用稳定的 `voice` 名称、`pitch`、`start`、`duration`；同时开始的音符形成和弦，真正休止用 `pitch=null`。音高可为 MIDI 整数或 `C4`、`F#4` 等绝对音名，`C4` 对应 MIDI 60。不要将无法识读的音符写成休止。
+
+`start`、`duration` 和可选的小节 `length` 统一以四分音符为单位，支持数字及 `"1/3"` 等分数；6/8 一小节为 3 个四分音符。小节可声明拍号、速度变化或弱起长度。同声部、同音高且时间连续的延音用 `tie="start"/"continue"/"stop"` 表示，软件将其合并；连奏弧线不使用此字段。`uncertain=true` 和 `warnings` 用于标记待核对内容。
+
+软件检查字段、版本、事件范围、连续编号和延音关系，并提示声部覆盖缺口或 480 PPQ 下的时间量化。休止保留后续音符的时间位置；末尾纯休止不单独生成音符，软件会提示播放终点的限制。格式通过不代表识谱正确；导入后仍需试听。提示词、文本、文件与后续 API 结果共用这一转换边界。
+
+最小示例：
+
+~~~json
+{"format":"genshinpiano-score","version":1,"title":"Example","bpm":120,"timeSignature":[4,4],"complete":true,"warnings":[],"measures":[{"number":1,"notes":[{"voice":"melody","pitch":"C4","start":0,"duration":4}]}]}
+~~~
+
 ## English
 
 OCR is an optional score-recognition component with separate numbered-notation and staff-notation pipelines. Users explicitly choose the notation type in the import dialog. The host displays progress and handles preview/import; the engine converts images into the shared score model.
@@ -131,3 +149,21 @@ Progress uses `OCR_PROGRESS|StageName|0.0-1.0`. Stages are `Preparing`, `Waterma
 The host rejects incompatible protocols, executable paths outside the add-on, nonzero exit codes, timeouts, malformed JSON, and successful responses without a valid score. Cancellation terminates the engine and its inference subprocesses. Temporary communication files are cleaned up after the task. Common scan failures are `staff_scan_layout_unsupported` and `staff_scan_needs_review`.
 
 See the [User guide](USER_GUIDE.md#english) for controls and [Build and maintenance tools](../tools/README.md#english) for resource preparation and packaging.
+
+### AI-assisted score import
+
+Use **Import → AI-assisted score import** to copy the recognition prompt. Send it with score images to a vision-capable model, then paste the response or open a UTF-8 JSON file. Both sources use the same parser. No OCR add-on is required, and the application does not send images automatically. Parsing shows measure, voice, and note counts plus review notes; those notes must be acknowledged before import. The 88-key view preserves original pitches, and normal saving writes a `.gpiano` file.
+
+Recognition JSON is distinct from `.gpiano`. Set `format="genshinpiano-score"` and `version=1`. Include `title`, `timeSignature`, `complete`, and `measures`; `author`, `bpm`, and `warnings` may also be provided. Use `bpm=null` for unknown tempo; audition defaults to 120 BPM with a review note. Results with `complete=false` cannot be imported.
+
+Measures contain `number` (consecutive from 1) and `notes`. Events use stable `voice` names, `pitch`, `start`, and `duration`. Simultaneous notes form chords; genuine rests use `pitch=null`. Pitch can be a MIDI integer or an absolute scientific pitch such as `C4` or `F#4`; `C4` is MIDI 60. Never use a rest to conceal an unreadable note.
+
+`start`, `duration`, and optional measure `length` all use quarter notes, accepting numbers or fraction strings such as `"1/3"`. A 6/8 bar therefore has length 3. Measures can declare meter/tempo changes or a pickup length. Contiguous ties with matching voice and pitch use `tie="start"/"continue"/"stop"` and are merged by the importer; slurs do not use this field. `uncertain=true` and `warnings` identify readings that need review.
+
+The importer checks fields, versions, event bounds, numbering, and tie relationships, and flags voice-coverage gaps or time rounding at 480 PPQ. Rests preserve later note positions. Trailing rests do not create notes, and the importer flags the resulting playback-end limitation. Passing validation does not certify recognition accuracy; audition after import. Prompts, pasted text, files, and future API results share this conversion boundary.
+
+Minimal example:
+
+~~~json
+{"format":"genshinpiano-score","version":1,"title":"Example","bpm":120,"timeSignature":[4,4],"complete":true,"warnings":[],"measures":[{"number":1,"notes":[{"voice":"melody","pitch":"C4","start":0,"duration":4}]}]}
+~~~

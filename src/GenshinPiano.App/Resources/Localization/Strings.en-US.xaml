@@ -389,4 +389,54 @@
     <system:String x:Key="Update_OcrRecognitionBusy">Recognition is running. Finish it before updating OCR.</system:String>
     <system:String x:Key="Update_OcrInstalling">Downloading or installing OCR…</system:String>
     <system:String x:Key="Ocr_AddonUpdateAvailable">Update available: {0}</system:String>
+
+    <system:String x:Key="AiImport_Title">AI-assisted score import…</system:String>
+    <system:String x:Key="AiImport_Instructions">1. Copy the prompt and send it with score images to a vision-capable model.  2. Paste the returned JSON or open a JSON file.  3. Review and import; the 88-key view preserves original pitches.</system:String>
+    <system:String x:Key="AiImport_CopyPrompt">Copy recognition prompt</system:String>
+    <system:String x:Key="AiImport_Paste">Paste JSON text</system:String>
+    <system:String x:Key="AiImport_OpenFile">Open JSON file…</system:String>
+    <system:String x:Key="AiImport_JsonText">Score JSON returned by the model</system:String>
+    <system:String x:Key="AiImport_Review">Validation results and review notes</system:String>
+    <system:String x:Key="AiImport_Ready">Paste or open JSON, then choose Parse and check.</system:String>
+    <system:String x:Key="AiImport_Checking">Reading and checking…</system:String>
+    <system:String x:Key="AiImport_Validate">Parse and check</system:String>
+    <system:String x:Key="AiImport_Acknowledge">I have reviewed the notes above and want to import.</system:String>
+    <system:String x:Key="AiImport_CopyReport">Copy review report</system:String>
+    <system:String x:Key="AiImport_PromptCopied">Recognition prompt copied. Send it to the model with your score images.</system:String>
+    <system:String x:Key="AiImport_ReportCopied">Review report copied. You can send it to the model for correction.</system:String>
+    <system:String x:Key="AiImport_ClipboardError">Clipboard unavailable. Try again or use Ctrl+C / Ctrl+V.</system:String>
+    <system:String x:Key="AiImport_FileFilter">JSON files (*.json)|*.json</system:String>
+    <system:String x:Key="AiImport_FileError">Could not read the JSON file: {0}</system:String>
+    <system:String x:Key="AiImport_UnexpectedError">Could not process this data. Check its format or the application log.</system:String>
+    <system:String x:Key="AiImport_Failed">Validation failed. Correct the locations below and try again.</system:String>
+    <system:String x:Key="AiImport_Summary">{0} · {1} measures · {2} voices · {3} sounding notes</system:String>
+    <system:String x:Key="AiImport_Valid">Format and basic structure checks passed. Recognition still needs audition and review; import does not alter pitches or map game keys.</system:String>
+    <system:String x:Key="AiImport_Problem">{0}: {1}</system:String>
+    <system:String x:Key="AiImport_Imported">Imported {0} notes from AI score JSON.</system:String>
+    <system:String x:Key="AiImport_Error_Empty">The data is empty or contains no sounding notes.</system:String>
+    <system:String x:Key="AiImport_Error_Limit">Limits exceeded: 2,000,000 characters, 10,000 measures, 100,000 events, and 64 voices.</system:String>
+    <system:String x:Key="AiImport_Error_Json">Provide complete valid JSON, optionally in one json code fence, without surrounding explanations.</system:String>
+    <system:String x:Key="AiImport_Error_Type">The field has an incorrect data type.</system:String>
+    <system:String x:Key="AiImport_Error_Format">format must be genshinpiano-score. Use the prompt provided by this dialog.</system:String>
+    <system:String x:Key="AiImport_Error_Version">Only version=1 is supported.</system:String>
+    <system:String x:Key="AiImport_Error_Incomplete">complete=false means transcription is incomplete. Resolve missing sections before importing.</system:String>
+    <system:String x:Key="AiImport_Error_Range">The field is empty, too long, or outside its valid range.</system:String>
+    <system:String x:Key="AiImport_Error_Numbering">Measure numbers must be consecutive, starting at 1.</system:String>
+    <system:String x:Key="AiImport_Error_Bounds">Events need a nonnegative start, positive duration, and must fit within the measure.</system:String>
+    <system:String x:Key="AiImport_Error_Duplicate">Duplicate property or event with the same voice, pitch, and onset.</system:String>
+    <system:String x:Key="AiImport_Error_Precision">Duration is too short to represent in ticks. Check units or fractions.</system:String>
+    <system:String x:Key="AiImport_Error_Tie">Invalid tie: matching pitch/voice and contiguous timing are required, ending with stop.</system:String>
+    <system:String x:Key="AiImport_Error_Required">A required field is missing.</system:String>
+    <system:String x:Key="AiImport_Error_UnknownField">Unsupported field. Follow the format in the recognition prompt.</system:String>
+    <system:String x:Key="AiImport_Error_Number">Timing must be a number or valid fraction such as 1/3, with a positive denominator.</system:String>
+    <system:String x:Key="AiImport_Error_Pitch">Pitch must be a MIDI integer 0–127 or a scientific pitch such as C4, F#4, or Bb3.</system:String>
+    <system:String x:Key="AiImport_Warning_Model">{0} · Model note: {1}</system:String>
+    <system:String x:Key="AiImport_Warning_TempoDefault">{0} · Tempo is unknown; using 120 BPM for audition. Check the source.</system:String>
+    <system:String x:Key="AiImport_Warning_ShortMeasure">{0} · Shorter than the time signature; confirm a pickup or partial measure.</system:String>
+    <system:String x:Key="AiImport_Warning_Uncertain">{0} · The model marked this reading uncertain. Compare it with the source.</system:String>
+    <system:String x:Key="AiImport_Warning_VoiceGap">{0} · Voice {1} does not cover the measure; rests or notes may be missing.</system:String>
+    <system:String x:Key="AiImport_Warning_MissingVoice">{0} · Voice {1} is absent; write an explicit full-measure rest when inactive.</system:String>
+    <system:String x:Key="AiImport_Warning_Rounded">{0} · Some times cannot be represented exactly at 480 PPQ and were rounded to ticks.</system:String>
+    <system:String x:Key="AiImport_Warning_More">{0} · {1} additional review notes omitted. Check the score in smaller sections.</system:String>
+    <system:String x:Key="AiImport_Warning_TrailingRest">{0} · Trailing rests do not create notes; playback currently ends after the last sounding note.</system:String>
 </ResourceDictionary>

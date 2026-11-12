@@ -32,7 +32,7 @@
     <system:String x:Key="Menu_Import">导入(_I)</system:String>
     <system:String x:Key="Menu_ImportLegacyBatch">批量转换旧版曲谱…</system:String>
     <system:String x:Key="Menu_ImportMidiBatch">批量转换 MIDI…</system:String>
-    <system:String x:Key="Menu_ImportOcrImage">从曲谱图片识别…</system:String>
+    <system:String x:Key="Menu_ImportOcrImage">图片OMR识别…</system:String>
     <system:String x:Key="Ocr_Title">OCR 曲谱识别-beta</system:String>
     <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 附加包。请将附加包解压到：{0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR 附加包已就绪，引擎版本 {0}</system:String>
@@ -389,4 +389,54 @@
     <system:String x:Key="Update_OcrRecognitionBusy">正在识别，请结束识别后更新 OCR。</system:String>
     <system:String x:Key="Update_OcrInstalling">正在下载或安装 OCR…</system:String>
     <system:String x:Key="Ocr_AddonUpdateAvailable">可更新至 {0}</system:String>
+
+    <system:String x:Key="AiImport_Title">AI 识谱…</system:String>
+    <system:String x:Key="AiImport_Instructions">1. 复制提示词，与谱图一起发送给支持图片的大模型。  2. 粘贴返回的 JSON，或选择 JSON 文件。  3. 检查结果后导入；将以 88 键视图保留原音高。</system:String>
+    <system:String x:Key="AiImport_CopyPrompt">复制识谱提示词</system:String>
+    <system:String x:Key="AiImport_Paste">粘贴 JSON 文本</system:String>
+    <system:String x:Key="AiImport_OpenFile">选择 JSON 文件…</system:String>
+    <system:String x:Key="AiImport_JsonText">模型返回的识谱 JSON</system:String>
+    <system:String x:Key="AiImport_Review">校验结果与待核对内容</system:String>
+    <system:String x:Key="AiImport_Ready">粘贴或打开 JSON 后，点击“解析并检查”。</system:String>
+    <system:String x:Key="AiImport_Checking">正在读取并检查…</system:String>
+    <system:String x:Key="AiImport_Validate">解析并检查</system:String>
+    <system:String x:Key="AiImport_Acknowledge">我已核对以上提示，并确认导入。</system:String>
+    <system:String x:Key="AiImport_CopyReport">复制检查结果</system:String>
+    <system:String x:Key="AiImport_PromptCopied">识谱提示词已复制，请与谱图一起发送给大模型。</system:String>
+    <system:String x:Key="AiImport_ReportCopied">检查结果已复制，可交给大模型修正。</system:String>
+    <system:String x:Key="AiImport_ClipboardError">剪贴板暂时不可用，请稍后重试，或使用 Ctrl+C / Ctrl+V。</system:String>
+    <system:String x:Key="AiImport_FileFilter">JSON 文件 (*.json)|*.json</system:String>
+    <system:String x:Key="AiImport_FileError">无法读取 JSON 文件：{0}</system:String>
+    <system:String x:Key="AiImport_UnexpectedError">无法处理这份数据，请检查格式或查看运行日志。</system:String>
+    <system:String x:Key="AiImport_Failed">检查未通过，请根据下方位置修正后重试。</system:String>
+    <system:String x:Key="AiImport_Summary">《{0}》 · {1} 小节 · {2} 声部 · {3} 个发声音符</system:String>
+    <system:String x:Key="AiImport_Valid">格式和基础结构检查通过。识谱准确性仍需试听校对；导入不会自动改音高或映射游戏按键。</system:String>
+    <system:String x:Key="AiImport_Problem">{0}：{1}</system:String>
+    <system:String x:Key="AiImport_Imported">已从 AI 识谱 JSON 导入 {0} 个音符。</system:String>
+    <system:String x:Key="AiImport_Error_Empty">数据为空，或没有可导入的发声音符。</system:String>
+    <system:String x:Key="AiImport_Error_Limit">数据超过限制：最多 2,000,000 字符、10,000 小节、100,000 事件、64 声部。</system:String>
+    <system:String x:Key="AiImport_Error_Json">需要完整有效的 JSON；可带单个 json 代码围栏，不能附加解释文字。</system:String>
+    <system:String x:Key="AiImport_Error_Type">字段的数据类型不正确。</system:String>
+    <system:String x:Key="AiImport_Error_Format">format 必须为 genshinpiano-score；请使用本窗口提供的提示词。</system:String>
+    <system:String x:Key="AiImport_Error_Version">目前仅支持 version=1。</system:String>
+    <system:String x:Key="AiImport_Error_Incomplete">complete=false 表示转写尚未完整，请补全或澄清缺失内容后再导入。</system:String>
+    <system:String x:Key="AiImport_Error_Range">字段为空、过长或超出有效范围。</system:String>
+    <system:String x:Key="AiImport_Error_Numbering">小节 number 必须从 1 连续编号。</system:String>
+    <system:String x:Key="AiImport_Error_Bounds">事件起点不能为负，时值须大于零，且不能越过该小节。</system:String>
+    <system:String x:Key="AiImport_Error_Duplicate">存在重复字段或相同声部、音高、起点的重复事件。</system:String>
+    <system:String x:Key="AiImport_Error_Precision">时值过短，无法表示为有效 tick；请核对单位或分数。</system:String>
+    <system:String x:Key="AiImport_Error_Tie">延音线不匹配：须同音高、同声部且时间连续，并以 stop 结束。</system:String>
+    <system:String x:Key="AiImport_Error_Required">缺少必需字段。</system:String>
+    <system:String x:Key="AiImport_Error_UnknownField">存在未支持的字段，请按照提示词中的格式输出。</system:String>
+    <system:String x:Key="AiImport_Error_Number">时间须为数字或有效分数（如 1/3），分母必须大于零。</system:String>
+    <system:String x:Key="AiImport_Error_Pitch">音高须为 0–127 的 MIDI 整数，或 C4、F#4、Bb3 等科学音高。</system:String>
+    <system:String x:Key="AiImport_Warning_Model">{0} · 模型提示：{1}</system:String>
+    <system:String x:Key="AiImport_Warning_TempoDefault">{0} · 未提供速度，试听暂用 120 BPM，请按原谱核对。</system:String>
+    <system:String x:Key="AiImport_Warning_ShortMeasure">{0} · 小节长度短于拍号，请确认这是弱起或不完整小节。</system:String>
+    <system:String x:Key="AiImport_Warning_Uncertain">{0} · 模型标记为不确定，请对照原谱核对。</system:String>
+    <system:String x:Key="AiImport_Warning_VoiceGap">{0} · 声部 {1} 未覆盖完整小节，可能遗漏休止或音符。</system:String>
+    <system:String x:Key="AiImport_Warning_MissingVoice">{0} · 缺少声部 {1}；若此处不演奏，应明确写全小节休止。</system:String>
+    <system:String x:Key="AiImport_Warning_Rounded">{0} · 部分时间不能精确表示为 480 PPQ，已量化到相邻 tick。</system:String>
+    <system:String x:Key="AiImport_Warning_More">{0} · 另有 {1} 条提示未显示，请分段检查。</system:String>
+    <system:String x:Key="AiImport_Warning_TrailingRest">{0} · 尾部纯休止不会生成音符；当前播放会在最后一个发声音符结束处停止。</system:String>
 </ResourceDictionary>
