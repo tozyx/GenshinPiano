@@ -1,89 +1,76 @@
-# v3 架构
+# 系统架构
 
-## 设计目标
+GenshinPiano 使用 C#/.NET 10 与 WPF，面向 Windows x64。项目以统一曲谱模型连接编辑、导入、试听、练习和游戏按键输出，各种输入格式和系统能力通过适配器接入。
 
-GenshinPiano v3 采用 Windows 专用的 C#/.NET 10 LTS 与 WPF 技术栈。曲谱数据与界面、文件格式和按键输出解耦，避免旧版本中窗口、解析和播放逻辑相互依赖的问题。
+## 模块职责与依赖
 
-## 依赖方向
+~~~text
+GenshinPiano.App ──────────> Application ──> Core
+        └────────────────> Infrastructure ──> Application / Core
+GenshinPiano.Ocr.Engine ──> Application / Infrastructure / Core
+GenshinPiano.Updater ─────> 独立更新进程
+~~~
 
-```text
-GenshinPiano.App
-    ├── GenshinPiano.Application
-    └── GenshinPiano.Infrastructure
-             ├── GenshinPiano.Application
-             └── GenshinPiano.Core
+- `Core`：曲谱模型、校验、音高映射、编辑规则和播放事件规划，不依赖 WPF 或 Win32。
+- `Application`：工作区、导入转换、试听时间轴、练习会话、OCR 和更新用例，以及外部能力的接口。
+- `Infrastructure`：JSON、MIDI、MusicXML、旧曲谱格式、Windows 输入、音频输出、OCR 进程和更新源的实现。
+- `App`：窗口、视图模型、绘制控件、配置服务和依赖组装。
+- `Ocr.Engine`：可选识别引擎，在独立进程中处理图片并返回曲谱。
+- `Updater`：等待主程序退出后替换程序文件，处理备份、失败恢复和重启。
 
-GenshinPiano.Application ──> GenshinPiano.Core
-```
+## 曲谱与工作区
 
-`Core` 不依赖 WPF、文件系统、MIDI 库或 Win32。`Application` 只定义用例和抽象端口。`Infrastructure` 实现 JSON、MIDI、旧格式和 Windows 输入适配器。`App` 负责视图、对话框和依赖组装。
+`ScoreDocument` 是各功能共享的数据模型，使用 MIDI 音高和整数 tick 表达音乐。游戏中的字母按键仅在输出映射阶段生成，文件不依赖某个游戏键位布局。
 
-## 适配器
+`ScoreEditor` 根据编辑操作生成新的曲谱文档，`ScoreWorkspace` 管理当前文档、文件路径和未保存状态。编辑器、试听与练习从同一工作区读取内容。保存时捕获文档快照，先写入临时文件再替换目标文件；若保存期间继续编辑，新改动仍保持未保存状态。
 
-- `JsonScoreDocumentSerializer`：`.gpiano` 权威工程格式
-- `LegacyGenshinPianoImporter`：旧版 `.GenshinPiano` 只读兼容
-- `WindowsKeyboardInput`：基于 Win32 `SendInput` 扫描码的游戏播放
+导入流程将外部数据转换为同一模型：
 
-以下适配器仍在计划中：
+~~~text
+.gpiano ──> 版本迁移与校验 ──┐
+MIDI ─────> 导入转换 ────────┤
+旧版曲谱 ─> 格式转换 ────────┼──> ScoreDocument ──> 编辑 / 试听 / 练习 / 演奏
+图片 ─────> OCR 插件 ────────┘
+~~~
 
-- `MidiScoreImporter` / `MidiScoreExporter`：MIDI 交换格式
-- `RawInputRecorder`：全局键盘录入
-- `MusicXmlScoreImporter`：将可替换五线谱 OMR 后端输出的 MusicXML 转为内部曲谱，保留弱起、双谱表、独立声部游标、和弦和跨小节连音；模型选择与阶段计划见 [五线谱 OCR 技术选型](STAFF_OCR.md)
+MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换保留相对路径并默认跳过已有输出。`MusicXmlScoreImporter` 提供 MusicXML 的时序、声部、和弦与连音转换。当前五线谱 OCR 的 SMT 输出直接转换为曲谱，不经过 MusicXML。
 
-## 播放管线
+文件字段和兼容规则见 [曲谱格式](gpiano-format.md)。
 
-`ScorePlaybackPlanner` 将未静音音轨的音符展开为独立的按下和抬起事件，结合 tempo map 计算绝对时间，再按照 `PlaybackSettings` 进行移调和 21 键音域处理。`ScorePlaybackService` 使用单调时钟执行完整按键时间轴，因此实际保持时间来自音符的 `durationTick`。取消、手动暂停、失焦或异常时都会释放仍处于按下状态的按键。
+## 编辑器与界面
 
-`WindowsForegroundProcessGuard` 通过前台窗口所属进程控制播放许可，默认白名单为国服 `YuanShen.exe` 和国际服 `GenshinImpact.exe`。失焦期间的时长会加入暂停累计值，因此重新聚焦后从原时间位置继续，不会补发暂停期间的音符。
+界面采用 MVVM。`PianoRollEditor` 负责编辑交互，`PianoRollSurface` 使用 `OnRender` 绘制网格、音符和选区，避免为每个音符创建独立控件。21 键、88 键和曲谱音域视图共用底层曲谱。
 
-首次播放会先等待白名单窗口获得焦点，再要求窗口连续保持前台 3 秒后启动；倒计时期间失焦会重置倒计时。`WindowsGlobalEscapeListener` 使用不拦截输入的低级键盘钩子监听 Esc，仅当播放进行中且白名单窗口位于前台时请求暂停，因此游戏仍能正常处理该 Esc 按键。
+编辑器的音符操作、试听和浮层按职责拆分；`PracticePage` 的音频和工具栏也分别组织。领域编辑、练习判定与试听时间计算位于 Core/Application，WPF 层负责输入、绘制和页面状态。
 
-WPF 层只负责倒计时、状态展示和取消操作；具体 Win32 调用被隔离在 Infrastructure，因此核心时间与映射逻辑可使用假键盘进行自动化测试。
+主题使用资源字典与语义画刷，界面通过 `DynamicResource` 引用颜色。中英文文案位于本地化资源字典；用户的曲谱标题、作者和音轨名不随界面语言切换。
 
-## 旧谱转换
+## 播放、试听与练习
 
-`LegacyGenshinPianoImporter` 读取旧版按键和时值代码，转换为标准 MIDI 音高与 tick。旧版时值保存为 `rhythmTick`，音符采用 `auto` 与 `natural`，实际保持时间按节奏跨度的 80% 生成。`LegacyBatchConversionService` 递归处理目录，保留相对路径，通过统一 JSON 序列化器写出 `.gpiano`。旧格式不含 BPM，当前默认采用 120 BPM 与 480 PPQ，且不覆盖既有输出文件。
+游戏演奏由 `ScorePlaybackPlanner` 结合速度图、移调和音域策略生成按下/抬起时间轴，再由播放服务使用单调时钟调度。`WindowsKeyboardInput` 通过 `SendInput` 输出按键，并跟踪需要释放的键。
 
-## UI 结构
+前台进程检查限制按键发送的目标。失焦、取消或异常会释放按键；恢复焦点后按暂停后的时间位置继续，避免补发失焦期间的音符。进入游戏演奏前提供前台确认与倒计时。
 
-WPF 界面采用 MVVM。`PianoRollEditor` 由固定 21 键键位栏和可滚动的 `PianoRollSurface` 组成。表面通过 `OnRender` 直接绘制网格、音符和自动时长轮廓，不为每个音符创建 WPF 子控件。
+本地试听使用独立音频输出，不向游戏发送按键。采样音色使用预解码 PCM 和单输出流多声部混音；重复同音可以保留前一次延音，空闲后释放音频设备。
 
-卷帘支持双击空白处创建、Ctrl 点选、空白拖动框选、Ctrl 框选追加、吸附成组移动、Ctrl+拖动成组复制、Delete 批量删除和 Ctrl+Z/Y 撤销重做。创建音符时向左吸附到当前网格单元起点，拖动时则吸附到最近的网格线。复制过程中原音符保持显示，目标位置使用带 `+` 标记的半透明预览。右键任一选中音符会对整组选区打开持续时间浮层，可通过紧凑节拍按钮并在 10%–95% 内即时调整发声比例。`[`/`]` 在选中音符时批量缩短/延长节拍，未选中时调整吸附网格并同步工具栏选项。Shift+滚轮横移，Ctrl+滚轮缩放时间轴，Ctrl+Shift+滚轮缩放键位高度。左侧键位栏提供“字母 + 按键、数字 + 按键、字母、数字”四种模式；数字简谱以 `1-`、`1`、`1+` 表示低、中、高三个八度，避免依赖字体的组合上下点。
+`PracticeSession` 管理按键组合与练习进度。跟弹等待完成当前组合，节奏练习按时间推进；音游模式自动播放曲谱，玩家输入用于时间判定与反馈。`PracticeSurface` 绘制按键预览和垂直卷帘，判定不依赖逐音符的 WPF 控件。
 
-新建音符采用当前吸附网格作为 `rhythmTick`，默认为 `auto + natural + 80%`。持续时间浮层会保存为自动时长；30%、50%、80%、95% 映射到四种预设，其余数值保存为 `custom + gateRatio`。
+操作细节见 [练习与音游](PRACTICE.md)。
 
-所有增删改通过 Core 中的 `ScoreEditor` 生成新的不可变 `ScoreDocument`，再由双向绑定写回 `ScoreWorkspace`。因此保存和播放始终使用同一份最新曲谱，领域模型不依赖 WPF 类型。
+## OCR 与更新边界
 
-### 练习与音游管线
+OCR 模型和原生运行时位于 `addons/ocr`，不嵌入主程序 ZIP。主程序通过版本化 manifest 发现插件，通过文件 IPC 调用引擎，并验证返回曲谱。识别任务和插件替换互斥，避免运行时被正在执行的任务占用。详见 [OCR 插件](OCR.md)。
 
-`PracticePage` 复用当前 `ScoreDocument` 与 `ScorePlaybackPlanner` 生成按键组合及绝对时间。跟弹模式按组合完成情况推进；节奏模式使用单调渲染时钟推进卷帘，并通过提前/延后容错窗口判定按下事件。两种模式均只判断按下，不判断松开。
+更新流程分别管理主程序与 OCR 的版本和安装过程，共用下载校验能力。主程序通过独立更新器替换程序；OCR 在组件目录中暂存、校验和替换。详见 [更新机制](UPDATES.md)。
 
-`PracticeSurface` 使用 `OnRender` 绘制游戏按键、胶片式组合预览和 21 轨垂直卷帘。卷帘音符、上隐、标记、当前音符、暂停淡化及音游固定高度均属于绘制状态，不创建逐音符 WPF 控件。切换模式、返回当前音符和音符高度变化通过 `CompositionTarget.Rendering` 与单调时钟执行平滑过渡。
+## 配置与持久化
 
-音游是垂直卷帘上的独立开关，不改变跟弹/节奏标签的选中状态。启用后 `ScoreAuditionService` 自动播放完整曲谱，输入仅进入时间判定并触发独立的短促反馈音。反馈音量和输入偏移属于 `PracticeUserSettings`；延迟校准只影响音游判定。暂停、停止、切换页面或改变音色时，自动播放任务通过取消令牌停止。
+程序以 `AppContext.BaseDirectory` 为便携目录基准：
 
-七种 21 键采样在资源阶段统一峰值余量。运行时采样播放器与 Windows MIDI 输出使用同一条感知主音量曲线，音量只施加一次，避免主音量与力度增益重复衰减。
+- `config/settings.json`：主题、语言、编辑器、练习、音量和更新偏好。
+- `data/recovery`：未保存曲谱的恢复数据。
+- `logs`：运行日志。
+- `addons/ocr`：可选 OCR 引擎与模型。
+- `update-cache`：更新下载、暂存目录和回滚备份。
 
-### 用户配置
-
-`UserSettingsService` 负责加载、校验和原子写入用户配置。配置文件位于可执行文件目录下的 `config/settings.json`，路径以 `AppContext.BaseDirectory` 为基准，不受启动命令当前目录影响。配置采用带版本号的 UTF-8 JSON；字段缺失、取值非法或文件损坏时使用安全默认值，写入失败不会中断编辑和播放。当前保存卷帘吸附网格、默认演奏法、音名显示模式、练习速度、音符间距、音游输入偏移及反馈音量。发布包应保证整个程序目录可写，适合 ZIP 解压和便携运行；若未来安装到 `Program Files`，需改用用户可写安装目录或恢复用户数据目录方案。
-
-### 主题
-
-主题由 `GenshinPiano.App/Resources/Themes` 下的资源字典组成：
-
-- `Theme.Base.xaml` 定义控件的共享尺寸和语义样式。
-- `Theme.Dark.xaml` 与 `Theme.Light.xaml` 分别定义 Fluent 主题和语义颜色。
-- 界面通过 `DynamicResource` 引用颜色，`ThemeService` 在运行时替换颜色字典。
-
-新增主题时应沿用现有语义画刷键，避免在页面中直接写颜色值。
-
-### 本地化
-
-界面文案位于 `GenshinPiano.App/Resources/Localization`。XAML 使用 `DynamicResource`，ViewModel 和文件对话框通过 `ILocalizationService` 获取文案。切换语言时替换字符串字典并刷新动态状态文本。
-
-曲谱标题、作者、轨道名称等属于用户数据，不随界面语言切换而改写。新增语言文件时必须与 `Strings.zh-CN.xaml` 保持相同的资源键集合。
-
-### 窗口与未保存检测
-
-主窗口使用 WPF `WindowChrome` 和软件内标题栏，保留系统缩放边框，同时自行提供拖动、双击最大化、最小化、还原和关闭操作。`ScoreWorkspace.IsDirty` 是未保存状态的唯一来源：新建或打开后为干净状态，曲谱文档发生替换时标脏，成功保存后恢复干净。关闭按钮、文件菜单退出和 Alt+F4 均进入统一的“保存 / 不保存 / 取消”流程；新文件选择保存时先请求目标路径。
+配置写入采用临时文件替换；缺失或损坏的配置按安全默认值加载。单实例协调使用互斥锁和命名管道，避免多个实例同时写入同一份便携数据，并将后续启动时打开的曲谱转交已有窗口。

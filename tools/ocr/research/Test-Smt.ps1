@@ -37,7 +37,7 @@ $artifacts = @(
 )
 foreach ($artifact in $artifacts) {
     if (-not (Test-Path -LiteralPath $artifact.Path -PathType Leaf)) {
-        throw "Download the artifact first: $($artifact.Path). See docs/SMT_EXPERIMENT.md."
+        throw "Download the artifact first: $($artifact.Path). See tools/README.md for resource setup."
     }
     if ((Get-FileHash -LiteralPath $artifact.Path -Algorithm SHA256).Hash -ne $artifact.Hash) {
         throw "Artifact SHA-256 mismatch: $($artifact.Path)"

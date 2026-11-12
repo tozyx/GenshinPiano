@@ -91,28 +91,32 @@
 - “导入 → 批量转换旧版曲谱”：转换旧 `.GenshinPiano` 文件。
 - MIDI 导入后可根据用途保留原始短音，或使用编辑菜单中的按下时长工具重新生成。
 
-### OCR 曲谱识别（测试功能）
+### OCR 曲谱识别
 
 1. 打开“导入 → OCR 曲谱识别”。
 2. 首次使用时点击“下载附加包”；软件会从 GitCode/GitHub 下载、校验签名并安装 OCR 引擎。
 3. 明确选择“简谱”或“五线谱”，再选择图片、水印抑制强度及是否识别伴奏。软件不会自动猜测谱面类型。
 4. 点击“开始识别”，完成后检查音符数量和置信度，再导入卷帘。
 
-简谱路线使用 RapidOCR、数字分类与几何后处理，识别数字、上下音高点、升降号、延音线、节拍线、谱行/声部和伴奏。五线谱路线使用附加包内置的便携 Python 3.11 CPU 环境运行 Oemer，先生成 MusicXML，再导入完整音高、时值、声部和小节结构。两条路线由“谱面类型”下拉框选择，并不会同时运行。
+简谱路线使用 RapidOCR、数字分类与几何后处理，识别数字、上下音高点、升降号、延音线、节拍线、谱行/声部和伴奏。五线谱路线使用插件内的原生 SMT CPU 后端，按钢琴谱行识别并重建音高、时值、声部和小节结构，不需要安装 Python。两条路线由“谱面类型”下拉框选择。
 
 默认关闭“自动映射到原神 21 键”：识别结果会切换到 88 键卷帘，保留升降音及完整音域。启用后，导入结果会切换到 21 键并执行一次可撤销的自动映射；无法合理映射的半音或严重越界音符可能被忽略。谱面类型、水印模式、伴奏和自动映射选项都会保存到便携配置中。
 
-五线谱识别计算量明显更高，在 CPU 上可能需要数分钟并占用较多内存。复杂排版、低分辨率、水印、倾斜照片和复调结构仍可能产生错误；导入后请人工试听和校对。
+五线谱目前支持清晰、平直的钢琴扫描谱和电子谱截图，暂不支持拍照谱矫正。无法完整定位谱表或仍存在明显结构异常时，会提示更换图片；识别成功后仍需人工试听和校对。支持范围与识别原理见 [OCR 插件](OCR.md)。
 
 “设置 → 通知 → OCR 完成时通知”可以控制软件未聚焦时的 Windows 通知。
 
 ### 更新、回滚与联网
 
 - “设置 → 更新”可控制联网、自动更新和是否接收预览版。
+- 主界面“检查更新”会同时显示程序和 OCR 的已安装/最新版本，可分别选择更新程序、安装或更新 OCR，或取消。
+- OCR 窗口也显示插件是否为最新版；OCR 下载安装需由用户主动选择。
 - 更新包支持断点下载，并使用 SHA-256 与 RSA 签名验证。
 - 下载完成后可选择重启更新；更新失败会尽量恢复原版本。
 - “手动回滚”可恢复最近一次备份。
 - OCR 是独立附加组件，更新或回滚主程序不会删除已安装的 `addons`。
+
+后台已在下载主程序时，手动更新会等待并复用相同版本的下载；关闭版本窗口或选择 OCR 不会中断后台任务。完整行为见 [更新机制](UPDATES.md)。
 
 ### 日志与反馈
 
@@ -194,20 +198,26 @@ not request elevation automatically.
 - Legacy `.GenshinPiano` files can be batch-converted from the Import menu.
 - Experimental score OCR is available from **Import → OCR score recognition**. Explicitly choose
   numbered or staff notation; the application does not auto-detect the notation type. Numbered
-  notation uses the native OCR/post-processing pipeline, while staff notation runs the bundled
-  portable Python/Oemer backend and imports its MusicXML result. The two pipelines are selected by
-  the dropdown and are not run together.
+  notation uses the OCR/post-processing pipeline, while staff notation uses the bundled native CPU
+  SMT backend to recognize piano systems and reconstruct the score. No Python installation is needed.
 - With **Auto-map to 21 keys** disabled, results open in the 88-key roll and preserve accidentals and
   the full pitch range. Enabling it switches to 21 keys and applies one undoable mapping operation;
   unmappable accidentals or notes far outside the range may be ignored. OCR choices are persisted.
-- Staff OMR is CPU intensive and can take several minutes. Always review and audition imported
-  results. The signed OCR add-on can be downloaded or updated from the dialog.
+- Staff recognition supports clear, flat piano scans and rendered sheet images. Photograph
+  correction is unsupported; incomplete layouts and unresolved structural anomalies are rejected.
+  Always review and audition imported results. The dialog displays add-on version status and offers
+  installation/updates. See [OCR component](OCR.md) for its scope and interface.
 
 ### Updates and support
 
 Network access, automatic updates, and preview releases are controlled under **Settings → Updates**.
 Packages use resumable downloads plus SHA-256/RSA verification. The optional OCR component is kept
 when the main application is updated or rolled back.
+
+Manual **Check for updates** shows installed/latest versions for the application and OCR together,
+with separate update/install actions and Cancel. OCR downloads are user initiated. A manual
+application update waits for and reuses a background download of the same version; closing the
+overview or choosing OCR does not interrupt that background task. See [Update behavior](UPDATES.md).
 
 Logs are stored under `logs`. Report problems with relevant logs at:
 

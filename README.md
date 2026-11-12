@@ -67,7 +67,7 @@
 - `src/GenshinPiano.Infrastructure`：JSON、MIDI、旧格式及 Windows 系统适配器
 - `src/GenshinPiano.App`：WPF 桌面界面
 - `tests/GenshinPiano.Core.Tests`：核心模型测试
-- `docs`：格式与架构文档
+- `docs`：使用指南、架构、曲谱格式、OCR 与更新机制说明
 
 ## 开发环境
 
@@ -77,9 +77,9 @@
 
 ## 如何构建
 
-开发环境配置、调试、测试、Release 发布、更新签名及 OCR 附加包构建请参阅：
+环境配置、构建、发布和维护工具用法请参阅：
 
-[开发与构建指南](docs/BUILDING.md)
+[构建与维护工具](tools/README.md)
 
 ## 使用帮助
 
@@ -90,6 +90,8 @@
 练习页面、音游判定、延迟校准与标记续练的详细说明请参阅：
 
 [练习与音游指南](docs/PRACTICE.md)
+
+项目架构、曲谱格式、OCR 和更新机制见 [项目文档](docs/README.md)。
 
 有功能建议或发现问题？欢迎在 [GitHub Issues](https://github.com/tozyx/GenshinPiano/issues) 中提出。
 

@@ -78,7 +78,7 @@ The optional OCR add-on recognizes numbered notation and printed staff notation.
 - `src/GenshinPiano.Infrastructure`: JSON, MIDI, legacy-format, and Windows platform adapters
 - `src/GenshinPiano.App`: WPF desktop application
 - `tests/GenshinPiano.Core.Tests`: core model tests
-- `docs`: format and architecture documentation
+- `docs`: user guides, architecture, score format, OCR, and update behavior
 
 ## Development Environment
 
@@ -88,9 +88,9 @@ The optional OCR add-on recognizes numbered notation and printed staff notation.
 
 ## How to build
 
-For development setup, debugging, tests, Release publishing, update signing, and OCR add-on packaging, see:
+For environment setup, building, publishing, and maintenance tools, see:
 
-[Development and build guide](docs/BUILDING.md#english)
+[Build and maintenance tools](tools/README.md#english)
 
 ## User guide
 
@@ -101,6 +101,8 @@ For application controls, piano-roll shortcuts, MIDI/OCR import, local audition,
 For practice views, timing judgments, latency calibration, and marked-note resume behavior, see:
 
 [Practice and rhythm-game guide](docs/PRACTICE.md#english)
+
+See [project documentation](docs/README.md) for the architecture, score format, OCR, and update behavior.
 
 Have a feature suggestion or found a bug? Please open a [GitHub Issue](https://github.com/tozyx/GenshinPiano/issues).
 
@@ -120,7 +122,7 @@ The application runs in portable mode. User settings are stored in `config/setti
 - Safe in-game keyboard performance with target-window detection, a three-second countdown, focus-loss pause, global Esc pause, and guaranteed key release
 - Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
-- Experimental score OCR with an explicit numbered/staff selector: numbered notation supports watermark suppression, row/voice analysis, rhythm and tie reconstruction, while the Oemer/MusicXML staff pipeline preserves polyphony, accidentals, and durations; results can remain on the 88-key roll or be mapped to 21 keys
+- Experimental score OCR with an explicit numbered/staff selector: numbered notation supports watermark suppression, row/voice analysis, rhythm and tie reconstruction; native CPU SMT handles clear, flat piano scans and rendered sheet images with row recognition and bounded retries. Results can remain on the 88-key roll or be mapped to 21 keys. Photograph correction is unsupported, and unresolved structural anomalies cause recognition to fail
 - Dark/light themes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
 - GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 
@@ -128,7 +130,7 @@ The legacy format does not store BPM. Batch conversion currently imports files a
 
 ## Acknowledgements and Third-Party Projects
 
-Thanks to [DryWetMIDI](https://github.com/melanchall/drywetmidi) for MIDI file handling and [NAudio](https://github.com/naudio/NAudio) for local audio decoding and mixing. The optional OCR add-on uses [RapidOcrNet](https://github.com/BobLd/RapidOcrNet), [ONNX Runtime](https://github.com/microsoft/onnxruntime), and [Oemer](https://github.com/BreezeWhite/oemer); its numbered-notation model weights are derived from [OrpheusNet](https://github.com/Akane0721/OrpheusNet). Tests use [xUnit](https://github.com/xunit/xunit).
+Thanks to [DryWetMIDI](https://github.com/melanchall/drywetmidi) for MIDI file handling and [NAudio](https://github.com/naudio/NAudio) for local audio decoding and mixing. The optional OCR add-on uses [RapidOcrNet](https://github.com/BobLd/RapidOcrNet), [ONNX Runtime](https://github.com/microsoft/onnxruntime), [CrispEmbed](https://github.com/CrispStrobe/CrispEmbed), and the [SMT model](https://huggingface.co/cstr/smt-grandstaff-GGUF); its numbered-notation model weights are derived from [OrpheusNet](https://github.com/Akane0721/OrpheusNet). Thanks to [Oemer](https://github.com/BreezeWhite/oemer) for the earlier staff backend and comparison baseline. Tests use [xUnit](https://github.com/xunit/xunit).
 
 See the [instrument sample attribution](src/GenshinPiano.App/Assets/Audio/THIRD-PARTY-NOTICE.md) for audio sources and their respective licenses, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for additional notices. We thank the authors and contributors of these projects.
 
