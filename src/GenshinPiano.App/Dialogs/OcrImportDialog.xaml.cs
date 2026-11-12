@@ -279,8 +279,12 @@ public partial class OcrImportDialog : Window
                 GetText("Ocr_Completed"),
                 noteCount,
                 Result.Confidence);
-            if (Result.Warnings is { Count: > 0 })
-                ResultText.Text+=Environment.NewLine+string.Join(Environment.NewLine,Result.Warnings.Distinct());
+            if (Result.Warnings is { Count: > 0 } warnings)
+            {
+                var localizedWarnings = OcrWarningLocalizer.Localize(warnings, GetText);
+                if (localizedWarnings.Count > 0)
+                    ResultText.Text += Environment.NewLine + string.Join(Environment.NewLine, localizedWarnings);
+            }
             ImportButton.Visibility = Visibility.Visible;
             NotifyCompletionIfInactive(
                 success: true,

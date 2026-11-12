@@ -69,6 +69,16 @@
     <system:String x:Key="Ocr_StageSuperResolution">正在超分辨率处理并识别音符…</system:String>
     <system:String x:Key="Ocr_StageReconstruction">正在重建节拍和声部…</system:String>
     <system:String x:Key="Ocr_Completed">识别完成：{0} 个音符，整体置信度 {1:P0}。建议导入后人工校对。</system:String>
+    <system:String x:Key="Ocr_Warning_AccompanimentExcluded">检测到伴奏声部，但已按当前设置从导入结果中排除。</system:String>
+    <system:String x:Key="Ocr_Warning_MultipleVoices">根据谱面布局推断出了多个简谱声部，请核对各声部的时间对齐。</system:String>
+    <system:String x:Key="Ocr_Warning_SingleVoice">根据谱面布局推断为单声部简谱。</system:String>
+    <system:String x:Key="Ocr_Warning_Geometry">八度点、减时线和附点通过图形位置推断，播放前请核对识别不确定的符号。</system:String>
+    <system:String x:Key="Ocr_Warning_AccidentalsAndTies">已保留识别到的升降记号和延长线，请核对连音弧线及其他识别不确定的记号。</system:String>
+    <system:String x:Key="Ocr_Warning_TempoDefault">未识别速度，初始设置为 120 BPM，请导入后调整。</system:String>
+    <system:String x:Key="Ocr_Warning_TimeSignatureDefault">未识别首个拍号，显示暂用 4/4，请核对拍号。</system:String>
+    <system:String x:Key="Ocr_Warning_OpenTies">图片末尾有延续到后续页面的连音，请核对结尾时值。</system:String>
+    <system:String x:Key="Ocr_Warning_UnmatchedTie">部分连音起点位于图片之外，请核对连音。</system:String>
+    <system:String x:Key="Ocr_Warning_StaffScanReview">仅支持清晰平直的钢琴扫描谱，播放前请核对音符、节奏和连音。</system:String>
     <system:String x:Key="Ocr_Failed">识别失败：{0}</system:String>
     <system:String x:Key="Ocr_UnknownError">未知错误</system:String>
     <system:String x:Key="Ocr_Cancelled">识别已取消。</system:String>

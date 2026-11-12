@@ -69,6 +69,16 @@
     <system:String x:Key="Ocr_StageSuperResolution">Enhancing and recognizing notes…</system:String>
     <system:String x:Key="Ocr_StageReconstruction">Reconstructing rhythm and voices…</system:String>
     <system:String x:Key="Ocr_Completed">Recognition complete: {0} notes, {1:P0} overall confidence. Manual review is recommended.</system:String>
+    <system:String x:Key="Ocr_Warning_AccompanimentExcluded">Accompaniment voices were detected but excluded from the imported score.</system:String>
+    <system:String x:Key="Ocr_Warning_MultipleVoices">Multiple numbered-notation voices were inferred from the page layout. Review their alignment.</system:String>
+    <system:String x:Key="Ocr_Warning_SingleVoice">A single numbered-notation voice was inferred from the page layout.</system:String>
+    <system:String x:Key="Ocr_Warning_Geometry">Octave dots, rhythm underlines and augmentation dots were inferred geometrically. Review low-confidence symbols before playback.</system:String>
+    <system:String x:Key="Ocr_Warning_AccidentalsAndTies">Recognized accidentals and extension dashes were preserved. Review curved ties and other low-confidence notation marks.</system:String>
+    <system:String x:Key="Ocr_Warning_TempoDefault">Tempo was not recognized; the initial tempo is 120 BPM. Adjust it after importing.</system:String>
+    <system:String x:Key="Ocr_Warning_TimeSignatureDefault">No initial time signature was recognized; 4/4 is used for display. Review the time signature.</system:String>
+    <system:String x:Key="Ocr_Warning_OpenTies">The image ends with open ties; review the ending durations.</system:String>
+    <system:String x:Key="Ocr_Warning_UnmatchedTie">An incoming tie could not be matched; review tied notes.</system:String>
+    <system:String x:Key="Ocr_Warning_StaffScanReview">Only clear, flat piano scans are supported. Review recognized notes, rhythm and ties before playback.</system:String>
     <system:String x:Key="Ocr_Failed">Recognition failed: {0}</system:String>
     <system:String x:Key="Ocr_UnknownError">Unknown error</system:String>
     <system:String x:Key="Ocr_Cancelled">Recognition cancelled.</system:String>
