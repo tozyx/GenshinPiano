@@ -9,7 +9,8 @@ public sealed class ReleaseMirrorUpdateSource(
     string sourceName,
     Uri releasesEndpoint,
     bool frameworkDependent,
-    SemanticVersion currentVersion) : IUpdateSource, INamedUpdateSource
+    SemanticVersion currentVersion,
+    bool includeInstalledVersions = false) : IUpdateSource, INamedUpdateSource
 {
     public string SourceName => sourceName;
 
@@ -32,7 +33,7 @@ public sealed class ReleaseMirrorUpdateSource(
             foreach (var release in fallbackReleases)
             {
                 if (!SemanticVersion.TryParse(release.TagName, out var version) ||
-                    version.CompareTo(currentVersion) <= 0 ||
+                    (!includeInstalledVersions && version.CompareTo(currentVersion) <= 0) ||
                     (string.Equals(channel, "stable", StringComparison.OrdinalIgnoreCase) &&
                      version.PreRelease is not null)) continue;
                 fallbackCandidates.Add(new ReleaseCandidate(
@@ -71,7 +72,7 @@ public sealed class ReleaseMirrorUpdateSource(
             {
                 continue;
             }
-            if (version.CompareTo(currentVersion) <= 0)
+            if (!includeInstalledVersions && version.CompareTo(currentVersion) <= 0)
             {
                 continue;
             }

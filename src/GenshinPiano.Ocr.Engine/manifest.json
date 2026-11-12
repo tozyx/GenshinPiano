@@ -1,7 +1,26 @@
 {
   "schemaVersion": 1,
   "protocolVersion": 1,
-  "engineVersion": "0.8.0",
+  "engineVersion": "0.9.0",
   "executable": "GPianoOcrEngine.exe",
-  "launchMode": "file"
+  "launchMode": "file",
+  "staffBackend": "smt",
+  "requiredFiles": [
+    "staff-omr/smt/crispembed.exe",
+    "staff-omr/smt/crispembed.dll",
+    "staff-omr/smt/ggml.dll",
+    "staff-omr/smt/ggml-base.dll",
+    "staff-omr/smt/ggml-cpu.dll",
+    "staff-omr/smt/msvcp140.dll",
+    "staff-omr/smt/vcruntime140.dll",
+    "staff-omr/smt/vcruntime140_1.dll",
+    "staff-omr/smt/smt-grandstaff-q8_0.gguf",
+    "models/orpheusnet/orpheusnet-srcnn-x3.onnx",
+    "models/orpheusnet/orpheusnet-middle.onnx",
+    "models/orpheusnet/orpheusnet-metadata.onnx",
+    "models/v5/ch_PP-OCRv5_mobile_det.onnx",
+    "models/v5/ch_ppocr_mobile_v2.0_cls_infer.onnx",
+    "models/v5/latin_PP-OCRv5_rec_mobile_infer.onnx",
+    "models/v5/ppocrv5_latin_dict.txt"
+  ]
 }

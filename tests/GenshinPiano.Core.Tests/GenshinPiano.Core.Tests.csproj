@@ -17,5 +17,9 @@
     <ProjectReference Include="..\..\src\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" />
+    <ProjectReference Include="..\..\src\GenshinPiano.Ocr.Engine\GenshinPiano.Ocr.Engine.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\GenshinPiano.App\Services\OcrAddonPackageManager.cs" Link="OcrAddonPackageManager.cs" />
   </ItemGroup>
 </Project>

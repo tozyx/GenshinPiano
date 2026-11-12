@@ -19,7 +19,7 @@
     <Description>GPiano OCR Engine</Description>
     <Company>tozyx</Company>
     <Authors>tozyx</Authors>
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
@@ -33,8 +33,5 @@
     <None Include="models\orpheusnet\*.onnx"
           CopyToOutputDirectory="PreserveNewest"
           TargetPath="models\orpheusnet\%(Filename)%(Extension)" />
-    <None Include="staff-omr\oemer_bridge.py"
-          CopyToOutputDirectory="PreserveNewest"
-          TargetPath="staff-omr\oemer_bridge.py" />
   </ItemGroup>
 </Project>

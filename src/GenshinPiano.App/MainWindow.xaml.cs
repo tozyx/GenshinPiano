@@ -1356,8 +1356,8 @@ public partial class MainWindow : Window
         {
             _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
             _subscribedViewModel.UpdateStatus.PropertyChanged -= UpdateStatus_OnPropertyChanged;
-            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested -=
-                UpdateStatus_OnReadyUpdateRequested;
+            _subscribedViewModel.UpdateStatus.ManualCheckRequested -=
+                UpdateStatus_OnManualCheckRequested;
         }
 
         _subscribedViewModel = e.NewValue as MainWindowViewModel;
@@ -1365,8 +1365,8 @@ public partial class MainWindow : Window
         {
             _subscribedViewModel.PropertyChanged += ViewModel_OnPropertyChanged;
             _subscribedViewModel.UpdateStatus.PropertyChanged += UpdateStatus_OnPropertyChanged;
-            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested +=
-                UpdateStatus_OnReadyUpdateRequested;
+            _subscribedViewModel.UpdateStatus.ManualCheckRequested +=
+                UpdateStatus_OnManualCheckRequested;
             UpdateNetworkDependentUpdateMenuItems(animate: false);
         }
     }
@@ -1378,17 +1378,11 @@ public partial class MainWindow : Window
             return;
         }
 
+        _ocrImportDialog?.RefreshNetworkAccess();
+
         Dispatcher.BeginInvoke(
             DispatcherPriority.Loaded,
             () => UpdateNetworkDependentUpdateMenuItems(animate: UpdatesMenuItem.IsSubmenuOpen));
-    }
-
-    private async void UpdateStatus_OnReadyUpdateRequested(object? sender, EventArgs e)
-    {
-        if (DataContext is MainWindowViewModel viewModel)
-        {
-            await ShowReadyUpdateDialogAsync(viewModel);
-        }
     }
 
     private void ViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1452,8 +1446,8 @@ public partial class MainWindow : Window
         {
             _subscribedViewModel.PropertyChanged -= ViewModel_OnPropertyChanged;
             _subscribedViewModel.UpdateStatus.PropertyChanged -= UpdateStatus_OnPropertyChanged;
-            _subscribedViewModel.UpdateStatus.ReadyUpdateRequested -=
-                UpdateStatus_OnReadyUpdateRequested;
+            _subscribedViewModel.UpdateStatus.ManualCheckRequested -=
+                UpdateStatus_OnManualCheckRequested;
             _subscribedViewModel.UpdateStatus.Dispose();
             _subscribedViewModel = null;
         }
@@ -1475,14 +1469,8 @@ public partial class MainWindow : Window
         e.Handled = true;
         if (viewModel.UpdateStatus.Stage == GenshinPiano.Application.Updates.UpdateStage.Available)
         {
-            var downloadDialog = new UpdateReadyDialog(
-                "Update_DownloadTitle", "Update_DownloadMessage", "Update_DownloadAction")
-            { Owner = this };
-            downloadDialog.ShowDialog();
-            if (downloadDialog.RestartRequested)
-            {
-                await viewModel.UpdateStatus.DownloadAvailableUpdateAsync();
-            }
+            var command = viewModel.UpdateStatus.CheckForUpdatesCommand;
+            if (command.CanExecute(null)) command.Execute(null);
             return;
         }
         if (!viewModel.UpdateStatus.CanInstall) return;

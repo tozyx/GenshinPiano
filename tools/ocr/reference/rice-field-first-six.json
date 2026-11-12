@@ -1,0 +1,23 @@
+{
+  "source": "0011877-w-b-1.png",
+  "sourceSha256": "dbfb462d9b433e21a05fa84d2788015ed84d48798d95c35038cb0abc8fc4f152",
+  "scope": "Manually transcribed from high-resolution input crops, first six physical measures; same content in both scan resolutions. Not derived from either backend output.",
+  "meter": "4/4",
+  "notation": "Kern pitch: C=C3, c=C4, cc=C5; reciprocal durations; r=rest; [ and ] delimit ties.",
+  "upper": [
+    "2r 4r 16r 16cc 16cc 16a",
+    "8.cc 16cc 8r 8cc 16dd 16dd 16dd 16dd 8ee 8cc",
+    "8cc 16a 16cc 8r 8cc 16dd 16dd 16dd 16dd 8ee 8cc",
+    "8.cc 16cc 8r 8cc 16dd 16dd 16dd 16dd 8cc 8ee",
+    "4ee 8.r 16cc[ 16cc] 16a 16cc 16a 16cc 16a 16cc 16a",
+    "8cc 16a 16cc 8cc 16cc 16a 16dd 16dd 16dd 16dd 8ee 8cc"
+  ],
+  "lower": [
+    "1r",
+    "8C 8G 4c 8BB 8G 4B",
+    "8AA 8E 4A 8GG 8E 4G",
+    "8D 8A 4c 8GG 8D 4G",
+    "8C 8G 4f 4e 4r",
+    "8C 8G 4c 8BB 8G 4B"
+  ]
+}

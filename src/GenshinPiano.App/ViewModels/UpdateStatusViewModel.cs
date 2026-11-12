@@ -11,8 +11,10 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     private readonly IUserSettingsService _settings;
     private readonly ILocalizationService _localization;
     private CancellationTokenSource? _operationCancellation;
+    private CancellationTokenSource? _manualCancellation;
     private UpdateState _state;
     private bool _manualCheckStarted;
+    private bool _checkingVersions;
 
     public UpdateStatusViewModel(
         UpdateCoordinator coordinator,
@@ -32,7 +34,7 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand CheckForUpdatesCommand { get; }
 
-    public event EventHandler? ReadyUpdateRequested;
+    public event Func<CancellationToken, Task>? ManualCheckRequested;
 
     public bool NetworkAccessEnabled
     {
@@ -73,7 +75,7 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
             OnPropertyChanged();
             if (!value)
             {
-                CancelActiveOperation();
+                _operationCancellation?.Cancel();
             }
         }
     }
@@ -92,14 +94,15 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     public UpdateStage Stage => _state.Stage;
 
     public string CurrentVersionText => $"v{_coordinator.CurrentVersion}";
+    public SemanticVersion CurrentVersion => _coordinator.CurrentVersion;
 
     public double Progress => _state.Progress;
 
     public int ProgressPercent => (int)Math.Round(Math.Clamp(Progress, 0, 1) * 100);
 
-    public bool IsIndicatorVisible => Stage is not UpdateStage.Idle and not UpdateStage.Disabled;
+    public bool IsIndicatorVisible => _checkingVersions || Stage is not UpdateStage.Idle and not UpdateStage.Disabled;
 
-    public bool IsIndeterminate => Stage is UpdateStage.Checking or UpdateStage.Verifying;
+    public bool IsIndeterminate => _checkingVersions || Stage is UpdateStage.Checking or UpdateStage.Verifying;
 
     public bool IsReady => Stage == UpdateStage.Ready;
 
@@ -108,7 +111,8 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     public bool CanInstall => IsReady && !string.IsNullOrWhiteSpace(_state.DownloadedPath) &&
                               File.Exists(_state.DownloadedPath);
 
-    public string StatusText => Stage switch
+    public string StatusText => _checkingVersions && Stage is not (UpdateStage.Downloading or UpdateStage.Verifying or UpdateStage.Ready)
+        ? _localization.GetString("Update_CheckingAll") : Stage switch
     {
         UpdateStage.Disabled => _localization.GetString("Update_StatusDisabled"),
         UpdateStage.Checking => _localization.GetString("Update_StatusChecking"),
@@ -130,22 +134,41 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
         await RunCheckAsync(automaticallyDownload: true, cancellationToken);
     }
 
-    private Task CheckForUpdatesAsync()
+    private async Task CheckForUpdatesAsync()
     {
         _manualCheckStarted = true;
-        if (CanInstall)
+        using var cancellation = new CancellationTokenSource();
+        _manualCancellation = cancellation;
+        SetCheckingVersions(true);
+        try
         {
-            ReadyUpdateRequested?.Invoke(this, EventArgs.Empty);
-            return Task.CompletedTask;
+            if (ManualCheckRequested is not null)
+                foreach (Func<CancellationToken, Task> handler in ManualCheckRequested.GetInvocationList())
+                    await handler(cancellation.Token);
         }
-        return RunCheckAsync(AutomaticUpdatesEnabled, CancellationToken.None);
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        finally { _manualCancellation = null; SetCheckingVersions(false); }
     }
 
-    public Task DownloadAvailableUpdateAsync()
+    public void FinishVersionCheck() => SetCheckingVersions(false);
+
+    private void SetCheckingVersions(bool value)
     {
-        _manualCheckStarted = true;
-        return RunCheckAsync(automaticallyDownload: true, CancellationToken.None);
+        _checkingVersions = value;
+        OnPropertyChanged(nameof(IsIndicatorVisible));
+        OnPropertyChanged(nameof(IsIndeterminate));
+        OnPropertyChanged(nameof(StatusText));
     }
+
+    public async Task<UpdateManifest?> CheckApplicationVersionAsync(CancellationToken cancellationToken)
+    {
+        var manifest = await _coordinator.InspectLatestAsync(_settings.Current.Update.Channel, cancellationToken);
+        _coordinator.ObserveCheck(manifest);
+        return manifest;
+    }
+
+    public Task DownloadSelectedUpdateAsync(UpdateManifest manifest, CancellationToken cancellationToken) =>
+        _coordinator.DownloadAsync(manifest, cancellationToken);
 
     private async Task RunCheckAsync(bool automaticallyDownload, CancellationToken cancellationToken)
     {
@@ -176,6 +199,7 @@ public sealed class UpdateStatusViewModel : ObservableObject, IDisposable
     private void CancelActiveOperation()
     {
         _operationCancellation?.Cancel();
+        _manualCancellation?.Cancel();
     }
 
     private void Coordinator_OnStateChanged(object? sender, UpdateState state)

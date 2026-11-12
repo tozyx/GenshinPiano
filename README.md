@@ -109,7 +109,7 @@
 - 安全的游戏内按键演奏：目标窗口检测、3 秒倒计时、失焦暂停、全局 Esc 暂停及结束时强制释放按键
 - 直接打开或批量转换 MIDI，兼容导入旧版 `.GenshinPiano` 曲谱
 - 曲谱分析、21 键音域调整、智能按下时长优化及短按时长生成
-- 实验性曲谱 OCR：可手动选择简谱或五线谱；简谱支持水印抑制、谱行/声部分析、节拍与连音重建，五线谱通过 Oemer/MusicXML 保留复调、升降音和时值；结果可保留在 88 键卷帘或自动映射到 21 键
+- 实验性曲谱 OCR：可手动选择简谱或五线谱；简谱支持水印抑制、谱行/声部分析、节拍与连音重建，五线谱使用原生 SMT CPU 后端，支持清晰平直的钢琴扫描谱或电子谱截图、分行识别及异常重试；结果可保留在 88 键卷帘或自动映射到 21 键。暂不支持拍照谱，结构异常未能消除时会提示换图
 - 深浅主题、中英文界面、便携配置、`.gpiano` 文件关联和单实例运行
 - GitHub/GitCode 双更新源、断点下载、RSA 签名验证、无感更新、更新日志与手动回滚
 
@@ -117,7 +117,7 @@
 
 ## 致谢与第三方项目
 
-感谢 [DryWetMIDI](https://github.com/melanchall/drywetmidi) 提供 MIDI 文件处理能力，[NAudio](https://github.com/naudio/NAudio) 支持本地音频解码与混音。可选 OCR 附加包使用 [RapidOcrNet](https://github.com/BobLd/RapidOcrNet)、[ONNX Runtime](https://github.com/microsoft/onnxruntime) 和 [Oemer](https://github.com/BreezeWhite/oemer)，简谱模型权重源自 [OrpheusNet](https://github.com/Akane0721/OrpheusNet)。测试使用 [xUnit](https://github.com/xunit/xunit)。
+感谢 [DryWetMIDI](https://github.com/melanchall/drywetmidi) 提供 MIDI 文件处理能力，[NAudio](https://github.com/naudio/NAudio) 支持本地音频解码与混音。可选 OCR 附加包使用 [RapidOcrNet](https://github.com/BobLd/RapidOcrNet)、[ONNX Runtime](https://github.com/microsoft/onnxruntime)、[CrispEmbed](https://github.com/CrispStrobe/CrispEmbed) 和 [SMT 模型](https://huggingface.co/cstr/smt-grandstaff-GGUF)，简谱模型权重源自 [OrpheusNet](https://github.com/Akane0721/OrpheusNet)。感谢 [Oemer](https://github.com/BreezeWhite/oemer) 提供此前五线谱后端及对比研究基础。测试使用 [xUnit](https://github.com/xunit/xunit)。
 
 乐器采样的来源及各自授权见[音色素材声明](src/GenshinPiano.App/Assets/Audio/THIRD-PARTY-NOTICE.md)；其他第三方声明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。感谢以上项目的作者与贡献者。
 

@@ -13,36 +13,15 @@ namespace GenshinPiano.App.Controls;
 
 public partial class PracticePage : UserControl
 {
-    private sealed record Step(long Tick, TimeSpan Offset, IReadOnlyList<GenshinKey> Keys);
-    private IReadOnlyList<Step> _steps = [];
-    private readonly HashSet<GenshinKey> _matched = [];
+    private readonly PracticeSession _session = new();
+    private IReadOnlyList<IReadOnlyList<GenshinKey>> _practiceSequence = [];
     private MainWindowViewModel? _viewModel;
-    private int _index, _combo, _hits, _attempts;
-    private bool _running, _timed;
-    private TimeSpan _timedPosition;
-    private TimeSpan _timedOrigin;
-    private long _timedStarted;
-    private double _playbackSpeed = 1;
     private int _practiceInstrument = AuditionInstrumentIds.WindsongLyre;
     private bool _renderClockAttached;
     private bool _playIconShowsPause;
     private bool _restoringPracticeSettings = true;
-    private double _inputDelayMs;
-    private int _bookmark = -1;
     private int _navigationVersion;
     private bool _positioning;
-    private bool _resumeClock;
-    private bool _rhythmGame;
-    private readonly HashSet<ComboBox> _expandingPracticeOptions = [];
-    private bool _expandingPracticeVolume;
-    private bool _isDraggingPracticeVolume;
-    private CancellationTokenSource? _practiceVolumeCloseCts;
-    private CancellationTokenSource? _scorePlaybackCts;
-    private Task? _scorePlaybackTask;
-    private int _scorePlaybackGeneration;
-    private static readonly TimeSpan TimedPreRoll = TimeSpan.FromMilliseconds(1200);
-    private static readonly TimeSpan ApproachLeadTime = TimeSpan.FromMilliseconds(1500);
-    private bool UsesClock => _timed || _rhythmGame;
 
     public PracticePage()
     {
@@ -50,12 +29,12 @@ public partial class PracticePage : UserControl
         RestorePracticeSettings();
         Surface.BookmarkChanged += (_, index) =>
         {
-            _bookmark = index;
+            _session.Bookmark = index;
             ReturnBookmarkButton.IsEnabled = index >= 0;
         };
         PreviewMouseRightButtonDown += (_, e) =>
         {
-            _bookmark = -1;
+            _session.Bookmark = -1;
             Surface.SetBookmark(-1);
             ReturnBookmarkButton.IsEnabled = false;
             e.Handled = true;
@@ -94,7 +73,7 @@ public partial class PracticePage : UserControl
         if (System.Windows.Application.Current is App app)
         {
             var settings = app.UserSettingsService.Current.Practice;
-            _inputDelayMs = settings.InputDelayMs;
+            _session.InputDelayMs = settings.InputDelayMs;
             PracticeHitSound.SetVolume(settings.RhythmHitVolume);
             PlaybackSpeedBox.SelectedIndex = settings.PlaybackSpeed switch
             {
@@ -116,6 +95,7 @@ public partial class PracticePage : UserControl
 
         _restoringPracticeSettings = false;
     }
+
     private void InitializeSelectionIndicators()
     {
         SelectionIndicatorAnimator.Move(
@@ -125,290 +105,10 @@ public partial class PracticePage : UserControl
             false);
         SelectionIndicatorAnimator.Move(
             PracticeModeTabIndicator,
-            _timed ? TimedModeButton : FollowModeButton,
+            _session.IsTimed ? TimedModeButton : FollowModeButton,
             PracticeModeTabsHost,
             false);
         Surface.Focus();
-    }
-
-    private static ComboBox? FindPracticeOptionCombo(object sender)
-    {
-        if (sender is not Border { Child: StackPanel panel }) return null;
-        foreach (UIElement child in panel.Children)
-            if (child is Grid { Children.Count: > 0 } reveal && reveal.Children[0] is ComboBox combo)
-                return combo;
-        return null;
-    }
-
-    private Border? FindPracticeOptionHost(ComboBox combo)
-    {
-        if (ReferenceEquals(combo, PlaybackSpeedBox)) return PlaybackSpeedOption;
-        if (ReferenceEquals(combo, NoteSpacingBox)) return NoteSpacingOption;
-        if (ReferenceEquals(combo, PracticeInstrumentBox)) return InstrumentOption;
-        return null;
-    }
-
-    private void PracticeOption_OnMouseEnter(object sender, MouseEventArgs e) =>
-        AnimatePracticeOption(sender, true);
-
-    private void PracticeOption_OnMouseLeave(object sender, MouseEventArgs e)
-    {
-        var combo = FindPracticeOptionCombo(sender);
-        if (combo is null) return;
-        if (combo.IsDropDownOpen || combo.IsMouseOver || _expandingPracticeOptions.Contains(combo)) return;
-        AnimatePracticeOption(sender, false);
-    }
-
-    private void PracticeOptionCombo_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is ComboBox combo && _expandingPracticeOptions.Contains(combo))
-            CompletePracticeOptionExpansion(combo);
-    }
-
-    private void PracticeOption_OnDropDownClosed(object sender, EventArgs e)
-    {
-        if (sender is ComboBox combo && FindPracticeOptionHost(combo) is { } host &&
-            !host.IsMouseOver && !combo.IsMouseOver)
-            AnimatePracticeOption(host, false);
-        Surface.Focus();
-    }
-
-    private double GetPracticeOptionWidth(ComboBox combo)
-    {
-        var english = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "en";
-        return ReferenceEquals(combo, PracticeInstrumentBox)
-            ? 168
-            : english ? 92 : 96;
-    }
-
-    private void CompletePracticeOptionExpansion(ComboBox combo)
-    {
-        if (combo.Parent is not Grid reveal) return;
-        var width = GetPracticeOptionWidth(combo);
-        combo.Width = width;
-        reveal.BeginAnimation(WidthProperty, null);
-        reveal.BeginAnimation(OpacityProperty, null);
-        reveal.Width = width;
-        reveal.Opacity = 1;
-        reveal.IsHitTestVisible = true;
-        _expandingPracticeOptions.Remove(combo);
-        reveal.UpdateLayout();
-    }
-
-    private void AnimatePracticeOption(object sender, bool expanded)
-    {
-        var combo = FindPracticeOptionCombo(sender);
-        if (combo?.Parent is not Grid reveal) return;
-
-        var expandedWidth = GetPracticeOptionWidth(combo);
-        combo.Width = expandedWidth;
-        if (expanded)
-        {
-            reveal.IsHitTestVisible = true;
-            _expandingPracticeOptions.Add(combo);
-        }
-        else reveal.IsHitTestVisible = false;
-
-        var duration = TimeSpan.FromMilliseconds(170);
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var widthAnimation = new DoubleAnimation(expanded ? expandedWidth : 0, duration)
-            { EasingFunction = easing };
-        var opacityAnimation = new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = easing };
-        if (expanded)
-        {
-            widthAnimation.Completed += (_, _) =>
-            {
-                _expandingPracticeOptions.Remove(combo);
-                reveal.IsHitTestVisible = true;
-                if (sender is Border host && !host.IsMouseOver && !combo.IsMouseOver && !combo.IsDropDownOpen)
-                    AnimatePracticeOption(host, false);
-            };
-        }
-
-        reveal.BeginAnimation(WidthProperty, widthAnimation);
-        reveal.BeginAnimation(OpacityProperty, opacityAnimation);
-    }
-
-    private void PracticeVolumeOption_OnMouseEnter(object sender, MouseEventArgs e)
-    {
-        CancelPracticeVolumeClose();
-        if (!_expandingPracticeVolume && PracticeVolumeReveal.ActualWidth < 169)
-            AnimatePracticeVolume(true);
-    }
-
-    private void PracticeVolumeOption_OnMouseLeave(object sender, MouseEventArgs e)
-    {
-        if (_expandingPracticeVolume || _isDraggingPracticeVolume || PracticeVolumeSlider.IsMouseCaptureWithin)
-            return;
-        SchedulePracticeVolumeClose();
-    }
-
-    private void PracticeVolumeSlider_OnMouseEnter(object sender, MouseEventArgs e) =>
-        CancelPracticeVolumeClose();
-
-    private void PracticeVolumeSlider_OnMouseLeave(object sender, MouseEventArgs e)
-    {
-        if (!_isDraggingPracticeVolume && !PracticeVolumeSlider.IsMouseCaptureWithin)
-            SchedulePracticeVolumeClose();
-    }
-
-    private void CancelPracticeVolumeClose()
-    {
-        _practiceVolumeCloseCts?.Cancel();
-        _practiceVolumeCloseCts?.Dispose();
-        _practiceVolumeCloseCts = null;
-    }
-
-    private async void SchedulePracticeVolumeClose()
-    {
-        CancelPracticeVolumeClose();
-        var cancellation = new CancellationTokenSource();
-        _practiceVolumeCloseCts = cancellation;
-        try
-        {
-            await Task.Delay(240, cancellation.Token);
-            if (!IsPointerNear(PracticeVolumeOption, 8) &&
-                !IsPointerNear(PracticeVolumeSlider, 8) &&
-                !_isDraggingPracticeVolume && !PracticeVolumeSlider.IsMouseCaptureWithin)
-            {
-                AnimatePracticeVolume(false);
-            }
-        }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            if (ReferenceEquals(_practiceVolumeCloseCts, cancellation))
-            {
-                _practiceVolumeCloseCts.Dispose();
-                _practiceVolumeCloseCts = null;
-            }
-        }
-    }
-
-    private static bool IsPointerNear(FrameworkElement element, double tolerance)
-    {
-        var point = Mouse.GetPosition(element);
-        return point.X >= -tolerance && point.Y >= -tolerance &&
-               point.X <= element.ActualWidth + tolerance &&
-               point.Y <= element.ActualHeight + tolerance;
-    }
-
-    private void AnimatePracticeVolume(bool expanded)
-    {
-        if (expanded)
-        {
-            PracticeVolumeReveal.IsHitTestVisible = true;
-            _expandingPracticeVolume = true;
-        }
-        else PracticeVolumeReveal.IsHitTestVisible = false;
-
-        var duration = TimeSpan.FromMilliseconds(170);
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var widthAnimation = new DoubleAnimation(expanded ? 170 : 0, duration)
-            { EasingFunction = easing };
-        if (expanded)
-        {
-            widthAnimation.Completed += (_, _) =>
-            {
-                _expandingPracticeVolume = false;
-                if (!IsPointerNear(PracticeVolumeOption, 8) && !IsPointerNear(PracticeVolumeSlider, 8))
-                    SchedulePracticeVolumeClose();
-            };
-        }
-        PracticeVolumeReveal.BeginAnimation(WidthProperty, widthAnimation);
-        PracticeVolumeReveal.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(expanded ? 1 : 0, duration) { EasingFunction = easing });
-    }
-
-    private void CompletePracticeVolumeExpansion()
-    {
-        PracticeVolumeReveal.BeginAnimation(WidthProperty, null);
-        PracticeVolumeReveal.BeginAnimation(OpacityProperty, null);
-        PracticeVolumeReveal.Width = 170;
-        PracticeVolumeReveal.Opacity = 1;
-        PracticeVolumeReveal.IsHitTestVisible = true;
-        _expandingPracticeVolume = false;
-        PracticeVolumeReveal.UpdateLayout();
-    }
-
-    private void PracticeVolumeSlider_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        CancelPracticeVolumeClose();
-        if (_expandingPracticeVolume) CompletePracticeVolumeExpansion();
-        _isDraggingPracticeVolume = true;
-        PracticeVolumeSlider.CaptureMouse();
-        UpdatePracticeVolumeFromPointer(e);
-        e.Handled = true;
-    }
-
-    private void PracticeVolumeSlider_OnPreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (!_isDraggingPracticeVolume) return;
-        if (e.LeftButton != MouseButtonState.Pressed)
-        {
-            EndPracticeVolumeDrag();
-            return;
-        }
-        UpdatePracticeVolumeFromPointer(e);
-        e.Handled = true;
-    }
-
-    private void PracticeVolumeSlider_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (!_isDraggingPracticeVolume) return;
-        UpdatePracticeVolumeFromPointer(e);
-        EndPracticeVolumeDrag();
-        e.Handled = true;
-    }
-
-    private void UpdatePracticeVolumeFromPointer(MouseEventArgs e)
-    {
-        const double trackMargin = 6;
-        var usableWidth = Math.Max(1, PracticeVolumeSlider.ActualWidth - trackMargin * 2);
-        var x = e.GetPosition(PracticeVolumeSlider).X;
-        PracticeVolumeSlider.Value = Math.Clamp((x - trackMargin) / usableWidth, 0, 1);
-    }
-
-    private void EndPracticeVolumeDrag()
-    {
-        _isDraggingPracticeVolume = false;
-        if (PracticeVolumeSlider.IsMouseCaptured) PracticeVolumeSlider.ReleaseMouseCapture();
-        if (!IsPointerNear(PracticeVolumeOption, 8) && !IsPointerNear(PracticeVolumeSlider, 8))
-            SchedulePracticeVolumeClose();
-        Surface.Focus();
-    }
-
-    private void PracticeVolumeSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        ApplyGlobalAuditionVolume(e.NewValue);
-        UpdatePracticeVolumeValueTrack();
-        if (!_restoringPracticeSettings && System.Windows.Application.Current is App app)
-            app.UserSettingsService.SetAuditionVolume((int)Math.Round(e.NewValue * 100));
-    }
-
-    private void PracticeVolumeSlider_OnSizeChanged(object sender, SizeChangedEventArgs e) =>
-        UpdatePracticeVolumeValueTrack();
-
-    private void UpdatePracticeVolumeValueTrack()
-    {
-        if (PracticeVolumeValueTrack is null || PracticeVolumeSlider is null) return;
-        var availableWidth = Math.Max(0, PracticeVolumeSlider.ActualWidth - 12);
-        PracticeVolumeValueTrack.Width = availableWidth * PracticeVolumeSlider.Value;
-    }
-
-    private static void ApplyGlobalAuditionVolume(double normalizedVolume)
-    {
-        if (System.Windows.Application.Current is App { AuditionService: { } service })
-            service.SetVolume((int)Math.Round(Math.Clamp(normalizedVolume, 0, 1) * 127));
-    }
-
-    private void SyncGlobalAuditionVolume()
-    {
-        if (System.Windows.Application.Current is not App app) return;
-        var normalized = app.UserSettingsService.Current.Editor.AuditionVolume / 100d;
-        if (Math.Abs(PracticeVolumeSlider.Value - normalized) > 0.001)
-            PracticeVolumeSlider.Value = normalized;
-        ApplyGlobalAuditionVolume(normalized);
     }
 
     private void Attach()
@@ -427,17 +127,20 @@ public partial class PracticePage : UserControl
 
     private void Reload()
     {
-        _bookmark = -1;
+        Reset();
         Surface.SetBookmark(-1);
         ReturnBookmarkButton.IsEnabled = false;
-        Reset(false);
         try
         {
-            _steps = _viewModel is null ? [] : ScorePlaybackPlanner.Create(_viewModel.CurrentScore).Events
-                .Where(x => x.KeysDown.Count > 0).Select(x => new Step(x.Tick, x.Offset, x.KeysDown)).ToArray();
-            Status(_steps.Count == 0 ? "Practice_NoNotes" : "Practice_Ready");
+            _session.LoadScore(_viewModel?.CurrentScore);
+            Status(_session.Steps.Count == 0 ? "Practice_NoNotes" : "Practice_Ready");
         }
-        catch (Exception ex) { _steps = []; PracticeStatusText.Text = ex.Message; }
+        catch (Exception exception)
+        {
+            PracticeStatusText.Text = exception.Message;
+        }
+        Surface.SetStepTicks(_session.Steps.Select(step => step.Tick).ToArray());
+        _practiceSequence = _session.Steps.Select(step => step.KeysDown).ToArray();
         Refresh();
     }
 
@@ -485,154 +188,87 @@ public partial class PracticePage : UserControl
         await PreviewAsync(key);
     }
 
-    private async Task PreviewAsync(GenshinKey key)
-    {
-        if (_rhythmGame)
-        {
-            PracticeHitSound.Play();
-            return;
-        }
-        if (System.Windows.Application.Current is not GenshinPiano.App.App app ||
-            app.AuditionService is not { } auditionService ||
-            _viewModel is not { } viewModel ||
-            !GenshinKeyMap.TryGetPitch(key, out var pitch))
-        {
-            return;
-        }
-
-        try
-        {
-            await auditionService.PreviewNoteAsync(
-                pitch,
-                _practiceInstrument,
-                duration: TimeSpan.FromMilliseconds(220));
-        }
-        catch (Exception exception)
-        {
-            AppLogger.Warning($"Practice key preview failed: {exception.Message}");
-        }
-    }
-
-    private async Task WarmPracticeAudioAsync()
-    {
-        if (!IsLoaded || !IsVisible ||
-            System.Windows.Application.Current is not App { AuditionService: { } service }) return;
-        try { await service.PrepareAsync(_practiceInstrument); }
-        catch (Exception exception)
-        {
-            AppLogger.Warning($"Practice audio warmup failed: {exception.Message}");
-        }
-    }
     private void Accept(GenshinKey key)
     {
-        if (!_running || _index >= _steps.Count) return;
-        if (UsesClock)
-        {
-            _timedPosition = CurrentTimedPosition();
-            ExpireNotes();
-            if (!_running || _index >= _steps.Count) return;
-        }
-        if (UsesClock && !PracticeTiming.IsHit(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
-        {
-            _attempts++;
-            _combo = 0;
-            Surface.FlashWrongKey(key);
-            Stats();
-            return;
-        }
-        if (_matched.Contains(key)) return;
-        _attempts++;
-        var target = _steps[_index].Keys;
-        if (!target.Contains(key))
-        {
-            _combo = 0;
-            Surface.FlashWrongKey(key);
-        }
-        else
-        {
-            if (_matched.Add(key)) _hits++;
-            if (target.All(_matched.Contains)) { _combo++; Advance(); }
-        }
-        Stats();
+        var previousIndex = _session.Index;
+        var result = _session.Accept(key);
+        if (result == PracticeKeyResult.Wrong) Surface.FlashWrongKey(key);
+        if (!RefreshAfterProgress(previousIndex) && result != PracticeKeyResult.Ignored) Stats();
     }
 
-    private void Advance()
+    private bool RefreshAfterProgress(int previousIndex)
     {
-        _matched.Clear();
-        if (++_index >= _steps.Count)
+        if (_session.Index == previousIndex) return false;
+        if (_session.IsComplete)
         {
-            _running = false;
-            if (_rhythmGame)
-            {
-                if (_renderClockAttached) CompositionTarget.Rendering -= OnTimedRendering;
-                _renderClockAttached = false;
-            }
-            else
-            {
-                CancelTimer();
-            }
+            DetachRenderClock();
+            // Rhythm mode still plays the score's audio tail after the final judgment.
+            if (!_session.IsRhythmGame) CancelScorePlayback();
             Status("Practice_Complete");
         }
-        Refresh(!UsesClock);
+        Refresh(!_session.UsesClock);
+        return true;
     }
 
     private async void StartPracticeButton_OnClick(object sender, RoutedEventArgs e)
     {
         Surface.Focus();
         if (_positioning) return;
-        if (_steps.Count == 0) { Status("Practice_NoNotes"); return; }
-        if (_index >= _steps.Count) Reset(false);
-        if (!_running)
+        if (_session.IsRunning)
         {
-            var version = ++_navigationVersion;
-            _positioning = true;
-            var step = _steps[Math.Min(_index, _steps.Count - 1)];
-            var preparation = _rhythmGame &&
-                System.Windows.Application.Current is App { AuditionService: { } service }
-                ? service.PrepareAsync(_practiceInstrument)
-                : Task.CompletedTask;
-            try { await preparation; }
-            catch (Exception exception)
-            {
-                _positioning = false;
-                AppLogger.Warning($"Practice audio preparation failed: {exception}");
-                PracticeStatusText.Text = exception.Message;
-                return;
-            }
+            PausePractice();
+            return;
+        }
+        if (_session.IsComplete) Reset();
+        if (_session.CurrentStep is not { } step)
+        {
+            Status("Practice_NoNotes");
+            return;
+        }
+
+        var version = ++_navigationVersion;
+        _positioning = true;
+        try
+        {
+            if (_session.IsRhythmGame &&
+                System.Windows.Application.Current is App { AuditionService: { } service })
+                await service.PrepareAsync(_practiceInstrument);
+
             if (version != _navigationVersion) return;
-            Surface.SetPausedSelection(_index, UsesClock);
-            Surface.SetRollCursorTick(UsesClock ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, true);
+            Surface.SetPausedSelection(_session.Index, _session.UsesClock);
+            var startTick = _session.UsesClock ? _session.GetTickAt(step.Offset - PracticeSession.PreRoll) : step.Tick;
+            Surface.SetRollCursorTick(startTick, true);
             await Task.Delay(330);
             if (version != _navigationVersion) return;
-            _positioning = false;
-            _resumeClock = false;
         }
-        var resumed = _resumeClock;
-        _running = !_running;
-        if (!_running)
+        catch (Exception exception)
         {
-            if (UsesClock) _timedPosition = CurrentTimedPosition();
-            _resumeClock = UsesClock;
+            if (version != _navigationVersion) return;
+            AppLogger.Warning($"Practice audio preparation failed: {exception}");
+            PracticeStatusText.Text = exception.Message;
+            return;
+        }
+        finally
+        {
+            if (version == _navigationVersion) _positioning = false;
+        }
+
+        _session.Start();
+        if (_session.UsesClock)
+        {
             CancelTimer();
-            if (_steps.Count > 0 && _index < _steps.Count)
-            {
-                _timedPosition = _steps[_index].Offset;
-                Surface.SetRollCursorTick(_steps[_index].Tick, true);
-            }
-            Status("Practice_Paused");
+            CompositionTarget.Rendering += OnTimedRendering;
+            _renderClockAttached = true;
         }
-        else if (UsesClock) { Status(_rhythmGame ? "Practice_RhythmGameActive" : "Practice_TimedActive"); StartTimer(); }
-        else Status("Practice_FollowActive");
-        if (_running && _rhythmGame)
-        {
-            StartRhythmGamePlayback(resumed);
-        }
-        Refresh(false);
+        Status(_session.IsRhythmGame ? "Practice_RhythmGameActive" :
+            _session.IsTimed ? "Practice_TimedActive" : "Practice_FollowActive");
+        if (_session.IsRhythmGame) StartRhythmGamePlayback(resumed: false);
+        Refresh();
     }
 
     private void StopPracticeButton_OnClick(object sender, RoutedEventArgs e)
     {
-        Reset(false);
+        Reset();
         Status("Practice_Ready");
         Refresh(false);
         Surface.Focus();
@@ -644,10 +280,8 @@ public partial class PracticePage : UserControl
     private void SetPracticeMode(bool timed)
     {
         PausePractice();
-        _resumeClock = false;
-        _timed = timed;
-        _matched.Clear();
-        Surface.SetTimedApproach(UsesClock);
+        _session.SetTimedMode(timed);
+        Surface.SetTimedApproach(_session.UsesClock);
         FollowModeButton.IsChecked = !timed;
         TimedModeButton.IsChecked = timed;
         if (IsLoaded)
@@ -660,104 +294,46 @@ public partial class PracticePage : UserControl
         Surface.Focus();
     }
 
-    private void StartTimer()
-    {
-        CancelTimer();
-        _timedOrigin = _resumeClock ? _timedPosition + TimedPreRoll : _steps[_index].Offset;
-        _resumeClock = false;
-        _timedStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-        _timedPosition = _timedOrigin - TimedPreRoll;
-        _renderClockAttached = true;
-        CompositionTarget.Rendering += OnTimedRendering;
-    }
-
     private void OnTimedRendering(object? sender, EventArgs e)
     {
-        if (!_running || !UsesClock || _index >= _steps.Count) return;
-        _timedPosition = CurrentTimedPosition();
-        Surface.SetRollCursorTick(GetTickAt(_timedPosition), false);
-        var remaining = _steps[_index].Offset - _timedPosition;
-        var approachWindow = ApproachLeadTime.TotalMilliseconds * _playbackSpeed;
-        Surface.SetApproachProgress(
-            1 - remaining.TotalMilliseconds / Math.Max(1, approachWindow));
+        if (!_session.IsRunning || !_session.UsesClock) return;
+        Surface.SetRollCursorTick(_session.GetTickAt(_session.Position), false);
+        Surface.SetApproachProgress(_session.ApproachProgress);
 
-        ExpireNotes();
+        var previousIndex = _session.Index;
+        _session.AdvanceClock();
+        RefreshAfterProgress(previousIndex);
     }
 
-    private TimeSpan CurrentTimedPosition() => _timedOrigin - TimedPreRoll +
-        TimeSpan.FromTicks((long)(System.Diagnostics.Stopwatch.GetElapsedTime(_timedStarted).Ticks * _playbackSpeed));
-
-    private TimeSpan JudgmentPosition => _rhythmGame
-        ? PracticeTiming.Compensate(_timedPosition, _inputDelayMs, _playbackSpeed)
-        : _timedPosition;
-
-    private void ExpireNotes()
-    {
-        while (_running && _index < _steps.Count &&
-               PracticeTiming.IsMissed(JudgmentPosition, _steps[_index].Offset, _playbackSpeed))
-        {
-            _attempts += _steps[_index].Keys.Count(key => !_matched.Contains(key));
-            _combo = 0;
-            Advance();
-            Stats();
-        }
-    }
-
-    private double GetTickAt(TimeSpan offset)
-    {
-        if (_steps.Count == 0) return 0;
-        var upper = 0;
-        while (upper < _steps.Count && _steps[upper].Offset < offset) upper++;
-        if (upper == 0)
-        {
-            var slope = _steps.Count > 1
-                ? (_steps[1].Tick - _steps[0].Tick) / Math.Max(0.001, (_steps[1].Offset - _steps[0].Offset).TotalSeconds)
-                : (_viewModel?.CurrentScore.Timing.Ppq ?? 480) * 2d;
-            return _steps[0].Tick + (offset - _steps[0].Offset).TotalSeconds * slope;
-        }
-        if (upper >= _steps.Count) return _steps[^1].Tick;
-        var left = _steps[upper - 1];
-        var right = _steps[upper];
-        var ratio = (offset - left.Offset).TotalMilliseconds /
-                    Math.Max(1, (right.Offset - left.Offset).TotalMilliseconds);
-        return left.Tick + (right.Tick - left.Tick) * ratio;
-    }
-
-    private void Reset(bool clearSteps)
+    private void Reset()
     {
         CancelTimer();
         _navigationVersion++;
         _positioning = false;
-        _running = false;
-        _resumeClock = false;
-        _index = _combo = _hits = _attempts = 0;
-        _matched.Clear();
-        if (clearSteps) _steps = [];
+        _session.Reset();
+    }
+
+    private void DetachRenderClock()
+    {
+        if (_renderClockAttached) CompositionTarget.Rendering -= OnTimedRendering;
+        _renderClockAttached = false;
     }
 
     private void CancelTimer()
     {
-        if (_renderClockAttached) CompositionTarget.Rendering -= OnTimedRendering;
-        _renderClockAttached = false;
+        DetachRenderClock();
         CancelScorePlayback();
     }
 
     private void PlaybackSpeedBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var wasRunning = _running && UsesClock;
-        var currentPosition = wasRunning ? CurrentTimedPosition() : _timedPosition;
-        _playbackSpeed = PlaybackSpeedBox.SelectedIndex switch
+        _session.SetSpeed(PlaybackSpeedBox.SelectedIndex switch
         {
             0 => .25, 1 => .5, 3 => 1.25, _ => 1,
-        };
+        });
         if (!_restoringPracticeSettings && System.Windows.Application.Current is App app)
-            app.UserSettingsService.SetPracticePlaybackSpeed(_playbackSpeed);
-        if (wasRunning)
-        {
-            _timedOrigin = currentPosition + TimedPreRoll;
-            _timedStarted = System.Diagnostics.Stopwatch.GetTimestamp();
-            if (_rhythmGame) StartRhythmGamePlayback(resumed: true);
-        }
+            app.UserSettingsService.SetPracticePlaybackSpeed(_session.Speed);
+        if (_session.IsRunning && _session.IsRhythmGame) StartRhythmGamePlayback(resumed: true);
         Surface?.Focus();
     }
 
@@ -781,7 +357,7 @@ public partial class PracticePage : UserControl
         {
             _practiceInstrument = instrument;
             Surface?.SetInstrumentVisual(instrument);
-            if (_running && _rhythmGame) StartRhythmGamePlayback(resumed: true);
+            if (_session.IsRunning && _session.IsRhythmGame) StartRhythmGamePlayback(resumed: true);
             else _ = WarmPracticeAudioAsync();
         }
         Surface?.Focus();
@@ -789,16 +365,19 @@ public partial class PracticePage : UserControl
 
     private void Refresh(bool animateRoll = false)
     {
-        Surface.SetStepTicks(_steps.Select(x => x.Tick).ToArray());
-        Surface.SetPracticeRunning(_running);
-        Surface.SetPracticePosition(_steps.Select(x => x.Keys).ToArray(), _index);
-        Surface.SetPausedSelection(Math.Min(_index, _steps.Count - 1), UsesClock);
-        if ((!UsesClock || (!_running && !_resumeClock)) && _steps.Count > 0)
+        Surface.SetPracticeRunning(_session.IsRunning);
+        Surface.SetPracticePosition(_practiceSequence, _session.Index);
+        var selectedIndex = Math.Min(_session.Index, _session.Steps.Count - 1);
+        Surface.SetPausedSelection(selectedIndex, _session.UsesClock);
+        if (selectedIndex >= 0 && (!_session.UsesClock || !_session.IsRunning))
         {
-            var step = _steps[Math.Min(_index, _steps.Count - 1)];
-            Surface.SetRollCursorTick(UsesClock ? GetTickAt(step.Offset - TimedPreRoll) : step.Tick, animateRoll);
+            var step = _session.Steps[selectedIndex];
+            var tick = _session.UsesClock && !_session.IsPaused
+                ? _session.GetTickAt(step.Offset - PracticeSession.PreRoll)
+                : step.Tick;
+            Surface.SetRollCursorTick(tick, animateRoll);
         }
-        AnimatePracticePlayIcon(_running);
+        AnimatePracticePlayIcon(_session.IsRunning);
         Stats();
     }
 
@@ -829,8 +408,8 @@ public partial class PracticePage : UserControl
 
     private void Stats()
     {
-        ComboText.Text = _combo.ToString();
-        AccuracyText.Text = _attempts == 0 ? "—" : $"{_hits * 100d / _attempts:0}%";
+        ComboText.Text = _session.Combo.ToString();
+        AccuracyText.Text = _session.Attempts == 0 ? "—" : $"{_session.Hits * 100d / _session.Attempts:0}%";
     }
 
     private void Status(string key) => PracticeStatusText.Text = FindResource(key)?.ToString() ?? key;
@@ -843,7 +422,7 @@ public partial class PracticePage : UserControl
 
     private void SetMode(PracticeSurfaceMode mode)
     {
-        if (mode != PracticeSurfaceMode.VerticalRoll && _rhythmGame)
+        if (mode != PracticeSurfaceMode.VerticalRoll && _session.IsRhythmGame)
             SetRhythmGame(false);
         Surface.Mode = mode;
         RhythmGameToggle.Visibility = mode == PracticeSurfaceMode.VerticalRoll
@@ -864,20 +443,9 @@ public partial class PracticePage : UserControl
         _navigationVersion++;
         _positioning = false;
         Surface.ClearPressedKeys();
-        CancelScorePlayback();
-        if (!_running) return;
-        if (UsesClock) _timedPosition = CurrentTimedPosition();
-        _running = false;
-        _resumeClock = UsesClock;
         CancelTimer();
-        if (_steps.Count > 0 && _index < _steps.Count)
-        {
-            _timedPosition = _steps[_index].Offset;
-            Surface.SetRollCursorTick(_steps[_index].Tick, true);
-            Surface.SetPausedSelection(_index, UsesClock);
-        }
-        Surface.SetPracticeRunning(false);
-        AnimatePracticePlayIcon(false);
+        if (!_session.Pause()) return;
+        Refresh(animateRoll: true);
         Status("Practice_Paused");
     }
 
@@ -887,85 +455,22 @@ public partial class PracticePage : UserControl
     private void SetRhythmGame(bool enabled)
     {
         PausePractice();
-        _rhythmGame = enabled && Surface.Mode == PracticeSurfaceMode.VerticalRoll;
-        RhythmGameToggle.IsChecked = _rhythmGame;
-        Surface.SetRhythmGame(_rhythmGame);
-        Surface.SetTimedApproach(UsesClock);
+        _session.SetRhythmGame(enabled && Surface.Mode == PracticeSurfaceMode.VerticalRoll);
+        RhythmGameToggle.IsChecked = _session.IsRhythmGame;
+        Surface.SetRhythmGame(_session.IsRhythmGame);
+        Surface.SetTimedApproach(_session.UsesClock);
         AnimateRhythmGameControls();
         Status("Practice_Ready");
         _ = PositionAtCurrentAsync();
         Surface.Focus();
     }
 
-    private async void StartRhythmGamePlayback(bool resumed)
-    {
-        CancelScorePlayback();
-        var generation = _scorePlaybackGeneration;
-        var previous = _scorePlaybackTask;
-        if (previous is not null)
-        {
-            try { await previous; }
-            catch (OperationCanceledException) { }
-            catch (Exception exception) { AppLogger.Warning($"Previous practice playback failed: {exception.Message}"); }
-        }
-        if (generation != _scorePlaybackGeneration || !_running || !_rhythmGame ||
-            System.Windows.Application.Current is not App app ||
-            app.AuditionService is not { } service ||
-            _viewModel?.CurrentScore is not { } score)
-        {
-            return;
-        }
-
-        var cancellation = new CancellationTokenSource();
-        _scorePlaybackCts = cancellation;
-        try
-        {
-            if (!resumed)
-            {
-                var remaining = _steps[Math.Min(_index, _steps.Count - 1)].Offset - CurrentTimedPosition();
-                if (remaining > TimeSpan.Zero)
-                    await Task.Delay(
-                        TimeSpan.FromTicks((long)(remaining.Ticks / _playbackSpeed)),
-                        cancellation.Token);
-            }
-            if (generation != _scorePlaybackGeneration) return;
-            var startTick = resumed
-                ? (long)Math.Max(0, GetTickAt(_timedPosition))
-                : _steps[Math.Min(_index, _steps.Count - 1)].Tick;
-            _scorePlaybackTask = service.PlayAsync(
-                score,
-                startTick,
-                _practiceInstrument,
-                naturalSustain: true,
-                cancellationToken: cancellation.Token,
-                playbackSpeed: _playbackSpeed);
-            await _scorePlaybackTask;
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception exception)
-        {
-            AppLogger.Warning($"Rhythm game playback failed: {exception}");
-        }
-        finally
-        {
-            if (ReferenceEquals(_scorePlaybackCts, cancellation))
-                _scorePlaybackCts = null;
-            cancellation.Dispose();
-        }
-    }
-
-    private void CancelScorePlayback()
-    {
-        _scorePlaybackGeneration++;
-        _scorePlaybackCts?.Cancel();
-        _scorePlaybackCts = null;
-    }
-
     private async void ReturnToBookmark_OnClick(object sender, RoutedEventArgs e)
     {
-        if (_steps.Count == 0 || _bookmark < 0) return;
-        Reset(false);
-        _index = Math.Clamp(_bookmark, 0, _steps.Count - 1);
+        if (!_session.ReturnToBookmark()) return;
+        CancelTimer();
+        Surface.ClearPressedKeys();
+        Status("Practice_Paused");
         await PositionAtCurrentAsync();
     }
 
@@ -981,17 +486,17 @@ public partial class PracticePage : UserControl
 
     private void Calibrate_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_rhythmGame) return;
+        if (!_session.IsRhythmGame) return;
         PausePractice();
-        var dialog = new GenshinPiano.App.Dialogs.PracticeLatencyDialog(_inputDelayMs)
+        var dialog = new GenshinPiano.App.Dialogs.PracticeLatencyDialog(_session.InputDelayMs)
         {
             Owner = Window.GetWindow(this),
         };
         if (dialog.ShowDialog() == true)
         {
-            _inputDelayMs = dialog.DelayMilliseconds;
+            _session.InputDelayMs = dialog.DelayMilliseconds;
             if (System.Windows.Application.Current is App app)
-                app.UserSettingsService.SetPracticeInputDelay(_inputDelayMs);
+                app.UserSettingsService.SetPracticeInputDelay(_session.InputDelayMs);
         }
         Surface.Focus();
     }
@@ -1000,25 +505,25 @@ public partial class PracticePage : UserControl
     {
         var duration = TimeSpan.FromMilliseconds(220);
         var easing = new CubicEase { EasingMode = EasingMode.EaseInOut };
-        CalibrationButton.IsEnabled = _rhythmGame;
-        RhythmGameSettingsButton.IsEnabled = _rhythmGame;
+        CalibrationButton.IsEnabled = _session.IsRhythmGame;
+        RhythmGameSettingsButton.IsEnabled = _session.IsRhythmGame;
         CalibrationReveal.BeginAnimation(WidthProperty,
-            new DoubleAnimation(_rhythmGame ? 60 : 0, duration) { EasingFunction = easing });
+            new DoubleAnimation(_session.IsRhythmGame ? 60 : 0, duration) { EasingFunction = easing });
         CalibrationReveal.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(_rhythmGame ? 1 : 0, duration) { EasingFunction = easing });
+            new DoubleAnimation(_session.IsRhythmGame ? 1 : 0, duration) { EasingFunction = easing });
         if (CalibrationButton.RenderTransform is TranslateTransform translate)
             translate.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(_rhythmGame ? 0 : 10, duration) { EasingFunction = easing });
+                new DoubleAnimation(_session.IsRhythmGame ? 0 : 10, duration) { EasingFunction = easing });
         if (RhythmGameSettingsButton.RenderTransform is TranslateTransform settingsTranslate)
             settingsTranslate.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(_rhythmGame ? 0 : 18, duration) { EasingFunction = easing });
+                new DoubleAnimation(_session.IsRhythmGame ? 0 : 18, duration) { EasingFunction = easing });
         RhythmGameNoteIcon.BeginAnimation(OpacityProperty,
-            new DoubleAnimation(_rhythmGame ? 1 : .78, duration) { EasingFunction = easing });
+            new DoubleAnimation(_session.IsRhythmGame ? 1 : .78, duration) { EasingFunction = easing });
     }
 
     private void RhythmGameSettings_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_rhythmGame || System.Windows.Application.Current is not App app) return;
+        if (!_session.IsRhythmGame || System.Windows.Application.Current is not App app) return;
         var previousVolume = app.UserSettingsService.Current.Practice.RhythmHitVolume;
         var dialog = new GenshinPiano.App.Dialogs.RhythmGameSettingsDialog(
             previousVolume)

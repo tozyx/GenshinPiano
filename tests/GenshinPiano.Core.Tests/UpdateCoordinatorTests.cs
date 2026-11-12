@@ -171,6 +171,120 @@ public sealed class UpdateCoordinatorTests
         Assert.Contains(package.GetDownloadUris(), uri => uri.Host == "example.invalid");
     }
 
+    [Fact]
+    public async Task ManualCheckAndDownloadReuseActiveAutomaticDownload()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var manifest = CreateManifest("3.1.0");
+            var source = new StubSource(manifest);
+            var downloader = new BlockingDownloader(path);
+            var coordinator = CreateCoordinator(source, downloader);
+            var automatic = coordinator.CheckAsync(true, true, "preview");
+            await downloader.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            var discovered = await coordinator.FindUpdateAsync("preview");
+            coordinator.ObserveCheck(discovered);
+            Assert.Equal(UpdateStage.Downloading, coordinator.State.Stage);
+            var manual = coordinator.DownloadAsync(discovered!);
+            Assert.False(manual.IsCompleted);
+            Assert.Equal(1, downloader.CallCount);
+
+            downloader.Release.SetResult();
+            await Task.WhenAll(automatic, manual).WaitAsync(TimeSpan.FromSeconds(5));
+            await coordinator.DownloadAsync(manifest);
+            Assert.Equal(1, downloader.CallCount);
+            Assert.Equal(2, source.CallCount);
+            Assert.Equal(UpdateStage.Ready, coordinator.State.Stage);
+            Assert.Equal(path, coordinator.State.DownloadedPath);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task CancellingManualWaitLeavesAutomaticDownloadRunning()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var manifest = CreateManifest("3.1.0");
+            var downloader = new BlockingDownloader(path);
+            var coordinator = CreateCoordinator(new StubSource(manifest), downloader);
+            var automatic = coordinator.CheckAsync(true, true, "preview");
+            await downloader.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            using var cancellation = new CancellationTokenSource();
+            var manual = coordinator.DownloadAsync(manifest, cancellation.Token);
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manual);
+            Assert.Equal(UpdateStage.Downloading, coordinator.State.Stage);
+            Assert.False(automatic.IsCompleted);
+            downloader.Release.SetResult();
+            await automatic.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Equal(UpdateStage.Ready, coordinator.State.Stage);
+            Assert.Equal(1, downloader.CallCount);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task DownloadingAnOlderSelectionDoesNotReplaceNewerPreparedPackage()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var downloader = new BlockingDownloader(path);
+            downloader.Release.SetResult();
+            var coordinator = CreateCoordinator(new StubSource(CreateManifest("3.2.0")), downloader);
+            await coordinator.CheckAsync(true, true, "preview");
+            await coordinator.DownloadAsync(CreateManifest("3.1.0"));
+            Assert.Equal(new SemanticVersion(3, 2, 0), coordinator.State.AvailableVersion);
+            Assert.Equal(1, downloader.CallCount);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public async Task ReadOnlyCheckDoesNotStartDownload()
+    {
+        var downloader = new StubDownloader();
+        var coordinator = CreateCoordinator(new StubSource(CreateManifest("3.1.0")), downloader);
+        var manifest = await coordinator.FindUpdateAsync("preview");
+        Assert.NotNull(manifest);
+        Assert.Equal(UpdateStage.Idle, coordinator.State.Stage);
+        Assert.Equal(0, downloader.CallCount);
+    }
+
+    [Fact]
+    public async Task InspectionReportsCurrentReleaseWithoutChangingAutomaticDiscovery()
+    {
+        var downloader = new StubDownloader();
+        var coordinator = new UpdateCoordinator(new(3,0,0),new StubSource(CreateManifest("3.2.0")),
+            downloader,new StubVerifier(),new StubSource(CreateManifest("3.0.0")));
+        var latest = await coordinator.InspectLatestAsync("stable");
+        Assert.Equal(new SemanticVersion(3,0,0),latest!.Version);
+        coordinator.ObserveCheck(latest);
+        Assert.Equal(UpdateStage.Idle,coordinator.State.Stage);
+        Assert.Equal(0,downloader.CallCount);
+        await coordinator.CheckAsync(true,false,"stable");
+        Assert.Equal(new SemanticVersion(3,2,0),coordinator.State.AvailableVersion);
+    }
+
+    private sealed class BlockingDownloader(string path) : IUpdatePackageDownloader
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int CallCount { get; private set; }
+        public async Task<string> DownloadAsync(UpdatePackage package, IProgress<double> progress, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            progress.Report(0.25);
+            Started.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+            return path;
+        }
+    }
+
     private static UpdateCoordinator CreateCoordinator(
         IUpdateSource source,
         IUpdatePackageDownloader downloader) =>

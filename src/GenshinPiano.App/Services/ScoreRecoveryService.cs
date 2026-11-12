@@ -89,6 +89,10 @@ public sealed class ScoreRecoveryService(IScoreDocumentSerializer serializer)
         {
             File.Delete(path);
         }
+        catch (DirectoryNotFoundException)
+        {
+            // A fresh installation has no recovery directory to clean up.
+        }
         catch (IOException exception)
         {
             AppLogger.Warning($"Could not delete recovery file '{path}': {exception.Message}");

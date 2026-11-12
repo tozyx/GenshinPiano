@@ -9,7 +9,6 @@ namespace GenshinPiano.Infrastructure.Ocr;
 
 public sealed class ExternalOcrAddonService : IOcrAddonService
 {
-    private const int ManifestSchemaVersion = 1;
     private const int ProgressPollMilliseconds = 100;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -32,51 +31,9 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
 
     public OcrAddonDescriptor? FindInstalledAddon()
     {
-        var manifestPath = Path.Combine(_addonDirectory, "manifest.json");
-        if (!File.Exists(manifestPath))
-        {
-            return null;
-        }
-
-        OcrAddonManifest? manifest;
-        try
-        {
-            manifest = JsonSerializer.Deserialize<OcrAddonManifest>(
-                File.ReadAllText(manifestPath),
-                JsonOptions);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-
-        if (manifest is not
-            {
-                SchemaVersion: ManifestSchemaVersion,
-                ProtocolVersion: OcrProtocol.CurrentVersion,
-            } ||
-            string.IsNullOrWhiteSpace(manifest.EngineVersion) ||
-            string.IsNullOrWhiteSpace(manifest.Executable) ||
-            !Enum.IsDefined(manifest.LaunchMode))
-        {
-            return null;
-        }
-
-        var executablePath = Path.GetFullPath(
-            Path.Combine(_addonDirectory, manifest.Executable));
-        var directoryPrefix = _addonDirectory.TrimEnd(Path.DirectorySeparatorChar) +
-                              Path.DirectorySeparatorChar;
-        if (!executablePath.StartsWith(directoryPrefix, StringComparison.OrdinalIgnoreCase) ||
-            !File.Exists(executablePath))
-        {
-            return null;
-        }
-
-        return new OcrAddonDescriptor(
-            manifest.EngineVersion,
-            manifest.ProtocolVersion,
-            executablePath,
-            manifest.LaunchMode);
+        try { return OcrAddonPackageValidator.Validate(_addonDirectory); }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { return null; }
     }
 
     public async Task<OcrAnalysisResult> AnalyzeAsync(

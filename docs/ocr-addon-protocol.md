@@ -33,6 +33,14 @@ one UTF-8 JSON request to standard input, then closes input. The engine writes
 one JSON result to standard output and exits. Diagnostics belong on standard
 error; standard output must contain JSON only.
 
+Add-on 0.9.0 also declares `staffBackend: "smt"` and a `requiredFiles` array of
+relative paths. New hosts verify that declared resources exist, are nonempty,
+and remain inside the add-on directory before discovery and installation.
+Legacy manifests can omit these fields; legacy hosts ignore them. Schema and
+IPC protocol remain version 1. SMT supports clear, flat piano scans/rendered
+images and may fail with `staff_scan_layout_unsupported` or
+`staff_scan_needs_review` rather than returning an incomplete score.
+
 Requests contain `protocolVersion`, the absolute `imagePath`, a `notationHint`
 (`numbered` or `staff`), a UI language, and an optional `watermarkMode`
 (`auto`, `strong`, or `off`; omitted values default to `auto`). The optional

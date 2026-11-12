@@ -18,6 +18,8 @@ public partial class OcrImportDialog : Window
     private readonly WindowsTaskbarProgressService _taskbarProgress;
     private CancellationTokenSource? _analysisCancellation;
     private CancellationTokenSource? _downloadCancellation;
+    private CancellationTokenSource? _versionCancellation;
+    private bool _closed;
     private readonly TaskCompletionSource<bool> _completion = new(
         TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _accepted;
@@ -39,6 +41,13 @@ public partial class OcrImportDialog : Window
         Closed += OnClosed;
         LoadOptions();
         UpdateAddonStatus();
+        _packageManager.StatusChanged += PackageManager_OnStatusChanged;
+        Loaded += async (_, _) =>
+        {
+            if (_settings.Current.Update.NetworkAccessEnabled &&
+                (_packageManager.LastCheck is null || DateTimeOffset.UtcNow - _packageManager.LastCheck.CheckedAt > TimeSpan.FromMinutes(5)))
+                await CheckAddonVersionAsync();
+        };
     }
 
     public OcrAnalysisResult? Result { get; private set; }
@@ -66,13 +75,58 @@ public partial class OcrImportDialog : Window
 
     private void UpdateAddonStatus()
     {
+        if (_closed) return;
         var addon = _service.FindInstalledAddon();
         AddonStatusText.Text = addon is null
             ? string.Format(GetText("Ocr_AddonMissing"), Path.Combine(AppContext.BaseDirectory, "addons", "ocr"))
             : string.Format(GetText("Ocr_AddonReady"), addon.EngineVersion);
-        DownloadAddonButton.Content = GetText(addon is null ? "Ocr_DownloadAddon" : "Ocr_CheckAddonUpdate");
-        DownloadAddonButton.IsEnabled = _downloadCancellation is null && _settings.Current.Update.NetworkAccessEnabled;
+        var check = _packageManager.LastCheck;
+        var status = _versionCancellation is not null ? GetText("Ocr_AddonChecking") :
+            check is null ? GetText("Update_NotChecked") : check.ErrorMessage is not null
+                ? string.Format(GetText("Update_CheckFailed"), check.ErrorMessage)
+                : check.IsCurrent ? GetText("Update_AlreadyCurrent")
+                : string.Format(GetText("Ocr_AddonUpdateAvailable"), check.Package?.Version);
+        AddonStatusText.Text += Environment.NewLine + status;
+        DownloadAddonButton.Content = GetText(check?.CanUpdate == true
+            ? addon is null ? "Update_InstallOcr" : "Update_UpdateOcr" : "Ocr_CheckAddonUpdate");
+        DownloadAddonButton.IsEnabled = _downloadCancellation is null && _versionCancellation is null &&
+            _analysisCancellation is null && !_packageManager.IsInstalling && _settings.Current.Update.NetworkAccessEnabled;
         UpdateAnalyzeState();
+    }
+
+    private void PackageManager_OnStatusChanged(object? sender, EventArgs e)
+    {
+        if (Dispatcher.CheckAccess()) UpdateAddonStatus();
+        else Dispatcher.BeginInvoke(new Action(UpdateAddonStatus));
+    }
+
+    public void RefreshNetworkAccess()
+    {
+        if (!_settings.Current.Update.NetworkAccessEnabled)
+        {
+            _versionCancellation?.Cancel();
+            _downloadCancellation?.Cancel();
+        }
+        UpdateAddonStatus();
+    }
+
+    private async Task CheckAddonVersionAsync()
+    {
+        if (_versionCancellation is not null || !_settings.Current.Update.NetworkAccessEnabled) return;
+        using var cancellation = new CancellationTokenSource();
+        _versionCancellation = cancellation;
+        UpdateAddonStatus();
+        try { await _packageManager.CheckForUpdatesAsync(cancellation.Token); }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        finally { _versionCancellation = null; UpdateAddonStatus(); }
+    }
+
+    private void NotationComboBox_OnSelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if (ResultText is null) return;
+        Result=null;
+        if (ImportButton is not null) ImportButton.Visibility=Visibility.Collapsed;
+        ResultText.Text=GetText(NotationComboBox.SelectedItem is ComboBoxItem { Tag: "Staff" } ? "Ocr_StaffScanOnly" : "Ocr_Ready");
     }
 
     private async void DownloadAddonButton_OnClick(object sender, RoutedEventArgs e)
@@ -80,6 +134,13 @@ public partial class OcrImportDialog : Window
         if (!_settings.Current.Update.NetworkAccessEnabled)
         {
             ResultText.Text = GetText("Ocr_NetworkDisabled");
+            return;
+        }
+
+        var check = _packageManager.LastCheck;
+        if (check?.CanUpdate != true)
+        {
+            await CheckAddonVersionAsync();
             return;
         }
 
@@ -96,8 +157,8 @@ public partial class OcrImportDialog : Window
                 _taskbarProgress.SetProgress(Math.Max(0.01, value));
                 ResultText.Text = string.Format(GetText("Ocr_AddonDownloading"), value);
             });
-            var result = await _packageManager.DownloadAndInstallAsync(
-                progress, _downloadCancellation.Token);
+            var result = await _packageManager.InstallCheckedUpdateAsync(
+                check, progress, _downloadCancellation.Token);
             ResultText.Text = string.Format(
                 GetText(result.Updated ? "Ocr_AddonInstalled" : "Ocr_AddonCurrent"),
                 result.Version, result.SourceName);
@@ -160,6 +221,7 @@ public partial class OcrImportDialog : Window
         _analysisCancellation = new CancellationTokenSource();
         try
         {
+            using var recognition = _packageManager.BeginRecognition();
             var progress = new Progress<OcrProgressUpdate>(OnOcrProgress);
             Result = await _service.AnalyzeAsync(
                 ImagePath,
@@ -184,6 +246,8 @@ public partial class OcrImportDialog : Window
                 GetText("Ocr_Completed"),
                 noteCount,
                 Result.Confidence);
+            if (Result.Warnings is { Count: > 0 })
+                ResultText.Text+=Environment.NewLine+string.Join(Environment.NewLine,Result.Warnings.Distinct());
             ImportButton.Visibility = Visibility.Visible;
             NotifyCompletionIfInactive(
                 success: true,
@@ -230,6 +294,8 @@ public partial class OcrImportDialog : Window
         AccompanimentCheckBox.IsEnabled = !busy;
         AutoMapTo21CheckBox.IsEnabled = !busy;
         CancelButton.Content = GetText(busy ? "Ocr_CancelAnalysis" : "Common_Cancel");
+        DownloadAddonButton.IsEnabled = !busy && _downloadCancellation is null && _versionCancellation is null &&
+            !_packageManager.IsInstalling && _settings.Current.Update.NetworkAccessEnabled;
     }
 
     private void OnOcrProgress(OcrProgressUpdate update)
@@ -249,7 +315,7 @@ public partial class OcrImportDialog : Window
 
     private void UpdateAnalyzeState() =>
         AnalyzeButton.IsEnabled = _analysisCancellation is null && _downloadCancellation is null &&
-                                  IsAddonAvailable && ImagePath is not null;
+                                  !_packageManager.IsInstalling && IsAddonAvailable && ImagePath is not null;
 
     private void CancelButton_OnClick(object sender, RoutedEventArgs e)
     {
@@ -291,6 +357,7 @@ public partial class OcrImportDialog : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        _versionCancellation?.Cancel();
         if (_analysisCancellation is null && _downloadCancellation is null)
         {
             return;
@@ -303,6 +370,8 @@ public partial class OcrImportDialog : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _closed = true;
+        _packageManager.StatusChanged -= PackageManager_OnStatusChanged;
         SaveOptions();
         _completion.TrySetResult(_accepted);
     }

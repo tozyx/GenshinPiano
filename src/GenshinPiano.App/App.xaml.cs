@@ -203,30 +203,34 @@ public partial class App : System.Windows.Application
             OcrAddonService,
             Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar));
         IUpdateSource updateSource;
+        IUpdateSource inspectionSource;
         IUpdatePackageDownloader updateDownloader;
         IUpdatePackageVerifier updateVerifier;
         if (File.Exists(simulationManifestPath))
         {
             updateSource = new LocalSimulationUpdateSource(currentVersion, simulationManifestPath);
+            inspectionSource = updateSource;
             updateDownloader = new SimulatedUpdatePackageDownloader();
             updateVerifier = new SimulatedUpdatePackageVerifier();
         }
         else
         {
-            updateSource = new RacingUpdateSource(
+            updateSource = CreateReleaseSource(includeInstalledVersions: false);
+            inspectionSource = CreateReleaseSource(includeInstalledVersions: true);
+            IUpdateSource CreateReleaseSource(bool includeInstalledVersions) => new RacingUpdateSource(
             [
                 new ReleaseMirrorUpdateSource(
                     _updateMetadataHttpClient,
                     "GitCode",
                     new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases"),
                     isFrameworkDependent,
-                    currentVersion),
+                    currentVersion, includeInstalledVersions),
                 new ReleaseMirrorUpdateSource(
                     _updateMetadataHttpClient,
                     "GitHub",
                     new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"),
                     isFrameworkDependent,
-                    currentVersion),
+                    currentVersion, includeInstalledVersions),
             ], diagnostic: AppLogger.Info);
             updateDownloader = new ResumableUpdatePackageDownloader(
                 _updateDownloadHttpClient,
@@ -237,7 +241,8 @@ public partial class App : System.Windows.Application
             currentVersion,
             updateSource,
             updateDownloader,
-            updateVerifier);
+            updateVerifier,
+            inspectionSource);
         var updateStatus = new UpdateStatusViewModel(
             updateCoordinator,
             UserSettingsService,

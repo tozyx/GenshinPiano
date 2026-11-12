@@ -57,6 +57,7 @@
     <system:String x:Key="Ocr_WatermarkOff">关闭</system:String>
     <system:String x:Key="Ocr_IncludeAccompaniment">识别伴奏</system:String>
     <system:String x:Key="Ocr_Ready">选择图片和谱面类型后开始识别。识别结果导入前仍可取消。</system:String>
+    <system:String x:Key="Ocr_StaffScanOnly">五线谱仅支持清晰、平直的钢琴扫描谱或电子谱截图，不支持拍照谱。导入后请核对速度、音符和节奏。</system:String>
     <system:String x:Key="Ocr_SelectImage">选择曲谱图片</system:String>
     <system:String x:Key="Ocr_ImageFilter">曲谱图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|所有文件|*.*</system:String>
     <system:String x:Key="Ocr_Analyze">开始识别</system:String>
@@ -366,4 +367,26 @@
     <system:String x:Key="Practice_Latency">输入延迟与校准</system:String>
     <system:String x:Key="Practice_RhythmGame">音游</system:String>
     <system:String x:Key="Practice_RhythmGameActive">音游模式 · 完整曲谱自动播放</system:String>
+    <system:String x:Key="Update_OverviewTitle">软件与插件更新</system:String>
+    <system:String x:Key="Update_ApplicationLabel">主程序</system:String>
+    <system:String x:Key="Update_OcrLabel">OCR 插件</system:String>
+    <system:String x:Key="Update_VersionPair">当前：{0}　最新：{1}</system:String>
+    <system:String x:Key="Update_UnknownVersion">未知</system:String>
+    <system:String x:Key="Update_NoCompatibleRelease">未找到适用于当前安装类型的发布包。</system:String>
+    <system:String x:Key="Update_NotInstalled">未安装</system:String>
+    <system:String x:Key="Update_NotChecked">尚未检查最新版本</system:String>
+    <system:String x:Key="Update_AlreadyCurrent">已是最新版本</system:String>
+    <system:String x:Key="Update_NewVersionAvailable">有新版本可用</system:String>
+    <system:String x:Key="Update_CheckFailed">检查失败，无法确认最新版本：{0}</system:String>
+    <system:String x:Key="Update_CheckingAll">正在检查主程序和 OCR 插件版本…</system:String>
+    <system:String x:Key="Update_UpdateApplication">更新程序</system:String>
+    <system:String x:Key="Update_InstallApplication">安装程序更新</system:String>
+    <system:String x:Key="Update_UpdateOcr">更新 OCR</system:String>
+    <system:String x:Key="Update_InstallOcr">安装 OCR</system:String>
+    <system:String x:Key="Update_ReuseBackground">将复用正在进行的后台下载，不会重新开始。</system:String>
+    <system:String x:Key="Update_WaitBackground">后台正在处理其他版本，所选更新会在当前任务结束后下载。</system:String>
+    <system:String x:Key="Update_IndependentChoices">主程序与 OCR 可分别更新。取消不会中断已有的静默下载。</system:String>
+    <system:String x:Key="Update_OcrRecognitionBusy">正在识别，请结束识别后更新 OCR。</system:String>
+    <system:String x:Key="Update_OcrInstalling">正在下载或安装 OCR…</system:String>
+    <system:String x:Key="Ocr_AddonUpdateAvailable">可更新至 {0}</system:String>
 </ResourceDictionary>

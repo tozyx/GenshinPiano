@@ -13,4 +13,8 @@ internal sealed record OcrAddonManifest
     public string Executable { get; init; } = string.Empty;
 
     public OcrAddonLaunchMode LaunchMode { get; init; } = OcrAddonLaunchMode.Stdio;
+
+    public string StaffBackend { get; init; } = string.Empty;
+
+    public string[] RequiredFiles { get; init; } = [];
 }

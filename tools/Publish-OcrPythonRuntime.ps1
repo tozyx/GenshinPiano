@@ -40,6 +40,27 @@ if (-not (Test-Path -LiteralPath (Join-Path $baseDirectory "python.exe") -PathTy
     throw "The OCR Python environment is incomplete."
 }
 
+$destinationPrefix = $destinationDirectory.TrimEnd('\') + '\'
+foreach ($protectedDirectory in @($repositoryRoot, $pythonEnvironmentDirectory, $oemerSourceDirectory, $baseDirectory)) {
+    if ($protectedDirectory -eq $destinationDirectory -or
+        $protectedDirectory.StartsWith($destinationPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "The OCR runtime destination must not contain source files or the development environment."
+    }
+}
+
+function Remove-RuntimeEntry {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $fullPath = [IO.Path]::GetFullPath($Path)
+    if ($fullPath -ne $destinationDirectory -and
+        -not $fullPath.StartsWith($destinationPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to remove a path outside the OCR runtime: $fullPath"
+    }
+    if (Test-Path -LiteralPath $fullPath) {
+        Remove-Item -LiteralPath $fullPath -Recurse -Force
+    }
+}
+
 function Copy-DirectoryWithRobocopy {
     param(
         [Parameter(Mandatory = $true)][string]$Source,
@@ -66,7 +87,7 @@ function Copy-DirectoryWithRobocopy {
 }
 
 if (Test-Path -LiteralPath $destinationDirectory) {
-    Remove-Item -LiteralPath $destinationDirectory -Recurse -Force
+    Remove-RuntimeEntry -Path $destinationDirectory
 }
 New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
 
@@ -147,6 +168,8 @@ Copy-DirectoryWithRobocopy `
         "*.pyi",
         "py.typed",
         "*.whl",
+        # Still-image OCR does not use OpenCV's optional video backend.
+        "opencv_videoio_ffmpeg*.dll",
         "__editable__*oemer*",
         "distutils-precedence.pth",
         "isympy.py",
@@ -177,15 +200,16 @@ def __getattr__(name):
     [Text.UTF8Encoding]::new($false))
 
 foreach ($relativePath in @(
+    "scipy\misc\ascent.dat",
+    "scipy\misc\face.dat",
+    "scipy\misc\ecg.dat",
     "onnxruntime\backend",
     "onnxruntime\datasets",
     "onnxruntime\quantization",
     "onnxruntime\tools",
     "onnxruntime\transformers")) {
     $toolPath = Join-Path $portableSitePackages $relativePath
-    if (Test-Path -LiteralPath $toolPath) {
-        Remove-Item -LiteralPath $toolPath -Recurse -Force
-    }
+    Remove-RuntimeEntry -Path $toolPath
 }
 
 foreach ($metadataPattern in @(
@@ -201,12 +225,11 @@ foreach ($metadataPattern in @(
     "python_dateutil-*.dist-info",
     "pyparsing-*.dist-info")) {
     Get-ChildItem -LiteralPath $portableSitePackages -Directory -Filter $metadataPattern |
-        Remove-Item -Recurse -Force
+        ForEach-Object { Remove-RuntimeEntry -Path $_.FullName }
 }
 
 $portablePython = Join-Path $destinationDirectory "python.exe"
-$validation = & $portablePython -B -c `
-    "import json,os,oemer,onnxruntime as ort; from oemer import ete; root=os.path.join(os.path.dirname(oemer.__file__),'checkpoints'); sessions=[ort.InferenceSession(os.path.join(root,name,'model.onnx'),providers=['CPUExecutionProvider']) for name in ('unet_big','seg_net')]; print(json.dumps({'oemer':oemer.__path__[0],'ort':ort.__version__,'providers':ort.get_available_providers(),'modelsCpuOnly':all(session.get_providers()==['CPUExecutionProvider'] for session in sessions)}))"
+$validation = & $portablePython -B (Join-Path $PSScriptRoot "ocr\validate_runtime.py")
 if ($LASTEXITCODE -ne 0) {
     throw "The packaged OCR Python runtime failed its import validation."
 }
@@ -227,7 +250,7 @@ $metadata | ConvertTo-Json | Set-Content `
     -Encoding utf8
 
 Get-ChildItem -LiteralPath $destinationDirectory -Recurse -Directory -Filter "__pycache__" |
-    Remove-Item -Recurse -Force
+    ForEach-Object { Remove-RuntimeEntry -Path $_.FullName }
 
 $runtimeSize = (Get-ChildItem -LiteralPath $destinationDirectory -Recurse -File |
     Measure-Object -Property Length -Sum).Sum

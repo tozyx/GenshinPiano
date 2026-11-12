@@ -98,37 +98,23 @@ addons\ocr\manifest.json
 - [OCR 附加包协议](ocr-addon-protocol.md)
 - [OCR 附加包发布与更新流程](ocr-addon-distribution.md)
 
-普通主程序开发不需要 Python、Oemer 或模型。需要调试完整 OCR 时，先安装
-Python 3.11，然后在仓库根目录运行：
+普通主程序开发不需要 OCR 模型。0.9.0 起，五线谱使用本机 SMT CPU 后端和量化 GGUF 模型，简谱仍使用现有 .NET 识别流程；发布包不再包含 Python/Oemer。
+
+将手动下载的 `crispembed-windows-x86_64.zip` 和 `smt-grandstaff-q8_0.gguf` 放在 `publish\smt-experiment`（模型也可放在其 `models` 子目录），然后运行：
 
 ```powershell
 .\tools\Setup-OcrDevelopment.ps1
 ```
 
-脚本会在仓库同级的 `_research\oemer` 下准备固定版本的 Oemer、CPU venv 和
-经过 SHA-256 校验的模型，再构建精简便携 Runtime，并部署到主程序 Debug
-输出的 `addons\ocr`。首次执行需要访问 Python 包源和 GitHub；这些下载内容
-均不提交到 Git。已有完整环境且只需重新部署时可以使用：
+脚本校验固定 SHA-256，构建 Debug OCR 引擎，部署到主程序 Debug 输出的 `addons\ocr`，并附带本地 x64 VC 运行库。可使用 `-SmtTrialDirectory` 和 `-MsvcRuntimeDirectory` 指定资源位置。不需要 Python，也不自动下载模型。`-LegacyOemer` 仅供历史 Oemer 对比研究。
 
-```powershell
-.\tools\Setup-OcrDevelopment.ps1 -SkipDependencyInstall
-```
+GitHub CI 不执行模型部署脚本，只验证普通 Release 构建和测试。完整接入、兼容性和实测结果见 [SMT 接入说明](SMT_INTEGRATION.md)。
 
-GitHub CI 不执行该脚本，只验证不依赖 OCR 模型的普通 Release 构建和测试。
+相关脚本：
 
-脚本固定 Oemer 上游提交、Python 依赖版本及两个官方 ONNX 模型的 SHA-256，
-并应用仓库中的兼容补丁。完整模型和便携 Python Runtime 不提交到 Git；其他
-开发者克隆仓库后运行上述脚本即可获得与发布包一致的 CPU 调试环境。简谱路线
-直接运行 .NET OCR 引擎；五线谱路线由同一个引擎启动便携 Python/Oemer，并将
-生成的 MusicXML 转换为 `ScoreDocument`。界面下拉框只负责选择这两条路线。
-
-相关文件：
-
-- `tools/Setup-OcrDevelopment.ps1`：一键准备/更新开发环境并部署 Debug 附加包
-- `tools/requirements-ocr-development.txt`：固定的 Python 运行依赖
-- `tools/ocr/oemer-inference.patch`：上游推理兼容补丁
-- `tools/Publish-OcrPythonRuntime.ps1`：生成精简 CPU 便携 Runtime
-- `tools/Publish-OcrAddon.ps1`：构建 OCR 引擎、组合 Runtime 并生成发布资产
+- `tools/Setup-OcrDevelopment.ps1`：部署 Debug 附加包
+- `tools/Publish-OcrSmtRuntime.ps1`：校验并部署原生 CPU Runtime 和模型
+- `tools/Publish-OcrAddon.ps1`：构建独立 OCR ZIP、校验和及签名
 
 ### 6. 从干净克隆验证打包
 
@@ -278,25 +264,17 @@ or debugging the application.
 
 ### OCR development environment
 
-Normal application development does not require Python, Oemer, or the model files. To reproduce the
-complete OCR environment, install Python 3.11 and run:
+Normal application development does not require OCR model files. Since add-on 0.9.0, staff recognition uses the native SMT CPU runtime and a quantized GGUF model; numbered notation retains the existing .NET pipeline. Python/Oemer is no longer shipped.
+
+Place the downloaded `crispembed-windows-x86_64.zip` and `smt-grandstaff-q8_0.gguf` in `publish\smt-experiment` (the model may also be in its `models` subfolder), then run:
 
 ```powershell
 .\tools\Setup-OcrDevelopment.ps1
 ```
 
-The script pins the Oemer revision and Python dependencies, verifies both official ONNX checkpoints,
-applies the local inference patch, creates a trimmed CPU-only portable runtime, and deploys the add-on
-to the application's Debug output. Rebuild/deploy an already prepared environment with:
+The script verifies pinned hashes and deploys the Debug engine, model, and app-local x64 VC runtime to the application's Debug `addons\ocr` directory. Override resource paths with `-SmtTrialDirectory` and `-MsvcRuntimeDirectory`. No Python installation or model download is required. `-LegacyOemer` is reserved for historical research.
 
-```powershell
-.\tools\Setup-OcrDevelopment.ps1 -SkipDependencyInstall
-```
-
-Large model/runtime files are intentionally not stored in Git. The numbered pipeline runs in the
-.NET OCR engine; the staff pipeline launches portable Python/Oemer and converts the resulting
-MusicXML into `ScoreDocument`. GitHub CI remains secret-free and only restores, builds, and tests the
-regular solution; it does not publish releases or download OCR models.
+See [SMT integration](SMT_INTEGRATION.md) for scope, compatibility, and validation. CI only builds and tests the regular solution without downloading OCR models.
 
 ### Publish packages
 

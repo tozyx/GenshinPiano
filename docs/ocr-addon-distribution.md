@@ -18,6 +18,22 @@ asset name, so the OCR engine and application can be released independently. The
 
 ## Runtime flow
 
+Manual **Check for updates** in the main window checks application and OCR metadata in parallel,
+then presents installed/latest versions with separate application and OCR update actions and Cancel.
+Checking alone never downloads a package. A failure checking one component does not block the other.
+OCR can be installed when missing; current components have their update action disabled.
+
+Automatic updates retain the existing application-only background download and exit/restart installation
+flow. Manual checking, choosing OCR, or cancelling the overview does not cancel that background task.
+Choosing the same application update waits for and reuses its verified download; an older selection
+cannot replace a newer prepared update. Turning off automatic updates cancels the automatic operation;
+turning off network access also cancels manual network operations.
+
+The OCR window checks metadata on opening when network access is allowed, reusing a check less than
+five minutes old, and displays current/update-available/unknown status. Its check action does not
+download; after discovery, the button offers installation/update. Status is shared with the main
+overview and refreshed after installation. Recognition and runtime replacement are mutually exclusive.
+
 1. The OCR dialog detects `addons/ocr/manifest.json` through `IOcrAddonService`.
 2. On demand, `OcrAddonReleaseSource` queries GitCode and GitHub; `RacingUpdateSource` selects the
    newest component version returned during the mirror grace window.
@@ -31,14 +47,17 @@ asset name, so the OCR engine and application can be released independently. The
 The application updater preserves the complete `addons` directory. Updating or rolling back the
 application therefore does not downgrade or delete independently installed components.
 
-The published add-on contains a portable Python 3.11 CPU runtime under
-`addons/ocr/staff-omr/python`. It includes Oemer, its ONNX checkpoints and the
-required native Python packages, so users do not need a system Python installation.
-`Publish-OcrPythonRuntime.ps1` builds this directory from the development Oemer
-virtual environment while excluding pip caches, downloaded wheels, installation and
-training tools, unused plotting dependencies, and CUDA/NVIDIA packages. The packaging
-script validates the resulting CPU provider and both Oemer model sessions before the
-release archive is created.
+Since 0.9.0, the add-on contains a native CPU SMT runtime and quantized model under
+`addons/ocr/staff-omr/smt`, including app-local x64 VC runtime DLLs. Python/Oemer is no
+longer shipped. Numbered notation retains its existing .NET pipeline and models.
+`Publish-OcrSmtRuntime.ps1` verifies pinned archive/model hashes and copies only the
+required native files, model, licenses, and provenance. `requiredFiles` in the manifest
+enables resource validation before and after installation. Schema and IPC protocol
+remain version 1; legacy manifests and hosts remain compatible.
+
+Staff recognition supports clear, flat piano scans and rendered images. Photographs
+are unsupported, and unresolved structural anomalies cause recognition to fail rather
+than returning an incomplete score. See [SMT integration](SMT_INTEGRATION.md).
 
 Network access remains governed by the application's existing **Allow network access** setting.
 OCR component downloads are user initiated and do not silently download with automatic application
@@ -46,8 +65,8 @@ updates.
 
 ## Contributor bootstrap
 
-The portable runtime and checkpoints are deliberately excluded from Git. Contributors who need the
-complete OCR feature should install Python 3.11 and run `tools/Setup-OcrDevelopment.ps1` from the
-repository root. The script pins and verifies the upstream sources and deploys a Debug-ready add-on.
-Use `-SkipDependencyInstall` when the pinned environment is already present and only a rebuild or
-redeployment is required. Ordinary .NET builds and the GitHub CI workflow do not download OCR assets.
+The runtime and model are deliberately excluded from Git. Place the downloaded CPU archive and
+quantized model in `publish/smt-experiment`, then run `tools/Setup-OcrDevelopment.ps1` from the
+repository root. The script verifies hashes and deploys a Debug-ready add-on without Python.
+Override the resource location with `-SmtTrialDirectory`. Ordinary .NET builds and CI do not
+download OCR assets. `-LegacyOemer` is reserved for historical research comparisons.

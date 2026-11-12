@@ -9,6 +9,29 @@ namespace GenshinPiano.Core.Tests;
 
 public sealed class UpdateInfrastructureTests
 {
+    [Theory]
+    [InlineData("3.0.3")]
+    [InlineData("3.1.0")]
+    public async Task InspectionCanReportLatestReleaseEvenWhenInstalledVersionIsNotOlder(string installed)
+    {
+        const string releases = """
+            [{"tag_name":"v3.0.3","assets":[
+              {"name":"GenshinPiano-3.0.3-win-x64.zip","browser_download_url":"https://download.test/app.zip"},
+              {"name":"GenshinPiano-3.0.3-win-x64.zip.sha256","browser_download_url":"https://download.test/app.sha256"},
+              {"name":"GenshinPiano-3.0.3-win-x64.zip.sig","browser_download_url":"https://download.test/app.sig"}
+            ]}]
+            """;
+        using var client = new HttpClient(new StubHttpHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith(".sha256") ? TextResponse(new string('a',64)) :
+            request.RequestUri.AbsolutePath.EndsWith(".sig") ? TextResponse(Convert.ToBase64String(new byte[384])) : JsonResponse(releases)));
+        GenshinPiano.Application.Updates.SemanticVersion.TryParse(installed,out var current);
+        var automatic = new ReleaseMirrorUpdateSource(client,"test",new Uri("https://test.invalid/releases"),false,current);
+        var inspection = new ReleaseMirrorUpdateSource(client,"test",new Uri("https://test.invalid/releases"),false,current,includeInstalledVersions:true);
+        Assert.Null(await automatic.GetLatestAsync("stable",CancellationToken.None));
+        var latest = await inspection.GetLatestAsync("stable",CancellationToken.None);
+        Assert.Equal("3.0.3",latest!.Version.ToString());
+    }
+
     [Fact]
     public async Task ReleaseSource_FallsBackToGitHubPagesWhenApiIsRateLimited()
     {
@@ -31,6 +54,17 @@ public sealed class UpdateInfrastructureTests
             Assert.Single(manifest.Packages).FileName);
         Assert.Contains("## Release notes", manifest.ReleaseNotes);
         Assert.Contains("- Fixed update discovery.", manifest.ReleaseNotes);
+    }
+
+    [Fact]
+    public async Task ReleasePageFallbackAlsoSupportsInspectingTheInstalledRelease()
+    {
+        using var client = CreateGitHubFallbackClient(new string('a',64),Convert.ToBase64String(new byte[384]));
+        var source = new ReleaseMirrorUpdateSource(client,"GitHub",
+            new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"),true,
+            new GenshinPiano.Application.Updates.SemanticVersion(3,0,3),includeInstalledVersions:true);
+        var manifest = await source.GetLatestAsync("stable",CancellationToken.None);
+        Assert.Equal("3.0.3",manifest!.Version.ToString());
     }
 
     [Fact]

@@ -57,6 +57,7 @@
     <system:String x:Key="Ocr_WatermarkOff">Off</system:String>
     <system:String x:Key="Ocr_IncludeAccompaniment">Include accompaniment</system:String>
     <system:String x:Key="Ocr_Ready">Select an image and notation type to begin. You can still cancel before importing the result.</system:String>
+    <system:String x:Key="Ocr_StaffScanOnly">Staff recognition supports clear, flat piano scans or rendered score images. Photographed pages are unsupported. Review tempo, notes and rhythm after importing.</system:String>
     <system:String x:Key="Ocr_SelectImage">Select a score image</system:String>
     <system:String x:Key="Ocr_ImageFilter">Score images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|All files|*.*</system:String>
     <system:String x:Key="Ocr_Analyze">Analyze</system:String>
@@ -366,4 +367,26 @@
     <system:String x:Key="Practice_Latency">Input offset and calibration</system:String>
     <system:String x:Key="Practice_RhythmGame">Rhythm game</system:String>
     <system:String x:Key="Practice_RhythmGameActive">Rhythm game · full score playback</system:String>
+    <system:String x:Key="Update_OverviewTitle">Application and plug-in updates</system:String>
+    <system:String x:Key="Update_ApplicationLabel">Application</system:String>
+    <system:String x:Key="Update_OcrLabel">OCR plug-in</system:String>
+    <system:String x:Key="Update_VersionPair">Installed: {0}   Latest: {1}</system:String>
+    <system:String x:Key="Update_UnknownVersion">Unknown</system:String>
+    <system:String x:Key="Update_NoCompatibleRelease">No release package matches this installation type.</system:String>
+    <system:String x:Key="Update_NotInstalled">Not installed</system:String>
+    <system:String x:Key="Update_NotChecked">Latest version has not been checked</system:String>
+    <system:String x:Key="Update_AlreadyCurrent">Up to date</system:String>
+    <system:String x:Key="Update_NewVersionAvailable">A new version is available</system:String>
+    <system:String x:Key="Update_CheckFailed">Could not determine the latest version: {0}</system:String>
+    <system:String x:Key="Update_CheckingAll">Checking application and OCR plug-in versions…</system:String>
+    <system:String x:Key="Update_UpdateApplication">Update application</system:String>
+    <system:String x:Key="Update_InstallApplication">Install application update</system:String>
+    <system:String x:Key="Update_UpdateOcr">Update OCR</system:String>
+    <system:String x:Key="Update_InstallOcr">Install OCR</system:String>
+    <system:String x:Key="Update_ReuseBackground">The existing background download will be reused without restarting.</system:String>
+    <system:String x:Key="Update_WaitBackground">A different version is being processed. Your selected update will download after that task finishes.</system:String>
+    <system:String x:Key="Update_IndependentChoices">Update the application and OCR separately. Cancel leaves existing automatic downloads running.</system:String>
+    <system:String x:Key="Update_OcrRecognitionBusy">Recognition is running. Finish it before updating OCR.</system:String>
+    <system:String x:Key="Update_OcrInstalling">Downloading or installing OCR…</system:String>
+    <system:String x:Key="Ocr_AddonUpdateAvailable">Update available: {0}</system:String>
 </ResourceDictionary>
