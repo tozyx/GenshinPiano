@@ -1,8 +1,12 @@
 # 构建与维护工具
 
+[简体中文](#简体中文) | [English](#english)
+
+## 简体中文
+
 本目录提供应用构建、OCR 资源部署、签名和离线维护工具。以下命令从仓库根目录运行。项目原理与软件使用见 [项目文档](../docs/README.md)。
 
-## 环境与常规构建
+### 环境与常规构建
 
 需要 Windows 10/11 x64、.NET 10 SDK 和 Git。编辑器可使用支持 WPF 的 Visual Studio 或 VS Code。自包含应用的更新器采用 Native AOT，该发布方式还需要 C++ 桌面构建工具。
 
@@ -20,7 +24,7 @@ dotnet test tests/GenshinPiano.Core.Tests/GenshinPiano.Core.Tests.csproj
 
 普通构建不需要 OCR 模型，也不自动下载模型。`bin`、`obj`、`artifacts` 和发布产物不纳入 Git。
 
-## 发布应用
+### 发布应用
 
 三个 BAT 支持双击运行，会自动定位仓库根目录。第一个参数覆盖发布版本，省略时使用 BAT 内的默认值；应用默认为 `3.1.0`，OCR 默认为 `1.0.0`。
 
@@ -44,9 +48,9 @@ pwsh -File tools/Build-UnsignedAppPackage.ps1
 
 输出位于 `artifacts/package-check`。该无签名包不能用于应用内更新。
 
-## OCR 资源与发布
+### OCR 资源与发布
 
-OCR 发布需要 PowerShell 7、.NET 10 SDK 和同一签名密钥环境变量。手动下载以下固定资源，放到 `publish/smt-experiment`；模型也可以放在该目录的 `models` 子目录：
+OCR 发布需要 .NET 10 SDK 和同一签名密钥环境变量。BAT 优先使用可用的 PowerShell 7，找不到时自动使用 Windows 自带的 PowerShell 5.1，无需另行安装 PowerShell 7。手动下载以下固定资源，放到 `publish/smt-experiment`；模型也可以放在该目录的 `models` 子目录：
 
 - [CrispEmbed v0.17.18 CPU Windows x64](https://github.com/CrispStrobe/CrispEmbed/releases/tag/v0.17.18)：`crispembed-windows-x86_64.zip`。
 - [GrandStaff Q8 模型](https://huggingface.co/cstr/smt-grandstaff-GGUF/tree/8e1595591659aa03cf1e71aab5aa03e8f3fccd7e)：`smt-grandstaff-q8_0.gguf`。
@@ -69,9 +73,9 @@ tools\build-ocr-addon.bat --help
 pwsh -File tools/Setup-OcrDevelopment.ps1
 ~~~
 
-该命令构建 Debug 引擎并将完整插件部署到主程序 Debug 输出的 `addons/ocr`，使用同一套手动准备的资源，无需 Python。
+调试部署脚本需要 PowerShell 7（正式发布 BAT 可使用 Windows PowerShell 5.1）。该命令构建 Debug 引擎并将完整插件部署到主程序 Debug 输出的 `addons/ocr`，使用同一套手动准备的资源，无需 Python。
 
-## 签名工具
+### 签名工具
 
 `Sign-UpdatePackage.ps1` 使用现有私钥生成签名。仓库只保存用于验签的公钥，私钥不写入脚本或发布 ZIP。签名格式和安装行为见 [更新机制](../docs/UPDATES.md)。
 
@@ -81,13 +85,13 @@ pwsh -File tools/Setup-OcrDevelopment.ps1
 pwsh -File tools/New-UpdateSigningKey.ps1 -PrivateKeyPath "D:\secure\GenshinPiano-update-signing-private.xml"
 ~~~
 
-## 模型、资源与离线维护
+### 模型、资源与离线维护
 
-### 图标
+#### 图标
 
 `generate_windows_icons.py` 从主图生成 Windows 图标和应用资源，需要 Pillow。素材说明见 [图标资源](../src/GenshinPiano.App/Assets/README.md)。
 
-### OCR 宿主验证
+#### OCR 宿主验证
 
 `ocr/smoke/OcrAddonSmoke.csproj` 提供 `recognize`、`verify`、`install` 命令，需要 .NET 10 SDK 和实际插件包。`install` 会替换指定目录的插件，应使用专用测试目录。
 
@@ -96,7 +100,7 @@ dotnet run --project tools/ocr/smoke/OcrAddonSmoke.csproj -- recognize publish/a
 dotnet run --project tools/ocr/smoke/OcrAddonSmoke.csproj -- verify publish/ocr-addons-1.0.0-win-x64.zip src/GenshinPiano.App/Assets/Security/UpdateSigningPublicKey.xml
 ~~~
 
-### 简谱模型导出
+#### 简谱模型导出
 
 `ocr/models/export_orpheusnet.py` 和 `export_orpheusnet_srcnn.py` 从本地 OrpheusNet 源码/权重重新生成并验证 ONNX 模型，需要独立的 PyTorch、ONNX、NumPy 开发环境。
 
@@ -105,11 +109,11 @@ python tools/ocr/models/export_orpheusnet.py "D:\research\OrpheusNet" "D:\models
 python tools/ocr/models/export_orpheusnet_srcnn.py "D:\research\srcnn.pth" "D:\models\orpheusnet-srcnn-x3.onnx"
 ~~~
 
-### 离线评分与回归
+#### 离线评分与回归
 
 `ocr/research` 保留扫描谱预处理、SMT 输出解析、离线评分、参考标注和回归工具。它们不进入应用/OCR 包，正式识别使用 C# 引擎。
 
-- `Test-Smt.ps1`：单次原生推理，支持 System/Page 模型，记录输出、耗时并处理超时。
+- `Test-Smt.ps1`：需要 PowerShell 7；单次原生推理，支持 System/Page 模型，记录输出、耗时并处理超时。
 - `prepare_smt_scan.py`、`optimize_smt_scan.py`：扫描谱布局与候选处理，需要 NumPy、Pillow。
 - `compare_staff_ocr.py`、`evaluate_smt_scan_optimization.py`：结合 `reference` 中的人工标注进行离线评分。
 - `evaluate_ocr_score.py`：对照人工 `.gpiano` 文件评估简谱结果。
@@ -124,10 +128,126 @@ python tools/ocr/research/optimize_smt_scan.py "D:\scores\scan.png" "D:\results\
 
 ## English
 
-Build requirements: Windows x64 and .NET 10 SDK. The self-contained updater also needs the Desktop C++ build tools. Run commands above from the repository root.
+This directory contains application build tools, OCR resource deployment, signing, and offline maintenance utilities. Run the commands below from the repository root. See [Project documentation](../docs/README.md#english) for product behavior and architecture.
 
-The tracked BAT files publish the self-contained application, framework-dependent application, and OCR add-on separately. Their first argument is the release version; OCR also accepts resource and VC runtime directories. OCR packaging needs PowerShell 7 and manually downloaded assets.
+### Environment and regular builds
 
-Set `GENSHINPIANO_UPDATE_SIGNING_KEY` to an existing private key outside the repository. Publish each ZIP with its matching `.sha256` and `.sig` files. Build and test commands, unsigned packaging, Debug OCR setup, and maintenance tools are listed above.
+Use Windows 10/11 x64, the .NET 10 SDK, and Git. Visual Studio with WPF support or VS Code can be used for editing. The self-contained application uses a Native AOT updater, which also requires the Desktop C++ build tools.
 
-For current product behavior and architecture, see [project documentation](../docs/README.md).
+~~~powershell
+dotnet restore GenshinPiano.sln
+dotnet build GenshinPiano.sln -c Debug
+dotnet run --project src/GenshinPiano.App/GenshinPiano.App.csproj
+~~~
+
+Run the existing automated tests:
+
+~~~powershell
+dotnet test tests/GenshinPiano.Core.Tests/GenshinPiano.Core.Tests.csproj
+~~~
+
+Ordinary builds do not require or download OCR models. Build directories (`bin`, `obj`, `artifacts`) and generated release packages are excluded from Git.
+
+### Publishing the application
+
+The three tracked BAT files can be double-clicked and locate the repository root automatically. Their first argument overrides the release version. With no argument they use the defaults defined in the BAT: `3.1.0` for the application and `1.0.0` for OCR.
+
+Application packaging requires at least one score under `publish/songs`. Configure the existing signing key, then choose the package type:
+
+~~~powershell
+$env:GENSHINPIANO_UPDATE_SIGNING_KEY = 'D:\secure\GenshinPiano-update-signing-private.xml'
+tools\build-release.bat 3.1.0
+tools\build-release-framework.bat 3.1.0
+~~~
+
+The key path is only an example; keep the actual private key outside the repository. The self-contained build needs no .NET installation on the target computer. The framework-dependent build requires .NET 10 Desktop Runtime x64. Both scripts package only the application, updater, and scores; OCR is published separately.
+
+Application output is written to `publish/GenshinPiano-win-x64` or `publish/GenshinPiano-win-x64-framework`, with a corresponding ZIP, `.sha256`, and `.sig`. Upload each ZIP and both sidecars together to the Release.
+
+The local/CI packaging check does not need a signing key:
+
+~~~powershell
+pwsh -File tools/Build-UnsignedAppPackage.ps1
+~~~
+
+Output is placed under `artifacts/package-check`. This unsigned package is not accepted by the in-app updater.
+
+### OCR resources and publishing
+
+OCR publishing requires the .NET 10 SDK and the same signing-key environment variable. The BAT prefers available PowerShell 7 and otherwise uses built-in Windows PowerShell 5.1, so installing PowerShell 7 is optional for release packaging.
+
+Download the pinned assets manually into `publish/smt-experiment`. The model can alternatively be placed in that directory's `models` subfolder:
+
+- [CrispEmbed v0.17.18 CPU Windows x64](https://github.com/CrispStrobe/CrispEmbed/releases/tag/v0.17.18): `crispembed-windows-x86_64.zip`.
+- [GrandStaff Q8 model](https://huggingface.co/cstr/smt-grandstaff-GGUF/tree/8e1595591659aa03cf1e71aab5aa03e8f3fccd7e): `smt-grandstaff-q8_0.gguf`.
+
+The publisher checks pinned SHA-256 hashes, extracts the required runtime files, licenses, and model, and includes x64 VC runtime DLLs. VC DLLs default to Windows `System32`. The second and third BAT arguments override the resource and VC runtime directories:
+
+~~~powershell
+tools\build-ocr-addon.bat 1.0.0
+tools\build-ocr-addon.bat 1.0.0 "D:\ocr-assets" "D:\vc-runtime-x64"
+tools\build-ocr-addon.bat --help
+~~~
+
+The selected version is applied to the engine build, published manifest, and ZIP filename without changing source versions. Output is `publish/addons/ocr` plus `publish/ocr-addons-<version>-win-x64.zip` and its checksum/signature sidecars.
+
+`Publish-OcrAddon.ps1` can also be invoked directly with `-Version`. Without that parameter, it reads the project version and checks that the source manifest matches. `Publish-OcrSmtRuntime.ps1` is shared by release packaging and Debug deployment; resource paths can be overridden with `-SmtTrialDirectory` and `-MsvcRuntimeDirectory`.
+
+Debug deployment uses:
+
+~~~powershell
+pwsh -File tools/Setup-OcrDevelopment.ps1
+~~~
+
+This development script requires PowerShell 7, unlike the release BAT's optional PowerShell 7 support. It builds the Debug engine and deploys the full add-on to `addons/ocr` in the application's Debug output, using the same manually prepared assets. Python is not required.
+
+### Signing tools
+
+`Sign-UpdatePackage.ps1` signs packages with the existing private key. Only the verification public key is stored in the repository. Private keys must not be written into scripts or release ZIPs. See [Updates and component management](../docs/UPDATES.md#english) for the signature format and installation behavior.
+
+`New-UpdateSigningKey.ps1` is for initial setup or a planned key rotation, not for each release. Replacing the public key changes the trust relationship with existing clients.
+
+~~~powershell
+pwsh -File tools/New-UpdateSigningKey.ps1 -PrivateKeyPath "D:\secure\GenshinPiano-update-signing-private.xml"
+~~~
+
+### Models, assets, and offline maintenance
+
+#### Icons
+
+`generate_windows_icons.py` generates Windows icons and application assets from the master image and requires Pillow. See [Icon assets](../src/GenshinPiano.App/Assets/README.md).
+
+#### OCR host verification
+
+`ocr/smoke/OcrAddonSmoke.csproj` provides `recognize`, `verify`, and `install` commands. It requires the .NET 10 SDK and an actual add-on/package. The `install` command replaces the add-on in the selected directory, so use a dedicated test installation.
+
+~~~powershell
+dotnet run --project tools/ocr/smoke/OcrAddonSmoke.csproj -- recognize publish/addons/ocr "D:\scores\scan.png" "D:\results\recognized.json" Staff
+dotnet run --project tools/ocr/smoke/OcrAddonSmoke.csproj -- verify publish/ocr-addons-1.0.0-win-x64.zip src/GenshinPiano.App/Assets/Security/UpdateSigningPublicKey.xml
+~~~
+
+#### Numbered-notation model export
+
+`ocr/models/export_orpheusnet.py` and `export_orpheusnet_srcnn.py` regenerate and verify ONNX models from local OrpheusNet source/checkpoints. They require a separate Python development environment with PyTorch, ONNX, and NumPy.
+
+~~~powershell
+python tools/ocr/models/export_orpheusnet.py "D:\research\OrpheusNet" "D:\models"
+python tools/ocr/models/export_orpheusnet_srcnn.py "D:\research\srcnn.pth" "D:\models\orpheusnet-srcnn-x3.onnx"
+~~~
+
+#### Offline scoring and regression checks
+
+`ocr/research` contains scan preprocessing, SMT output parsing, offline scoring, reference annotations, and regression utilities. They are excluded from application/OCR packages; production recognition uses the C# engine.
+
+- `Test-Smt.ps1` runs native inference with System/Page models, records output and elapsed time, and handles timeouts. This research script requires PowerShell 7.
+- `prepare_smt_scan.py` and `optimize_smt_scan.py` handle scan layout and candidates; they require NumPy and Pillow.
+- `compare_staff_ocr.py` and `evaluate_smt_scan_optimization.py` score results against manual annotations in `reference`.
+- `evaluate_ocr_score.py` compares numbered-notation results with a manually authored `.gpiano` file.
+- `test_smt_scan_pipeline.py` checks layout and candidate protection without a model.
+
+Page is for offline research only and needs the separate [full-page GrandStaff Q8 model](https://huggingface.co/cstr/smt-fp-grandstaff-GGUF/tree/522e448e70c5c4b5ab4ceb793610b0aad9d27c53), `smt-fp-grandstaff-q8_0.gguf`. The released add-on uses the System model. The corresponding scripts verify pinned hashes.
+
+~~~powershell
+python -B -m unittest discover -s tools/ocr/research -p test_smt_scan_pipeline.py -v
+python tools/ocr/research/optimize_smt_scan.py "D:\scores\scan.png" "D:\results\new-run"
+~~~

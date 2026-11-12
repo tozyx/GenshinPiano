@@ -206,7 +206,7 @@ not request elevation automatically.
 - Staff recognition supports clear, flat piano scans and rendered sheet images. Photograph
   correction is unsupported; incomplete layouts and unresolved structural anomalies are rejected.
   Always review and audition imported results. The dialog displays add-on version status and offers
-  installation/updates. See [OCR component](OCR.md) for its scope and interface.
+  installation/updates. See [OCR component](OCR.md#english) for its scope and interface.
 
 ### Updates and support
 
@@ -217,7 +217,7 @@ when the main application is updated or rolled back.
 Manual **Check for updates** shows installed/latest versions for the application and OCR together,
 with separate update/install actions and Cancel. OCR downloads are user initiated. A manual
 application update waits for and reuses a background download of the same version; closing the
-overview or choosing OCR does not interrupt that background task. See [Update behavior](UPDATES.md).
+overview or choosing OCR does not interrupt that background task. See [Update behavior](UPDATES.md#english).
 
 Logs are stored under `logs`. Report problems with relevant logs at:
 

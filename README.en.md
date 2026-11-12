@@ -102,7 +102,7 @@ For practice views, timing judgments, latency calibration, and marked-note resum
 
 [Practice and rhythm-game guide](docs/PRACTICE.md#english)
 
-See [project documentation](docs/README.md) for the architecture, score format, OCR, and update behavior.
+See [project documentation](docs/README.md#english) for the architecture, score format, OCR, and update behavior.
 
 Have a feature suggestion or found a bug? Please open a [GitHub Issue](https://github.com/tozyx/GenshinPiano/issues).
 

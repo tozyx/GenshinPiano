@@ -1,10 +1,11 @@
-#Requires -Version 7.0
+#Requires -Version 5.1
 param(
     [Parameter(Mandatory = $true)][string]$DestinationDirectory,
     [string]$SmtTrialDirectory,
     [string]$MsvcRuntimeDirectory
 )
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if ([string]::IsNullOrWhiteSpace($SmtTrialDirectory)) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-experiment' }
 if ([string]::IsNullOrWhiteSpace($MsvcRuntimeDirectory)) { $MsvcRuntimeDirectory = Join-Path $env:WINDIR 'System32' }

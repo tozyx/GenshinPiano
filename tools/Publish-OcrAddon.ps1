@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 5.1
 param(
     [Parameter(Mandatory = $true)]
     [string]$AddonRootDirectory,
@@ -42,7 +42,7 @@ if (-not $hasVersionOverride) {
 if ($Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') {
     throw 'OCR version must use major.minor.patch, optionally followed by a prerelease suffix (for example 1.0.1-preview.1).'
 }
-$sourceManifest = Get-Content -LiteralPath (Join-Path (Split-Path $projectPath) 'manifest.json') -Raw | ConvertFrom-Json
+$sourceManifest = Get-Content -LiteralPath (Join-Path (Split-Path $projectPath) 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 if (-not $hasVersionOverride -and [string]$sourceManifest.engineVersion -ne $Version) {
     throw "OCR manifest version '$($sourceManifest.engineVersion)' does not match project version '$Version'."
 }
@@ -81,7 +81,7 @@ if (-not (Test-Path -LiteralPath $enginePath -PathType Leaf) -or
     throw "The OCR add-on publish output is incomplete."
 }
 
-$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($hasVersionOverride) {
     # Stamp only the published copy, keeping source project/manifest versions intact.
     $manifest.engineVersion = $Version
@@ -108,10 +108,20 @@ Remove-Item -LiteralPath $packagePath, $checksumPath, $signaturePath -Force -Err
 # Include the top-level addons directory so the archive can be extracted
 # directly beside GenshinPiano.exe, without bundling it into the application
 # release ZIP itself.
-Compress-Archive `
-    -Path $addonRootDirectory `
-    -DestinationPath $packagePath `
-    -Force
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [IO.Compression.ZipFile]::Open($packagePath, [IO.Compression.ZipArchiveMode]::Create)
+$addonPrefix = $addonRootDirectory.TrimEnd('\') + '\'
+try {
+    foreach ($file in Get-ChildItem -LiteralPath $addonRootDirectory -File -Recurse) {
+        # .NET Framework may otherwise emit backslashes; keep ZIP paths portable.
+        $entryName = 'addons/' + $file.FullName.Substring($addonPrefix.Length).Replace('\', '/')
+        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $archive, $file.FullName, $entryName, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+}
+finally {
+    $archive.Dispose()
+}
 
 $hash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
 $packageName = [IO.Path]::GetFileName($packagePath)

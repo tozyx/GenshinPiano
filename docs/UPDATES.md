@@ -1,8 +1,12 @@
 # 更新与组件管理
 
+[简体中文](#简体中文) | [English](#english)
+
+## 简体中文
+
 主程序与 OCR 插件使用独立版本，分别下载和安装。GitHub、GitCode 提供同名发布资产，软件选择可用更新源；联网、自动更新和预览版由用户设置控制。
 
-## 手动检查与静默更新
+### 手动检查与静默更新
 
 主界面手动“检查更新”会并行读取主程序和 OCR 的版本信息，完成后显示已安装版本、最新版本及各自的检查结果。用户可以更新程序、安装或更新 OCR，或者取消；单纯检查版本不会启动新的包下载。一个组件检查失败不阻止另一个组件显示结果。
 
@@ -12,7 +16,7 @@ OCR 插件由用户主动下载安装，不随主程序自动更新静默下载�
 
 关闭自动更新会取消自动操作。关闭联网还会取消手动网络操作；已安装插件的本地识别不需要联网。
 
-## 版本与发布资产
+### 版本与发布资产
 
 主程序版本来自应用发布包，OCR 版本来自插件文件名和 manifest。OCR 可以附在主程序 Release 中分发，插件版本不必与 Release 标签相同。
 
@@ -36,7 +40,7 @@ ocr-addons-<ocr-version>-win-x64.zip.sig
 
 更新源支持断点下载。GitHub/GitCode 返回不同版本时，在首个有效响应后的短暂等待窗口内比较结果，优先选择已返回的较新兼容版本；另一来源失败或超时则使用可用结果。
 
-## 下载校验与信任
+### 下载校验与信任
 
 下载器首先校验 ZIP 的 SHA-256，再使用程序内置公钥验证 RSA-3072/SHA-256 签名。签名为 PKCS#1 v1.5 格式，`.sig` 保存 Base64 文本。
 
@@ -52,16 +56,84 @@ GenshinPiano.Update.v1
 
 仓库和发布包仅包含公钥。私钥保存在维护者的仓库外位置，发布时由环境变量提供。私钥不进入源码、应用包或 OCR 包；更换公钥需要处理已发布客户端的信任衔接。
 
-## 主程序安装与回滚
+### 主程序安装与回滚
 
 下载验证完成后，主程序将包安全解压到更新暂存目录，创建安装计划，并从缓存中启动独立更新器。更新器等待主程序退出后替换应用文件，保留备份，并按安装计划重启程序。
 
 更新和回滚保留 `config`、`songs`、`logs`、`update-cache`、`addons` 和 `data`。安装失败时尝试恢复旧程序；“手动回滚”使用最近的可用备份。主程序回滚不会同时降级 OCR 插件。
 
-## OCR 安装与替换
+### OCR 安装与替换
 
 OCR 下载使用独立缓存。安装器解压到暂存目录，检查 ZIP 路径、manifest 协议、签名元数据中的版本和必需资源，随后替换整个 `addons/ocr`。替换失败时恢复旧组件目录，成功替换会清除旧版本遗留的运行文件。
 
 识别任务与插件替换互斥，正在识别时不替换引擎。安装成功后刷新主界面和 OCR 窗口中的版本状态。插件使用范围与接口见 [OCR 插件](OCR.md)。
 
 构建与发布命令见 [工具说明](../tools/README.md)。
+
+## English
+
+The application and OCR add-on have independent versions, downloads, and installation flows. GitHub and GitCode serve assets with matching names, and the application selects an available update source. Network access, automatic updates, and preview releases are controlled by user settings.
+
+### Manual checks and background updates
+
+Manual **Check for updates** retrieves application and OCR metadata in parallel, then displays installed/latest versions and each check's result. Users can update the application, install/update OCR, or cancel. Checking metadata alone starts no new package download. A failed check for one component does not block the other component's result.
+
+Automatic updates retain background application downloads and installation on exit/restart. A manual check, closing the overview, or choosing OCR does not cancel an active background application download. Selecting the same application update waits for and reuses the verified result. An older selection cannot replace a newer prepared update.
+
+OCR installation and downloads are user initiated, not silently bundled with automatic application updates. The OCR dialog displays current, update-available, or unknown status and shares check results with the main window. Opening the dialog can reuse metadata checked within the last five minutes.
+
+Disabling automatic updates cancels automatic operations. Disabling network access also cancels manual network operations. Local recognition with an installed add-on requires no network access.
+
+### Versions and release assets
+
+Application versions come from application packages; OCR versions come from the add-on filename and manifest. An OCR package can be attached to an application Release without matching that Release's tag.
+
+The application has self-contained and framework-dependent Windows x64 builds. Each ZIP has a checksum and signature sidecar:
+
+~~~text
+GenshinPiano-<version>-win-x64.zip
+GenshinPiano-<version>-win-x64.zip.sha256
+GenshinPiano-<version>-win-x64.zip.sig
+
+GenshinPiano-<version>-win-x64-framework.zip
+GenshinPiano-<version>-win-x64-framework.zip.sha256
+GenshinPiano-<version>-win-x64-framework.zip.sig
+
+ocr-addons-<ocr-version>-win-x64.zip
+ocr-addons-<ocr-version>-win-x64.zip.sha256
+ocr-addons-<ocr-version>-win-x64.zip.sig
+~~~
+
+Application ZIPs contain the application, separate updater, and sample scores. The OCR ZIP contains `addons/ocr` at its root. Its runtime and models are excluded from application ZIPs.
+
+Downloads are resumable. When GitHub and GitCode return different versions, the source-selection logic compares responses received within a short grace window after the first valid response and prefers the newer compatible version. If another source fails or times out, it uses the available result.
+
+### Verification and trust
+
+The downloader first checks the ZIP's SHA-256, then verifies an RSA-3072/SHA-256 signature with the embedded public key. Signatures use PKCS#1 v1.5, and `.sig` stores Base64 text.
+
+The signed payload is the following UTF-8 text, with LF line endings and an uppercase hexadecimal hash:
+
+~~~text
+GenshinPiano.Update.v1
+<ZIP filename>
+<SHA-256>
+~~~
+
+The final line also ends in LF. The signature binds the protocol identifier, filename, and content hash, preventing a signed file from being renamed to impersonate a different version. Missing sidecars, damaged downloads, or invalid signatures prevent a package from becoming ready to install.
+
+Only the public key is included in the repository and release packages. The maintainer keeps the private key outside the repository and supplies its path through an environment variable when publishing. It is excluded from source, application packages, and OCR packages. Public-key replacement requires a transition for already released clients.
+
+### Application installation and rollback
+
+After download verification, the application safely extracts the package into staging, creates an installation plan, and starts a separate updater from the cache. The updater waits for the application to exit, replaces application files, keeps a backup, and restarts the application according to the plan.
+
+Updates and rollbacks preserve `config`, `songs`, `logs`, `update-cache`, `addons`, and `data`. A failed installation attempts to restore the previous application. Manual rollback uses the latest available backup. Application rollback does not also downgrade OCR.
+
+### OCR installation and replacement
+
+OCR downloads use a separate cache. The installer extracts to staging and validates ZIP paths, the manifest protocol, version consistency with signed metadata, and required resources before replacing the complete `addons/ocr` directory. A failed replacement restores the previous component. Successful replacement removes obsolete runtime files.
+
+Recognition and runtime replacement are mutually exclusive; the engine is not replaced during recognition. Successful installation refreshes version status in the main window and OCR dialog. See [OCR component](OCR.md#english) for recognition scope and interfaces.
+
+See [Build and maintenance tools](../tools/README.md#english) for build and release commands.
