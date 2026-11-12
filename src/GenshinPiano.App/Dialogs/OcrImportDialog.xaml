@@ -7,6 +7,9 @@
         SizeToContent="Height"
         WindowStyle="None"
         ResizeMode="NoResize"
+        AllowDrop="True"
+        PreviewDragOver="Window_OnPreviewDragOver"
+        PreviewDrop="Window_OnPreviewDrop"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppBackgroundBrush}"
@@ -103,7 +106,7 @@
                                    TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource SecondaryTextBrush}" />
                     </Border>
-                    <Button Grid.Column="2" Margin="8,0,0,0"
+                    <Button x:Name="BrowseImageButton" Grid.Column="2" Margin="8,0,0,0"
                             Content="{DynamicResource Ocr_Browse}"
                             Style="{StaticResource AppButtonStyle}" Click="Browse_OnClick" />
                 </Grid>

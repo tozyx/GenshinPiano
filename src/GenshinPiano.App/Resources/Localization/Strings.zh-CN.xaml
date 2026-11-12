@@ -56,7 +56,7 @@
     <system:String x:Key="Ocr_WatermarkStrong">强力</system:String>
     <system:String x:Key="Ocr_WatermarkOff">关闭</system:String>
     <system:String x:Key="Ocr_IncludeAccompaniment">识别伴奏</system:String>
-    <system:String x:Key="Ocr_Ready">选择图片和谱面类型后开始识别。识别结果导入前仍可取消。</system:String>
+    <system:String x:Key="Ocr_Ready">可将图片拖入此窗口，或点击“浏览”选择图片。选择谱面类型后开始识别，结果导入前仍可取消。</system:String>
     <system:String x:Key="Ocr_StaffScanOnly">五线谱仅支持清晰、平直的钢琴扫描谱或电子谱截图，不支持拍照谱。导入后请核对速度、音符和节奏。</system:String>
     <system:String x:Key="Ocr_SelectImage">选择曲谱图片</system:String>
     <system:String x:Key="Ocr_ImageFilter">曲谱图片|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff;*.webp|所有文件|*.*</system:String>

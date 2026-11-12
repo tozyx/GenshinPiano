@@ -15,7 +15,7 @@
         ResizeMode="CanResize"
         AllowDrop="True"
         PreviewDragOver="MainWindow_OnPreviewDragOver"
-        Drop="MainWindow_OnDrop"
+        PreviewDrop="MainWindow_OnPreviewDrop"
         Closing="MainWindow_OnClosing"
         Closed="MainWindow_OnClosed"
         DataContextChanged="MainWindow_OnDataContextChanged"

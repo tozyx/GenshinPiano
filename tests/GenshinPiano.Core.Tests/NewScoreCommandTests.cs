@@ -102,6 +102,47 @@ public sealed class NewScoreCommandTests
         }
     }
 
+    [Theory]
+    [InlineData(UnsavedChangesChoice.Cancel, false, false)]
+    [InlineData(UnsavedChangesChoice.DontSave, false, true)]
+    [InlineData(UnsavedChangesChoice.Save, false, true)]
+    [InlineData(UnsavedChangesChoice.Save, true, false)]
+    public async Task OpenFileAsync_ProtectsCurrentScoreBeforeOpeningDroppedFile(
+        UnsavedChangesChoice choice, bool saveFails, bool shouldOpen)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "GPiano-OpenDrop-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var target = Path.Combine(directory, "Loaded.gpiano");
+            File.WriteAllText(target, "test");
+            var serializer = new RecordingSerializer();
+            if (saveFails) serializer.OnSave = () => throw new IOException("Simulated write failure");
+            var original = ScoreDocument.CreateEmpty("Edited");
+            var workspace = new ScoreWorkspace(serializer, "Original");
+            workspace.RestoreScore(original, Path.Combine(directory, "original.gpiano"));
+            var prompts = 0;
+            var viewModel = new MainWindowViewModel(workspace, new ThemeService(), new TestLocalization(),
+                new UserSettingsService(Path.Combine(directory, "settings.json")), null!, null!, null!,
+                new ScoreRecoveryService(serializer), null!, () => { prompts++; return choice; });
+
+            await viewModel.OpenFileAsync(Path.Combine(directory, "missing.gpiano"));
+            Assert.Equal(0, prompts);
+            await viewModel.OpenFileAsync(target);
+            Assert.Equal(1, prompts);
+            Assert.Equal(shouldOpen ? 1 : 0, serializer.LoadCount);
+            Assert.Equal(!shouldOpen, workspace.IsDirty);
+            if (shouldOpen)
+            {
+                Assert.Equal(target, workspace.CurrentPath);
+                Assert.Equal(target, viewModel.CurrentSourcePath);
+                Assert.Equal("Loaded", workspace.CurrentScore.Metadata.Title);
+            }
+            else Assert.Same(original, workspace.CurrentScore);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private sealed class TestLocalization : ILocalizationService
     {
         public AppLanguage CurrentLanguage => AppLanguage.SimplifiedChinese;
@@ -115,9 +156,13 @@ public sealed class NewScoreCommandTests
         public ScoreDocument? SavedScore { get; private set; }
         public string? SavedPath { get; private set; }
         public Func<Task>? OnSave { get; set; }
+        public int LoadCount { get; private set; }
 
-        public Task<ScoreDocument> LoadAsync(string path, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+        public Task<ScoreDocument> LoadAsync(string path, CancellationToken cancellationToken = default)
+        {
+            LoadCount++;
+            return Task.FromResult(ScoreDocument.CreateEmpty(Path.GetFileNameWithoutExtension(path)));
+        }
 
         public async Task SaveAsync(ScoreDocument score, string path, CancellationToken cancellationToken = default)
         {

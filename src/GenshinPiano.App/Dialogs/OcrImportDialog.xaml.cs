@@ -58,6 +58,8 @@ public partial class OcrImportDialog : Window
 
     public bool AutoMapTo21Keys => AutoMapTo21CheckBox.IsChecked == true;
 
+    public bool CanSelectImage => !_closed && _analysisCancellation is null;
+
     private bool IsAddonAvailable => _service.FindInstalledAddon() is not null;
 
     public Task<bool> ShowAsync(Window owner)
@@ -185,6 +187,7 @@ public partial class OcrImportDialog : Window
 
     private void Browse_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!CanSelectImage) return;
         var dialog = new OpenFileDialog
         {
             Title = GetText("Ocr_SelectImage"),
@@ -196,12 +199,40 @@ public partial class OcrImportDialog : Window
             return;
         }
 
-        ImagePath = dialog.FileName;
-        ImagePathText.Text = Path.GetFileName(dialog.FileName);
-        ImagePathText.ToolTip = dialog.FileName;
+        TrySelectImage(dialog.FileName);
+    }
+
+    public bool TrySelectImage(string path)
+    {
+        if (!CanSelectImage || !FileDropSupport.IsSupportedImagePath(path)) return false;
+        ImagePath = Path.GetFullPath(path);
+        ImagePathText.Text = Path.GetFileName(ImagePath);
+        ImagePathText.ToolTip = ImagePath;
         Result = null;
         ImportButton.Visibility = Visibility.Collapsed;
+        AnalysisProgress.Value = 0;
+        ResultText.Text = GetText(NotationComboBox.SelectedItem is ComboBoxItem { Tag: "Staff" }
+            ? "Ocr_StaffScanOnly" : "Ocr_Ready");
         UpdateAnalyzeState();
+        return true;
+    }
+
+    private void Window_OnPreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Effects = CanSelectImage && (e.AllowedEffects & DragDropEffects.Copy) != 0 &&
+            FileDropSupport.TryGetFile(e.Data, out _, imagesOnly: true)
+            ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_OnPreviewDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Handled = true;
+        e.Effects = (e.AllowedEffects & DragDropEffects.Copy) != 0 &&
+            FileDropSupport.TryGetFile(e.Data, out var path, imagesOnly: true) && TrySelectImage(path)
+            ? DragDropEffects.Copy : DragDropEffects.None;
     }
 
     private async void AnalyzeButton_OnClick(object sender, RoutedEventArgs e)
@@ -290,6 +321,7 @@ public partial class OcrImportDialog : Window
 
     private void SetBusy(bool busy)
     {
+        BrowseImageButton.IsEnabled = !busy;
         AnalyzeButton.IsEnabled = !busy && _downloadCancellation is null && IsAddonAvailable && ImagePath is not null;
         NotationComboBox.IsEnabled = !busy;
         WatermarkComboBox.IsEnabled = !busy;

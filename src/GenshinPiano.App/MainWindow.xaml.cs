@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedViewModel;
     private PlaybackMonitorWindow? _playbackMonitorWindow;
     private OcrImportDialog? _ocrImportDialog;
+    private bool _openingDroppedScore;
     private bool _workspaceFileSelectionBusy;
     private bool _suppressWorkspaceFileOpen;
     private bool _scoreSearchClosing;
@@ -167,33 +168,45 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnPreviewDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = TryGetSupportedDroppedFile(e.Data, out _)
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Effects = (e.AllowedEffects & DragDropEffects.Copy) != 0 && TryGetSupportedDroppedFile(e.Data, out _)
             ? DragDropEffects.Copy
             : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private async void MainWindow_OnDrop(object sender, DragEventArgs e)
+    private async void MainWindow_OnPreviewDrop(object sender, DragEventArgs e)
     {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;
-        if (DataContext is MainWindowViewModel viewModel &&
-            TryGetSupportedDroppedFile(e.Data, out var path))
+        e.Effects = DragDropEffects.None;
+        if ((e.AllowedEffects & DragDropEffects.Copy) == 0 ||
+            !TryGetSupportedDroppedFile(e.Data, out var path)) return;
+
+        e.Effects = DragDropEffects.Copy;
+        if (FileDropSupport.IsSupportedImagePath(path))
         {
-            await viewModel.OpenPathAsync(path);
+            await ShowOcrImportAsync(path);
+            return;
         }
+
+        _openingDroppedScore = true;
+        try { await ((MainWindowViewModel)DataContext).OpenFileAsync(path); }
+        finally { _openingDroppedScore = false; }
     }
 
-    private static bool TryGetSupportedDroppedFile(IDataObject data, out string path)
+    private bool TryGetSupportedDroppedFile(IDataObject data, out string path)
     {
         path = string.Empty;
-        if (!data.GetDataPresent(DataFormats.FileDrop) ||
-            data.GetData(DataFormats.FileDrop) is not string[] paths)
+        if (_openingDroppedScore || _workspaceFileSelectionBusy || _isLocalAuditionPlaying ||
+            DataContext is not MainWindowViewModel { IsPlaying: false } ||
+            !FileDropSupport.TryGetFile(data, out path))
         {
             return false;
         }
 
-        path = paths.FirstOrDefault(MainWindowViewModel.IsSupportedScorePath) ?? string.Empty;
-        return path.Length > 0;
+        return !FileDropSupport.IsSupportedImagePath(path) ||
+            _ocrImportDialog is not { IsVisible: true } existing || existing.CanSelectImage;
     }
 
     private async void WorkspaceFileList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1160,7 +1173,10 @@ public partial class MainWindow : Window
         PianoRollFrameRateVSyncMenuItem.IsChecked = mode == "VSync";
     }
 
-    private async void ImportOcrImageMenuItem_OnClick(object sender, RoutedEventArgs e)
+    private async void ImportOcrImageMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        await ShowOcrImportAsync();
+
+    private async Task ShowOcrImportAsync(string? initialImagePath = null)
     {
         if (System.Windows.Application.Current is not App app ||
             DataContext is not MainWindowViewModel viewModel)
@@ -1170,6 +1186,7 @@ public partial class MainWindow : Window
 
         if (_ocrImportDialog is { IsVisible: true } existingDialog)
         {
+            if (initialImagePath is not null) existingDialog.TrySelectImage(initialImagePath);
             if (existingDialog.WindowState == WindowState.Minimized)
             {
                 existingDialog.WindowState = WindowState.Normal;
@@ -1185,6 +1202,7 @@ public partial class MainWindow : Window
             app.UserSettingsService,
             app.NotificationService,
             app.TaskbarProgressService);
+        if (initialImagePath is not null) dialog.TrySelectImage(initialImagePath);
         _ocrImportDialog = dialog;
         bool accepted;
         try

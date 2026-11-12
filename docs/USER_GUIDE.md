@@ -9,7 +9,10 @@
 1. 将发布 ZIP 完整解压到具有写入权限的文件夹，不要直接在压缩包内运行。
 2. 启动 `GenshinPiano.exe`。首次启动会根据 Windows 设置选择语言和主题。
 3. 点击左侧“当前曲谱”旁的 `+` 新建曲谱，或从“文件 → 打开”载入 `.gpiano` / `.mid`。
-4. 也可以把 `.gpiano` 或 `.mid` 文件直接拖到主窗口。
+4. 也可以把 `.gpiano`、`.json`、`.mid` 或 `.midi` 文件拖到主窗口的编辑区、练习区或侧栏；MIDI 会先显示导入设置，替换当前曲谱前会检查未保存修改。
+5. 将 PNG、JPG/JPEG、BMP、TIF/TIFF 或 WebP 图片拖到主窗口，会打开 OCR 并选中图片；也可直接拖到已打开的 OCR 窗口。选择谱面类型后点击“开始识别”，确认结果后才导入。识别期间不能切换图片。
+
+一次拖入多个文件时，仅处理其中第一个支持的文件；OCR 窗口只接收图片。播放或本地试听期间，主窗口暂停接收文件拖放。
 
 软件采用便携模式，设置、日志、更新缓存和附加组件均保存在程序目录中。不建议放入 `C:\Program Files`。
 
@@ -139,7 +142,15 @@
 
 Extract the complete release ZIP to a writable directory and run `GenshinPiano.exe`. Do not run it
 inside the ZIP or install the portable build under `C:\Program Files`. Create a score with the `+`
-button, use **File → Open**, or drag a `.gpiano` / `.mid` file onto the main window.
+button, use **File → Open**, or drag a `.gpiano`, `.json`, `.mid`, or `.midi` file onto the
+editor, practice area, or sidebar. MIDI opens its import settings, and unsaved changes are
+checked before replacing the current score.
+
+Drop a PNG, JPG/JPEG, BMP, TIF/TIFF, or WebP image onto the main window to open OCR with
+that image selected, or drop it directly into an existing OCR window. Choose the notation
+type and start recognition, then review and confirm import. Images cannot be replaced during
+recognition. Each drop uses the first supported file; the OCR window only accepts images.
+The main window does not accept file drops during playback or local audition.
 
 ### Files and score folder
 

@@ -345,9 +345,14 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        if (await ConfirmPendingChangesAsync())
+        await OpenFileAsync(dialog.FileName);
+    }
+
+    public async Task OpenFileAsync(string path)
+    {
+        if (IsSupportedScorePath(path) && await ConfirmPendingChangesAsync())
         {
-            await OpenPathAsync(dialog.FileName);
+            await OpenPathAsync(path);
         }
     }
 
