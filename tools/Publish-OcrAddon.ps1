@@ -13,7 +13,9 @@ param(
 
     [string]$MsvcRuntimeDirectory,
 
-    [string]$BuildArtifactsDirectory
+    [string]$BuildArtifactsDirectory,
+
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,18 +34,24 @@ $publishPrefix = $addonPublishDirectory.TrimEnd('\') + '\'
 if ($repositoryRoot -eq $addonPublishDirectory -or $repositoryRoot.StartsWith($publishPrefix,[StringComparison]::OrdinalIgnoreCase)) {
     throw 'Refusing to overwrite the source workspace.'
 }
+$hasVersionOverride = -not [string]::IsNullOrWhiteSpace($Version)
+if (-not $hasVersionOverride) {
+    [xml]$project = [IO.File]::ReadAllText($projectPath)
+    $Version = [string]($project.Project.PropertyGroup.Version | Select-Object -First 1)
+}
+if ($Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') {
+    throw 'OCR version must use major.minor.patch, optionally followed by a prerelease suffix (for example 1.0.1-preview.1).'
+}
+$sourceManifest = Get-Content -LiteralPath (Join-Path (Split-Path $projectPath) 'manifest.json') -Raw | ConvertFrom-Json
+if (-not $hasVersionOverride -and [string]$sourceManifest.engineVersion -ne $Version) {
+    throw "OCR manifest version '$($sourceManifest.engineVersion)' does not match project version '$Version'."
+}
 $nativeArchive = Join-Path $smtTrialRoot 'crispembed-windows-x86_64.zip'
 $modelName = 'smt-grandstaff-q8_0.gguf'
 $modelPath = Join-Path $smtTrialRoot $modelName
 if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf)) { $modelPath = Join-Path (Join-Path $smtTrialRoot 'models') $modelName }
 if ((Get-FileHash -LiteralPath $nativeArchive -Algorithm SHA256).Hash -ne 'e82337bcdefb1d54b0d97c26fc7e64ff35847d1db285e5062d6674df91ce6017') { throw 'SMT CPU archive SHA-256 mismatch.' }
 if ((Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash -ne 'f6612885a8d7015bef5ab7f045a37a0f667575f4b65b324a353cf348d6edc752') { throw 'SMT model SHA-256 mismatch.' }
-
-[xml]$project = [IO.File]::ReadAllText($projectPath)
-$version = [string]($project.Project.PropertyGroup.Version | Select-Object -First 1)
-if ([string]::IsNullOrWhiteSpace($version)) {
-    throw "The OCR engine project does not define a Version property."
-}
 
 New-Item -ItemType Directory -Path $artifactsDirectory -Force | Out-Null
 if (Test-Path -LiteralPath $addonPublishDirectory) {
@@ -74,6 +82,11 @@ if (-not (Test-Path -LiteralPath $enginePath -PathType Leaf) -or
 }
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+if ($hasVersionOverride) {
+    # Stamp only the published copy, keeping source project/manifest versions intact.
+    $manifest.engineVersion = $Version
+    [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 20) + "`n", [Text.UTF8Encoding]::new($false))
+}
 if ([string]$manifest.engineVersion -ne $version) {
     throw "OCR manifest version '$($manifest.engineVersion)' does not match project version '$version'."
 }

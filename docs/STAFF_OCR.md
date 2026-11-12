@@ -1,5 +1,7 @@
 # 五线谱 OCR 技术选型
 
+> 历史选型与 Oemer 基线记录。当前正式后端已切换为原生 SMT，仅支持清晰、平直的钢琴扫描谱和电子谱截图；部署方式见 [SMT 接入](SMT_INTEGRATION.md) 与 [工具说明](../tools/README.md)。旧 Oemer/Python 部署、打包脚本及兼容补丁已移除。
+
 ## 目标与约束
 
 五线谱 OCR（OMR）继续作为 `addons/ocr` 中的可选能力发布，不增加主程序和 framework 发布包的体积。首个版本面向印刷体钢琴谱和清晰拍照图片，输出至少包含音高、起始时间、时值、声部、小节、拍号和速度；力度、指法、歌词、连奏线等信息可以在后续版本补充。
@@ -89,13 +91,13 @@ MusicXML 是第一阶段的交换格式。SMT 的 beKern 结果先转换为同�
 
 每个模型包必须单独记录代码许可证、权重许可证、训练数据来源、版本、下载地址和 SHA-256。签名沿用 OCR 附加包现有发布流程。AGPL/GPL 后端不得混入默认 MIT 附加包；如提供外部适配器，需在发布前再次审查实际组合和分发方式。
 
-## oemer 开发环境部署
+## 历史 Oemer 开发环境
 
 将 Python 环境安装到 OCR 附加包的 `staff-omr` 目录。支持 `oemer.exe`、`.venv/Scripts/oemer.exe`、`python/Scripts/oemer.exe`，也支持 `python/python.exe` 或 `.venv/Scripts/python.exe`。Python 后端通过随 OCR 引擎发布的 `staff-omr/oemer_bridge.py` 调用，以跳过非必要的分析图生成，并兼容上游对空白谱线分区处理不完整的问题。开发构建还会自动查找工作区同级的 `_research/oemer/.venv/Scripts/python.exe`。
 
 开发时也可通过 `GENSHINPIANO_OEMER_EXECUTABLE` 指向 `oemer.exe` 或 `python.exe`。当前界面不做谱面类型自动检测：用户选择“五线谱”后，引擎才会在临时目录运行 Oemer 后端、导入其 MusicXML，并在结束或取消后清理临时文件；选择“简谱”时不会启动 Python。
 
-推荐从仓库根目录运行 `tools/Setup-OcrDevelopment.ps1`。脚本会准备固定的上游版本、依赖、模型及补丁，再把完整附加包部署到主程序 Debug 输出。模型和便携 Runtime 体积较大，因此不提交到 Git；正式发布时由 `tools/Publish-OcrAddon.ps1` 生成独立 OCR ZIP。
+以下仅记录旧 Oemer 环境与基线，不再提供对应的环境部署入口。当前 `tools/Setup-OcrDevelopment.ps1` 和 `tools/Publish-OcrAddon.ps1` 均使用原生 SMT，不会部署 Python；旧流程可从 Git 历史查阅。
 
 已验证的 Windows CPU 开发环境为 Python 3.11、NumPy 1.26.4、SciPy 1.11.4、ONNX Runtime 1.17.3、OpenCV 4.10.0 和 scikit-learn 1.2.0。scikit-learn 应保持 1.2.0，与随 oemer 分发的 SVC 模型保存版本一致。正式附加包使用 CPU 版 `onnxruntime`，不包含 CUDA/cuDNN。`types-Pillow` 和 `types-tensorflow` 仅是上游开发类型依赖，运行时不需要。
 

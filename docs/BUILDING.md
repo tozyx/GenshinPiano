@@ -106,11 +106,11 @@ addons\ocr\manifest.json
 .\tools\Setup-OcrDevelopment.ps1
 ```
 
-脚本校验固定 SHA-256，构建 Debug OCR 引擎，部署到主程序 Debug 输出的 `addons\ocr`，并附带本地 x64 VC 运行库。可使用 `-SmtTrialDirectory` 和 `-MsvcRuntimeDirectory` 指定资源位置。不需要 Python，也不自动下载模型。`-LegacyOemer` 仅供历史 Oemer 对比研究。
+脚本校验固定 SHA-256，构建 Debug OCR 引擎，部署到主程序 Debug 输出的 `addons\ocr`，并附带本地 x64 VC 运行库。可使用 `-SmtTrialDirectory` 和 `-MsvcRuntimeDirectory` 指定资源位置。不需要 Python，也不自动下载模型。旧 Oemer/Python 环境部署入口已移除。
 
 GitHub CI 不执行模型部署脚本，只验证普通 Release 构建和测试。完整接入、兼容性和实测结果见 [SMT 接入说明](SMT_INTEGRATION.md)。
 
-相关脚本：
+完整工具目录与用途见 [工具说明](../tools/README.md)。相关脚本：
 
 - `tools/Setup-OcrDevelopment.ps1`：部署 Debug 附加包
 - `tools/Publish-OcrSmtRuntime.ps1`：校验并部署原生 CPU Runtime 和模型
@@ -128,11 +128,11 @@ GitHub CI 不执行模型部署脚本，只验证普通 Release 构建和测试�
 测试包包含主程序、独立更新器和示例曲谱，需要 .NET 10 Desktop Runtime。
 CI 会执行该脚本。无签名测试包不能用于应用内更新。
 
-正式发布命令使用维护者本地的 BAT 启动脚本；三个脚本均被 `.gitignore` 忽略，不随 Git 克隆分发：
+正式发布使用 `tools` 目录中随 Git 跟踪的三个 BAT 脚本。从仓库根目录运行以下命令，或直接双击脚本；脚本会自动定位仓库根目录：
 
-- `build-release.bat`：仅构建自包含主程序、更新器及应用签名包。
-- `build-release-framework.bat`：仅构建框架依赖主程序、更新器及应用签名包。
-- `build-ocr-addon.bat`：独立构建 OCR 插件及其签名包。
+- `tools\build-release.bat`：仅构建自包含主程序、更新器及应用签名包。
+- `tools\build-release-framework.bat`：仅构建框架依赖主程序、更新器及应用签名包。
+- `tools\build-ocr-addon.bat`：独立构建 OCR 插件及其签名包。
 
 两个应用发布脚本都要求以下目录存在并至少包含一个曲谱文件；OCR 独立打包不需要曲谱库：
 
@@ -164,7 +164,7 @@ $env:GENSHINPIANO_UPDATE_SIGNING_KEY = "D:\secure\GenshinPiano.Update.PrivateKey
 自包含版本包含 .NET 运行时，体积更大，但目标电脑无需预装 .NET Desktop Runtime：
 
 ```cmd
-build-release.bat 3.0.1-preview.1
+tools\build-release.bat 3.1.0
 ```
 
 如果不传版本参数，脚本使用自身定义的默认版本。建议正式发布时始终明确传入版本。
@@ -176,7 +176,7 @@ build-release.bat 3.0.1-preview.1
 框架依赖版本更小，但用户电脑必须安装对应的 .NET 10 Desktop Runtime：
 
 ```cmd
-build-release-framework.bat 3.0.1-preview.1
+tools\build-release-framework.bat 3.1.0
 ```
 
 ### 9. 发布输出
@@ -197,16 +197,17 @@ GenshinPiano-<version>-win-x64-framework.zip.sig
 OCR 插件单独打包（需要 PowerShell 7、.NET 10 SDK 和同一签名私钥环境变量）：
 
 ```cmd
-build-ocr-addon.bat
+tools\build-ocr-addon.bat
+tools\build-ocr-addon.bat 1.0.1
 ```
 
-该脚本从 OCR 项目的 `Version` 读取插件版本，要求它与 `manifest.json` 的 `engineVersion` 一致；当前两者均为 `1.0.0`。无需传入主程序版本。
+与应用 BAT 一样，第一个参数为发布版本号；省略时使用 BAT 中的默认值 `1.0.0`，双击发布前也可直接修改 `if not defined VERSION set "VERSION=1.0.0"`。版本号会应用到引擎构建、打包后的 `manifest.json` 和 ZIP 文件名，源码项目与 manifest 保持原值。支持 `1.0.1-preview.1` 这样的预发布版本。
 
-默认从 `publish\smt-experiment` 读取 `crispembed-windows-x86_64.zip` 和 `smt-grandstaff-q8_0.gguf`（模型也可放在其 `models` 子目录）。默认从 Windows `System32` 读取三个 x64 VC 运行库 DLL。也可依次指定资源目录、VC 运行库目录：
+默认从 `publish\smt-experiment` 读取 `crispembed-windows-x86_64.zip` 和 `smt-grandstaff-q8_0.gguf`（模型也可放在其 `models` 子目录）。默认从 Windows `System32` 读取三个 x64 VC 运行库 DLL。第二、第三个参数可依次指定资源目录、VC 运行库目录：
 
 ```cmd
-build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
-build-ocr-addon.bat --help
+tools\build-ocr-addon.bat 1.0.1 "D:\ocr-assets" "D:\vc-runtime-x64"
+tools\build-ocr-addon.bat --help
 ```
 
 独立 OCR 打包会在 `publish` 下生成：
@@ -220,10 +221,11 @@ ocr-addons-<ocr-version>-win-x64.zip.sig
 
 应用 ZIP 与 OCR ZIP 是彼此独立的下载项，可分别发布。将每个 ZIP 连同对应的 `.sha256` 和 `.sig` 一起上传到 GitHub/GitCode Release。不要把 `publish\addons` 手动塞回主程序 ZIP。
 
-从干净克隆发布 OCR 时，可直接调用已跟踪的 PowerShell 脚本（无需本地 BAT）：
+也可直接调用 PowerShell 脚本发布 OCR：
 
 ```powershell
 pwsh -NoProfile -File .\tools\Publish-OcrAddon.ps1 `
+    -Version 1.0.1 `
     -AddonRootDirectory .\publish\addons `
     -ArtifactsDirectory .\publish `
     -PrivateKeyPath $env:GENSHINPIANO_UPDATE_SIGNING_KEY `
@@ -233,8 +235,8 @@ pwsh -NoProfile -File .\tools\Publish-OcrAddon.ps1 `
 ### 10. 版本来源
 
 - 主程序开发版本：`src/GenshinPiano.App/GenshinPiano.App.csproj`
-- OCR 引擎与插件 ZIP 版本：`src/GenshinPiano.Ocr.Engine/GenshinPiano.Ocr.Engine.csproj`，与其 `manifest.json` 保持一致
-- 应用 ZIP 版本：传给两个应用 BAT 的第一个参数；OCR BAT 的参数为资源目录，不是版本号
+- OCR 开发版本：`src/GenshinPiano.Ocr.Engine/GenshinPiano.Ocr.Engine.csproj`，与其 `manifest.json` 保持一致
+- 应用与 OCR 发布版本：对应 BAT 的第一个参数，省略时使用 BAT 内的默认版本；直接调用 `Publish-OcrAddon.ps1` 时用 `-Version` 覆盖，省略则读取项目版本并校验源码 manifest
 
 发布时应确保主程序项目版本、BAT 参数和 Release 标签符合预期。OCR 版本独立管理，远程下载器从 `ocr-addons-<version>-win-x64.zip` 文件名读取组件版本。
 
@@ -306,7 +308,7 @@ Place the downloaded `crispembed-windows-x86_64.zip` and `smt-grandstaff-q8_0.gg
 .\tools\Setup-OcrDevelopment.ps1
 ```
 
-The script verifies pinned hashes and deploys the Debug engine, model, and app-local x64 VC runtime to the application's Debug `addons\ocr` directory. Override resource paths with `-SmtTrialDirectory` and `-MsvcRuntimeDirectory`. No Python installation or model download is required. `-LegacyOemer` is reserved for historical research.
+The script verifies pinned hashes and deploys the Debug engine, model, and app-local x64 VC runtime to the application's Debug `addons\ocr` directory. Override resource paths with `-SmtTrialDirectory` and `-MsvcRuntimeDirectory`. No Python installation or model download is required. The legacy Oemer/Python setup path has been removed.
 
 See [SMT integration](SMT_INTEGRATION.md) for scope, compatibility, and validation. CI only builds and tests the regular solution without downloading OCR models.
 
@@ -315,36 +317,38 @@ See [SMT integration](SMT_INTEGRATION.md) for scope, compatibility, and validati
 A clean clone can build an unsigned, framework-dependent test ZIP with
 `pwsh -File tools/Build-UnsignedAppPackage.ps1`. The CI job runs the same script.
 The ZIP includes the application, standalone updater, and sample scores. It is
-not accepted by the in-app updater. The signing launchers below are local
-maintainer files and are not included in the Git checkout.
+not accepted by the in-app updater. The three signing launchers below are tracked under `tools`.
+Run them from the repository root or double-click them; they resolve the repository root automatically.
 
 Self-contained package (includes .NET; Native AOT C++ prerequisites required for the updater):
 
 ```cmd
-build-release.bat 3.0.1-preview.1
+tools\build-release.bat 3.1.0
 ```
 
 Framework-dependent package (requires .NET 10 Desktop Runtime on the target machine):
 
 ```cmd
-build-release-framework.bat 3.0.1-preview.1
+tools\build-release-framework.bat 3.1.0
 ```
 
 These two scripts build only the application, updater, and application ZIP/checksum/signature set.
 They do not package OCR or require OCR assets. Package the OCR add-on independently with PowerShell 7:
 
 ```cmd
-build-ocr-addon.bat
-build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
-build-ocr-addon.bat --help
+tools\build-ocr-addon.bat
+tools\build-ocr-addon.bat 1.0.1
+tools\build-ocr-addon.bat 1.0.1 "D:\ocr-assets" "D:\vc-runtime-x64"
+tools\build-ocr-addon.bat --help
 ```
 
-The optional arguments are the SMT resource directory and x64 VC runtime directory, defaulting to
-`publish\smt-experiment` and Windows `System32`. The add-on version comes from the OCR project and must
-match `manifest.json` (currently `1.0.0`); it is independent of the application version. The launcher
+The first argument is the OCR release version, defaulting to `1.0.0` in the BAT; edit that default for
+double-click publishing. It sets the build version, packaged manifest version, and ZIP name without
+modifying source versions. The second and third arguments override the SMT resource directory and
+x64 VC runtime directory, defaulting to `publish\smt-experiment` and Windows `System32`. The launcher
 uses `GENSHINPIANO_UPDATE_SIGNING_KEY` and creates `publish\addons\ocr` plus the OCR ZIP, checksum,
-and signature. All three BAT launchers are local, ignored files. Contributors without them can run
-the tracked `tools/Publish-OcrAddon.ps1` directly as shown above.
+and signature. You can also run `tools/Publish-OcrAddon.ps1` directly with `-Version` as shown above. Without `-Version`,
+the PowerShell script reads the project version and checks the source manifest matches it.
 
 Upload each application or OCR ZIP together with its matching `.sha256` and `.sig` files. The OCR
 add-on is not part of the application ZIP, and the packages can be released separately.

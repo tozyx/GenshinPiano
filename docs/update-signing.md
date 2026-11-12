@@ -7,9 +7,9 @@ release.
 
 ## Current key
 
-The private key generated for this checkout is outside the repository:
+Keep the private key outside the repository. The paths below are examples:
 
-`D:\java\GenshinPiano-update-signing-private.xml`
+`D:\secure\GenshinPiano.Update.PrivateKey.xml`
 
 Back this file up in an encrypted, access-controlled location. Losing it means
 already released clients cannot authenticate future update packages. Anyone
@@ -21,11 +21,11 @@ The corresponding public key is committed at:
 
 ## Configure a publishing terminal
 
-Set the private-key path before running either release script:
+Set the private-key path before running an application or OCR release script:
 
 ```powershell
-$env:GENSHINPIANO_UPDATE_SIGNING_KEY = 'D:\java\GenshinPiano-update-signing-private.xml'
-.\build-release.bat 3.0.1-preview.2
+$env:GENSHINPIANO_UPDATE_SIGNING_KEY = 'D:\secure\GenshinPiano.Update.PrivateKey.xml'
+.\tools\build-release.bat 3.1.0
 ```
 
 To persist it for future terminals:
@@ -33,7 +33,7 @@ To persist it for future terminals:
 ```powershell
 [Environment]::SetEnvironmentVariable(
     'GENSHINPIANO_UPDATE_SIGNING_KEY',
-    'D:\java\GenshinPiano-update-signing-private.xml',
+    'D:\secure\GenshinPiano.Update.PrivateKey.xml',
     'User')
 ```
 

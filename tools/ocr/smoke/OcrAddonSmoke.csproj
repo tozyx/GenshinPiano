@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="OcrAddonSmoke.cs" />
-    <Compile Include="../src/GenshinPiano.App/Services/OcrAddonPackageManager.cs" Link="OcrAddonPackageManager.cs" />
-    <ProjectReference Include="../src/GenshinPiano.Infrastructure/GenshinPiano.Infrastructure.csproj" />
+    <Compile Include="../../../src/GenshinPiano.App/Services/OcrAddonPackageManager.cs" Link="OcrAddonPackageManager.cs" />
+    <ProjectReference Include="../../../src/GenshinPiano.Infrastructure/GenshinPiano.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

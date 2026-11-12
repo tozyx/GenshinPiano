@@ -27,11 +27,11 @@
 - 从图像竖线得到每行预期小节数，末尾双小节线合并为一个边界；不读取参考答案的小节数量。
 - 两张真实图均检测到五组上下谱表，图像得出的小节数量均为 3、3、4、4、3。初次处理图像像素及原生输出保持与原基线相同。
 
-实现见 [布局检测](../tools/ocr/smt_scan_layout.py) 和 [图像准备](../tools/ocr/prepare_smt_scan.py)。目前仍限于近水平、单钢琴、带可验证竖向连接的扫描谱。
+实现见 [布局检测](../tools/ocr/research/smt_scan_layout.py) 和 [图像准备](../tools/ocr/research/prepare_smt_scan.py)。目前仍限于近水平、单钢琴、带可验证竖向连接的扫描谱。
 
 ## 校验与选择规则
 
-[校验器](../tools/ocr/smt_scan_quality.py) 只使用模型输出和图像布局：
+[校验器](../tools/ocr/research/smt_scan_quality.py) 只使用模型输出和图像布局：
 
 1. 检查退出码、超时、空输出、截断、谱表结构及输出小节数量。
 2. 从多个谱表/小节时值的多数一致结果推断可信拍长；不默认所有谱都是 4/4。显式且自洽的变拍号、原有弱起/不完整末小节保留。
@@ -43,7 +43,7 @@
 
 ## 局部重识别
 
-[流水线](../tools/ocr/optimize_smt_scan.py) 首次仍使用谱线间距 8 像素、浅色水印抑制。只在出现异常的行按固定顺序尝试：
+[流水线](../tools/ocr/research/optimize_smt_scan.py) 首次仍使用谱线间距 8 像素、浅色水印抑制。只在出现异常的行按固定顺序尝试：
 
 1. 间距 9 像素，保留水印抑制。
 2. 间距 8 像素，保留原始灰度。
@@ -74,27 +74,27 @@
 
 已通过 **17 项单元测试**，覆盖额外横线、短末行、缺一条谱线、未配对谱表、末尾双线、真实 3/4、变拍号、弱起、候选拍长逃逸、未异常小节保护、重复音保留、截断和同分保留基线。另验证真实原生进程 1 秒超时后退出且无残留进程。
 
-SMT 事件读取抽到 [共享解析模块](../tools/ocr/smt_notation.py)，供校验与离线评分复用。原 SMT/Oemer 四组整页基线结果在提取前后完全一致，前六小节评分也保持不变。
+SMT 事件读取抽到 [共享解析模块](../tools/ocr/research/smt_notation.py)，供校验与离线评分复用。原 SMT/Oemer 四组整页基线结果在提取前后完全一致，前六小节评分也保持不变。
 
 开发 Python 需 Pillow、NumPy。CPU ZIP 放在 publish/smt-experiment，单系统模型允许位于该目录或 models 子目录，均校验固定 SHA-256。
 
 ```powershell
 # 输出目录每次必须是新目录，避免覆盖证据。
-python tools/ocr/optimize_smt_scan.py `
+python tools/ocr/research/optimize_smt_scan.py `
   publish/smt-experiment/inputs/0011877-w-b-1.png `
   publish/smt-experiment/results/replay-clear
 
-python tools/ocr/optimize_smt_scan.py `
+python tools/ocr/research/optimize_smt_scan.py `
   publish/smt-experiment/inputs/clipboard_20261111_105629.png `
   publish/smt-experiment/results/replay-blur
 
 # 识别、盲选完成之后，才将参考提供给单独的离线评分程序。
-python tools/ocr/evaluate_smt_scan_optimization.py `
+python tools/ocr/research/evaluate_smt_scan_optimization.py `
   publish/smt-experiment/results/replay-clear/report.json `
   publish/smt-experiment/results/replay-blur/report.json `
   --output publish/smt-experiment/results/replay-evaluation.json
 
-python -m unittest discover -s tools/ocr -p test_smt_scan_pipeline.py -v
+python -m unittest discover -s tools/ocr/research -p test_smt_scan_pipeline.py -v
 ```
 
 最终证据：publish/smt-experiment/results/round1-v2-clear、round1-v2-blur、round1-v2-evaluation.json；每行 selection.json 记录所有候选、拒绝原因、最终选择和未解决状态。

@@ -2,7 +2,7 @@
 
 2026-11-11：SMT 已接入正式 OCR 引擎。此前的实验、准确度比较和照片鲁棒性文档保留为研究记录。本说明的包体积、准确度及兼容性实测针对当时的 0.9.0 包。
 
-2026-11-12：源码中的 OCR 项目与 manifest 版本已同步为 `1.0.0`。应用发布 BAT 不再构建 OCR；单独运行本地 `build-ocr-addon.bat` 打包插件。下面的 0.9.0 数据保留为历史实测，不代表已生成 1.0.0 发布包。
+2026-11-12：源码中的 OCR 项目与 manifest 版本已同步为 `1.0.0`。应用发布 BAT 不再构建 OCR；单独运行`tools\build-ocr-addon.bat` 打包插件。下面的 0.9.0 数据保留为历史实测，不代表已生成 1.0.0 发布包。
 
 ## 主程序与识别流程
 
@@ -23,17 +23,19 @@
 
 ## 构建产物
 
-独立打包入口（本地脚本，已加入 `.gitignore`）：
+独立打包入口（`tools` 下的脚本随 Git 跟踪）：
 
 ```cmd
-build-ocr-addon.bat
-build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+tools\build-ocr-addon.bat
+tools\build-ocr-addon.bat 1.0.1
+tools\build-ocr-addon.bat 1.0.1 "D:\ocr-assets" "D:\vc-runtime-x64"
 ```
 
-需要 PowerShell 7、.NET 10 SDK 和 `GENSHINPIANO_UPDATE_SIGNING_KEY`。参数是 SMT 资源目录和 VC 运行库目录，不是版本号。默认输出到 `publish/addons/ocr`，并在 `publish` 下生成当前插件版本的 ZIP、校验和及签名。也可直接使用已跟踪的 PowerShell 脚本：
+需要 PowerShell 7、.NET 10 SDK 和 `GENSHINPIANO_UPDATE_SIGNING_KEY`。第一个参数是发布版本，省略时使用 BAT 中默认的 `1.0.0`，双击发布时可修改 BAT 内的默认值。第二、第三个参数是 SMT 资源目录和 VC 运行库目录。指定版本应用到引擎构建、产物 manifest 和 ZIP，不修改源码版本。默认输出到 `publish/addons/ocr`，并在 `publish` 下生成对应版本的 ZIP、校验和及签名。也可直接使用已跟踪的 PowerShell 脚本，通过 `-Version` 指定发布版本；省略则读取项目版本并校验源码 manifest：
 
 ```powershell
 .\tools\Publish-OcrAddon.ps1 `
+    -Version 1.0.1 `
     -AddonRootDirectory D:\java\GenshinPiano\publish\smt-release\addons `
     -ArtifactsDirectory D:\java\GenshinPiano\publish `
     -PrivateKeyPath <仓库外的私钥路径>
@@ -41,7 +43,7 @@ build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
 
 资源默认从 `publish/smt-experiment` 读取，可用 `-SmtTrialDirectory` 覆盖。CPU 归档与模型固定 SHA-256；模型可在资源目录根部或 `models` 子目录。`Publish-OcrSmtRuntime.ps1` 只提取 CPU 推理必需 EXE/DLL、许可证和说明，并加入量化模型、本地 x64 VC 运行库与来源记录。VC 文件默认读取系统目录，也可用 `-MsvcRuntimeDirectory` 指定。
 
-新包不包含 Python/Oemer，但保留简谱的 RapidOCR、OrpheusNet 模型及所需 .NET/ONNX 运行库。旧 Python 打包工具仅保留供研究使用。
+新包不包含 Python/Oemer，但保留简谱的 RapidOCR、OrpheusNet 模型及所需 .NET/ONNX 运行库。旧 Oemer/Python 打包工具及调试部署分支已清理，仍需复核的评测工具保留在 `tools/ocr/research`。
 
 实际 ZIP 为 **106,903,860 字节（101.95 MiB）**；本地旧 0.8.0 ZIP 为 **290,770,564 字节（277.30 MiB）**，减少 **63.23%**。体积针对这两份实际归档，未混用此前仅目录裁剪的测算。
 
@@ -55,4 +57,4 @@ build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
 - 2 秒取消测试在约 2.06 秒结束，没有残留引擎/SMT 子进程；仅保留 Windows System32 的 PATH 时，包仍能独立识别清晰样本（243 音符，约 28.6 秒），无需系统 Python。该测试不等同于独立干净虚拟机验证。
 - 最终 ZIP 使用程序真实公钥验签通过；通过真实安装器从旧 0.8.0 目录升级到 0.9.0，旧文件清除，必需文件完整。Release 主程序输出目录也已安装这份新包。
 
-`tools/OcrAddonSmoke.csproj` 提供 `recognize`、`verify`、`install` 三种可重复运行的本地验证命令。运行时可设置 `GENSHINPIANO_SMT_DIAGNOSTICS` 为输出目录，以保留候选图、模型输出和选择记录；日常使用默认不保存这些诊断数据。
+`tools/ocr/smoke/OcrAddonSmoke.csproj` 提供 `recognize`、`verify`、`install` 三种可重复运行的本地验证命令。运行时可设置 `GENSHINPIANO_SMT_DIAGNOSTICS` 为输出目录，以保留候选图、模型输出和选择记录；日常使用默认不保存这些诊断数据。

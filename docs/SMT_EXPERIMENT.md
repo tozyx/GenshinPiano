@@ -73,23 +73,23 @@ PowerShell 7；三个下载文件放在 `publish/smt-experiment/` 根目录。`T
 ```powershell
 # 先准备扫描谱。Python 仅供开发期图像处理，需 Pillow、NumPy。
 # 不传两个可选参数时，可复现“整行高 256”基线。
-python tools/ocr/prepare_smt_scan.py `
+python tools/ocr/research/prepare_smt_scan.py `
   publish/smt-experiment/inputs/0011877-w-b-1.png `
   publish/smt-experiment/inputs/scan-clear-replay `
   --staff-spacing 8 --suppress-faint
 
 # 一次识别一个上下谱表系统。
-pwsh -File tools/Test-Smt.ps1 `
+pwsh -File tools/ocr/research/Test-Smt.ps1 `
   -ImagePath publish/smt-experiment/inputs/scan-clear-replay/system-01.png `
   -Model System
 
 # 整页模型使用准备脚本另行生成的、未经水印抑制的整页缩放图。
-pwsh -File tools/Test-Smt.ps1 `
+pwsh -File tools/ocr/research/Test-Smt.ps1 `
   -ImagePath publish/smt-experiment/inputs/scan-clear-replay/page-1485.png `
   -Model Page
 
 # 分析打印出的本次结果目录。仅分析结构、计数和可选的标注字符差异。
-python tools/ocr/analyze_smt_output.py <结果目录>/recognized.tokens.txt
+python tools/ocr/research/analyze_smt_output.py <结果目录>/recognized.tokens.txt
 ```
 
 `prepare_smt_scan.py` 当前只支持近水平、单钢琴、成对五线谱的扫描页。它使用水平投影、五条等间距谱线校验和上下谱表配对；无法可靠检测时失败，不静默生成空结果。不支持照片矫正、多乐器编制和通用版面分析。输出包含源图哈希、裁剪坐标、谱线位置和处理尺寸，保留原图。

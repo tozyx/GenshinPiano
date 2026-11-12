@@ -35,7 +35,7 @@
 2. 只保留间距与全局谱表相近、有完整五线支持的局部候选。
 3. 如果同一未覆盖区域在至少两个切片中有支持，拒绝当前布局，提示需要矫正或检查，避免返回漏掉大部分页面的结果。
 
-这是一项保守的完整性检查，不会自动拉直、补画谱线，也不保证能发现所有漏切。实现位于 [布局检测](../tools/ocr/smt_scan_layout.py)。
+这是一项保守的完整性检查，不会自动拉直、补画谱线，也不保证能发现所有漏切。实现位于 [布局检测](../tools/ocr/research/smt_scan_layout.py)。
 
 加入检查后：
 
@@ -75,11 +75,11 @@
 可使用现有开发环境复跑任意裁片，输出目录必须全新：
 
 ```powershell
-python tools/ocr/optimize_smt_scan.py `
+python tools/ocr/research/optimize_smt_scan.py `
   publish/smt-experiment/photo-robustness/river-photo.png `
   publish/smt-experiment/photo-robustness/replay-river
 
-python -m unittest discover -s tools/ocr -p test_smt_scan_pipeline.py -v
+python -m unittest discover -s tools/ocr/research -p test_smt_scan_pipeline.py -v
 ```
 
 ## 判断

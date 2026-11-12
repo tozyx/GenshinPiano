@@ -147,7 +147,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('image',type=Path)
     parser.add_argument('output',type=Path)
-    parser.add_argument('--trial-directory',type=Path,default=Path(__file__).resolve().parents[2]/'publish/smt-experiment')
+    parser.add_argument('--trial-directory',type=Path,default=Path(__file__).resolve().parents[3]/'publish/smt-experiment')
     parser.add_argument('--threads',type=int,default=4)
     parser.add_argument('--timeout',type=int,default=60)
     args=parser.parse_args()

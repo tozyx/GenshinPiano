@@ -7,7 +7,7 @@
 ## 参考与评分口径
 
 - 两张图为同一首《稻香》的同一页：清晰版 2500×3400，模糊版 474×644。输入哈希及 SMT 版本见 [试验记录](SMT_EXPERIMENT.md)。
-- [整页参考标注](../tools/ocr/reference/rice-field-scan.json) 覆盖上下谱表全部 17 小节：250 个音符符头，合并 7 对延音后为 **243 个发声音符**，上谱表 150、下谱表 93；另有 12 个书写休止。
+- [整页参考标注](../tools/ocr/research/reference/rice-field-scan.json) 覆盖上下谱表全部 17 小节：250 个音符符头，合并 7 对延音后为 **243 个发声音符**，上谱表 150、下谱表 93；另有 12 个书写休止。
 - 参考由本次逐图转录得到，核对了音高、附点、符杠、延音和末尾和弦，每个谱表的每小节书写时值均为 4 拍。参考尚未由用户或独立标注者复核，不能当作权威测试集。
 - 完整匹配要求**小节位置、谱表、MIDI 原始音高、小节内起点、时值全部一致**。不折叠到 21 键；使用有理数，不引入浮点容差。延音合并，和弦逐音匹配，重复声部的多余音保留。
 - 完整音符 F1 同时惩罚漏音和多音：2 × 匹配数 / (参考音符数 + 输出音符数)。拍号和休止另行诊断；此指标不等于整份曲谱无错。
@@ -87,7 +87,7 @@ Oemer 实际调用当前附加包 publish/addons/ocr/staff-omr/python/python.exe
 
 重新评分无需运行模型：
 
-    python tools/ocr/compare_staff_ocr.py publish/smt-experiment
+    python tools/ocr/research/compare_staff_ocr.py publish/smt-experiment
 
 评分器支持本次输出的声部拆分/合并、不同长度事件同步、和弦、延音、MusicXML backup，是开发评测工具，不是通用 Humdrum 导入器。SMT 使用共享时间网格，按尚未结束的最早事件推进；全空行不推进。遇小节线时保留输出实际长度并重新开始小节内时钟，不按参考 4 拍强制修正。
 

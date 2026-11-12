@@ -6,20 +6,23 @@ machine.
 
 ## Published assets
 
-The application launchers `build-release.bat` and `build-release-framework.bat` build only application
-packages. Use the independent local launcher `build-ocr-addon.bat` to package OCR; all three launchers
-are ignored by Git. The OCR launcher requires PowerShell 7, the .NET 10 SDK, and
+The application launchers `tools\build-release.bat` and `tools\build-release-framework.bat` build only application
+packages. Use `tools\build-ocr-addon.bat` to package OCR independently. All three launchers are
+tracked in Git and resolve the repository root automatically. The OCR launcher requires PowerShell 7, the .NET 10 SDK, and
 `GENSHINPIANO_UPDATE_SIGNING_KEY` pointing to the existing private signing key outside the repository.
-It reads the OCR project version (currently `1.0.0`) and verifies it matches `manifest.json`.
+The first argument sets the OCR release version, defaulting to `1.0.0` in the BAT. You can edit that
+default for double-click publishing. The build, packaged manifest, and ZIP name use the selected
+version; source project and manifest versions are left unchanged.
 
 ```cmd
-build-ocr-addon.bat
-build-ocr-addon.bat "D:\ocr-assets" "D:\vc-runtime-x64"
+tools\build-ocr-addon.bat
+tools\build-ocr-addon.bat 1.0.1
+tools\build-ocr-addon.bat 1.0.1 "D:\ocr-assets" "D:\vc-runtime-x64"
 ```
 
-Optional arguments override the SMT resource and x64 VC runtime directories. Defaults are
+The second and third arguments override the SMT resource and x64 VC runtime directories. Defaults are
 `publish\smt-experiment` and Windows `System32`. Output is `publish\addons\ocr` and the three assets
-below. For clean clones without the local BAT, see the direct PowerShell command in
+below. To invoke the publisher directly, see the PowerShell command in
 [Building](BUILDING.md#9-发布输出).
 
 Attach these three files to a GitHub and/or GitCode release:
@@ -85,4 +88,4 @@ The runtime and model are deliberately excluded from Git. Place the downloaded C
 quantized model in `publish/smt-experiment`, then run `tools/Setup-OcrDevelopment.ps1` from the
 repository root. The script verifies hashes and deploys a Debug-ready add-on without Python.
 Override the resource location with `-SmtTrialDirectory`. Ordinary .NET builds and CI do not
-download OCR assets. `-LegacyOemer` is reserved for historical research comparisons.
+download OCR assets. The legacy Oemer/Python setup and packaging scripts have been removed; offline evaluation tools remain under `tools/ocr/research`.
