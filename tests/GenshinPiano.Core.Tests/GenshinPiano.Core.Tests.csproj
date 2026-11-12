@@ -5,6 +5,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
@@ -18,8 +19,6 @@
     <ProjectReference Include="..\..\src\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Updater\GenshinPiano.Updater.csproj" />
     <ProjectReference Include="..\..\src\GenshinPiano.Ocr.Engine\GenshinPiano.Ocr.Engine.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\..\src\GenshinPiano.App\Services\OcrAddonPackageManager.cs" Link="OcrAddonPackageManager.cs" />
+    <ProjectReference Include="..\..\src\GenshinPiano.App\GenshinPiano.App.csproj" />
   </ItemGroup>
 </Project>

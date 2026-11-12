@@ -23,6 +23,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private readonly LegacyBatchConversionService _legacyConversionService;
     private readonly IMidiScoreImporter _midiScoreImporter;
     private readonly ScoreRecoveryService _recoveryService;
+    private readonly Func<UnsavedChangesChoice> _confirmUnsavedChanges;
     private CancellationTokenSource? _autosaveCancellation;
     private bool _isWritingScore;
     private string _scoreTitle;
@@ -49,7 +50,8 @@ public sealed class MainWindowViewModel : ObservableObject
         LegacyBatchConversionService legacyConversionService,
         IMidiScoreImporter midiScoreImporter,
         ScoreRecoveryService recoveryService,
-        UpdateStatusViewModel updateStatus)
+        UpdateStatusViewModel updateStatus,
+        Func<UnsavedChangesChoice>? confirmUnsavedChanges = null)
     {
         _workspace = workspace;
         _themeService = themeService;
@@ -59,13 +61,14 @@ public sealed class MainWindowViewModel : ObservableObject
         _legacyConversionService = legacyConversionService;
         _midiScoreImporter = midiScoreImporter;
         _recoveryService = recoveryService;
+        _confirmUnsavedChanges = confirmUnsavedChanges ?? ShowUnsavedChangesDialog;
         UpdateStatus = updateStatus;
         _scoreTitle = workspace.CurrentScore.Metadata.Title;
 
         _themeService.ThemeChanged += OnThemeChanged;
         _localizationService.LanguageChanged += OnLanguageChanged;
 
-        NewCommand = new RelayCommand(CreateNew);
+        NewCommand = new AsyncRelayCommand(CreateNewAsync);
         OpenCommand = new AsyncRelayCommand(OpenAsync);
         SaveAsCommand = new AsyncRelayCommand(SaveAsAsync);
         UseDarkThemeCommand = new RelayCommand(() => ApplyTheme(AppTheme.Dark));
@@ -211,7 +214,7 @@ public sealed class MainWindowViewModel : ObservableObject
         private set => SetProperty(ref _currentSourcePath, value);
     }
 
-    public RelayCommand NewCommand { get; }
+    public AsyncRelayCommand NewCommand { get; }
 
     public AsyncRelayCommand OpenCommand { get; }
 
@@ -287,8 +290,38 @@ public sealed class MainWindowViewModel : ObservableObject
         SetStatus("AiImport_Imported", score.Tracks.Sum(track => track.Notes.Count));
     }
 
-    private void CreateNew()
+    private async Task<bool> ConfirmPendingChangesAsync()
     {
+        if (!IsDirty)
+        {
+            return true;
+        }
+
+        return _confirmUnsavedChanges() switch
+        {
+            UnsavedChangesChoice.Save => await SavePendingChangesAsync(),
+            UnsavedChangesChoice.DontSave => true,
+            _ => false,
+        };
+    }
+
+    private static UnsavedChangesChoice ShowUnsavedChangesDialog()
+    {
+        var dialog = new UnsavedChangesDialog
+        {
+            Owner = System.Windows.Application.Current.MainWindow,
+        };
+        dialog.ShowDialog();
+        return dialog.Choice;
+    }
+
+    private async Task CreateNewAsync()
+    {
+        if (!await ConfirmPendingChangesAsync())
+        {
+            return;
+        }
+
         CancelAutosave();
         _recoveryService.Discard();
         _workspace.CreateNew(_localizationService.GetString("Score_Untitled"));
@@ -312,7 +345,10 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        await OpenPathAsync(dialog.FileName);
+        if (await ConfirmPendingChangesAsync())
+        {
+            await OpenPathAsync(dialog.FileName);
+        }
     }
 
     public static bool IsSupportedScorePath(string path)
