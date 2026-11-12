@@ -24,7 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
     <ProjectReference Include="..\GenshinPiano.Core\GenshinPiano.Core.csproj" />
-    <ProjectReference Include="..\GenshinPiano.Infrastructure\GenshinPiano.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.3" />
     <PackageReference Include="RapidOcrNet" Version="2.0.0" />
   </ItemGroup>

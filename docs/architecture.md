@@ -11,7 +11,7 @@ GenshinPiano 使用 C#/.NET 10 与 WPF，面向 Windows x64。项目以统一曲
 ~~~text
 GenshinPiano.App ──────────> Application ──> Core
         └────────────────> Infrastructure ──> Application / Core
-GenshinPiano.Ocr.Engine ──> Application / Infrastructure / Core
+GenshinPiano.Ocr.Engine ──> Application / Core
 GenshinPiano.Updater ─────> 独立更新进程
 ~~~
 
@@ -90,7 +90,7 @@ GenshinPiano uses C#/.NET 10 and WPF on Windows x64. A shared score model connec
 ~~~text
 GenshinPiano.App ──────────> Application ──> Core
         └────────────────> Infrastructure ──> Application / Core
-GenshinPiano.Ocr.Engine ──> Application / Infrastructure / Core
+GenshinPiano.Ocr.Engine ──> Application / Core
 GenshinPiano.Updater ─────> Separate update process
 ~~~
 
