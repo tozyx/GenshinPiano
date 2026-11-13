@@ -8,6 +8,7 @@
     <ProjectReference Include="..\GenshinPiano.Application\GenshinPiano.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="GenshinPiano.Core.Tests" />
     <PackageReference Include="Melanchall.DryWetMidi" Version="8.0.3" />
   </ItemGroup>
 </Project>

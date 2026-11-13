@@ -18,6 +18,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
     private readonly string _addonDirectory;
     private readonly TimeSpan _timeout;
     private readonly string? _workerExecutablePath;
+    private readonly OcrWorkerExecutable? _namedWorker;
 
     public ExternalOcrAddonService(string addonDirectory, TimeSpan? timeout = null, string? workerExecutablePath = null)
     {
@@ -25,6 +26,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
         _addonDirectory = Path.GetFullPath(addonDirectory);
         _timeout = timeout ?? TimeSpan.FromMinutes(30);
         _workerExecutablePath = workerExecutablePath is null ? null : Path.GetFullPath(workerExecutablePath);
+        _namedWorker = _workerExecutablePath is null ? null : new OcrWorkerExecutable(_workerExecutablePath);
         if (_timeout <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(timeout));
@@ -218,6 +220,8 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
 
             if (addon.UsesBundledEngine)
             {
+                startInfo.FileName = await Task.Run(() => _namedWorker!.Prepare(), timeout.Token);
+                timeout.Token.ThrowIfCancellationRequested();
                 process = Process.Start(startInfo) ?? throw new InvalidOperationException("The OCR worker could not be started.");
             }
             else
