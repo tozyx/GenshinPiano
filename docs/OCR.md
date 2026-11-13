@@ -48,7 +48,11 @@ addons/ocr/
 
 ### 进程与数据接口
 
-主程序启动自身的独立子进程 `GenshinPiano.exe --ocr-worker --resources <资源目录>`，在初始化 WPF、音频、更新服务和单实例锁之前进入识别模式。推理及其原生库均在工作进程内加载，不进入界面进程。文件 IPC 使用 UTF-8 JSON 请求、响应和进度文件，主程序直接跟踪工作进程。旧插件仍支持启动器分离进程及标准流模式；后者通过 stdin 接收请求、stdout 返回响应、stderr 输出诊断。
+主程序通过同目录运行别名启动独立子进程 `GenshinPiano.Ocr.exe --ocr-worker --resources <资源目录>`，在初始化 WPF、音频、更新服务和单实例锁之前进入识别模式。主界面进程仍为 `GenshinPiano.exe`。推理及其原生库均在工作进程内加载，不进入界面进程。文件 IPC 使用 UTF-8 JSON 请求、响应和进度文件，主程序直接跟踪工作进程。旧插件仍支持启动器分离进程及标准流模式；后者通过 stdin 接收请求、stdout 返回响应、stderr 输出诊断。
+
+运行别名在首次识别时生成，NTFS 上优先使用硬链接共享主程序文件；不支持硬链接时回退为本地副本。两个名称位于同一目录，适用于源码构建和单文件发行版。后续启动会校验并刷新过期别名，发布 ZIP 不重复打包一份引擎或 .NET。
+
+OCR 窗口使用标准 WPF 模态对话框，由 WPF 管理主窗口的禁用、恢复和关闭后的激活关系。打开期间可切换到其他软件，但不能编辑主界面；异步识别、进度显示及取消仍正常运行。点击窗口关闭按钮会取消进行中的识别或安装，待清理完成后自动关闭。“取消识别”仅停止任务并保留窗口。主窗口的图片拖放事件先返回，再打开对话框；打开前将主窗口设为当前 UI 线程的活动窗口，使 WPF 记录正确的关闭返回目标。
 
 请求字段：
 
@@ -131,7 +135,11 @@ Recognition code updates with the application; resource and application versions
 
 ### Processes and data interface
 
-The application starts a separate child process, `GenshinPiano.exe --ocr-worker --resources <directory>`, before initializing WPF, audio, update services, or the single-instance lock. Inference and native libraries load inside that worker rather than the UI process. File IPC uses UTF-8 JSON requests/responses and a progress file, with the host tracking the worker directly. Legacy add-ons retain detached-launcher and stream-mode support; stream mode uses stdin for requests, stdout for responses, and stderr for diagnostics.
+The application starts a separate child process through a same-directory executable alias, `GenshinPiano.Ocr.exe --ocr-worker --resources <directory>`, before initializing WPF, audio, updates, or the single-instance lock. The UI process remains `GenshinPiano.exe`. Inference and native libraries load inside the worker rather than the UI process. File IPC uses UTF-8 JSON requests/responses and a progress file, with the host tracking the worker directly. Legacy add-ons retain detached-launcher and stream-mode support; stream mode uses stdin for requests, stdout for responses, and stderr for diagnostics.
+
+The alias is created on first recognition. NTFS uses a hard link to share the application file when available; other filesystems fall back to a local copy. Both names stay in the same directory, supporting source builds and single-file releases. Later launches validate and refresh stale aliases, without adding another engine or .NET bundle to the release ZIP.
+
+OCR uses a standard WPF modal dialog, with WPF managing the main window's disabled state, restoration, and activation on close. Users can switch to other applications but cannot edit the main window while OCR is open. Asynchronous recognition, progress, and cancellation continue normally. The window's close button cancels any active recognition or installation and closes automatically after cleanup. **Cancel recognition** stops the task while retaining the dialog. The main window's image-drop handler returns before the dialog opens. Before opening, it establishes the main window as the UI thread's active window so WPF records the correct activation return target.
 
 Request fields:
 

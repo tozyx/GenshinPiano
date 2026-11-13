@@ -102,6 +102,8 @@
 3. 明确选择“简谱”或“五线谱”，再选择图片、水印抑制强度及是否识别伴奏。软件不会自动猜测谱面类型。
 4. 点击“开始识别”，完成后检查音符数量和提示。在“导入方式”中选择“替换当前曲谱”或“拼接到末尾”，再导入卷帘。
 
+OCR 打开期间主界面暂时不可操作，可以切换到其他软件。点击窗口右上角关闭按钮会取消正在进行的任务，清理后自动关闭；“取消识别”只停止识别并保留窗口。
+
 “拼接到末尾”适合分多页识别同一首曲子：接在当前所有音轨最后一个音符的节奏时值结束处，保留新页面开头的休止，不自动补齐到小节线。按声部顺序追加到已有音轨，多出的声部新建音轨；已有音轨的音色与静音设置保留。不同 PPQ 会按节拍换算。拼接沿用当前曲谱的速度、拍号和播放设置，保留标题与文件路径，标记为未保存，并支持 `Ctrl+Z` / `Ctrl+Y` 撤销与重做。识别结果中的速度或拍号变化不会带入；末尾纯休止无法从当前曲谱模型中恢复，必要时手动调整连接处的间隔。
 
 简谱路线使用 RapidOCR、数字分类与几何后处理，识别数字、上下音高点、升降号、延音线、节拍线、谱行/声部和伴奏。五线谱路线使用插件内的原生 SMT CPU 后端，按钢琴谱行识别并重建音高、时值、声部和小节结构，不需要安装 Python。两条路线由“谱面类型”下拉框选择。
@@ -230,6 +232,9 @@ not request elevation automatically.
   self-contained builds require no extra installation, while framework builds reuse the required
   .NET 10 Desktop Runtime x64. The dialog shows the resource version; recognition code updates with
   the application. Compatible legacy full add-ons remain usable and can migrate to resources.
+- OCR is a modal dialog: the main window is temporarily unavailable, while switching to other
+  applications remains possible. The title-bar close button cancels active work and closes after
+  cleanup; **Cancel recognition** stops recognition while keeping the dialog open.
 - Choose **Replace current score** or **Append to end** in **Import mode**. Appending is useful for
   successive pages: it starts after the last note's full rhythmic duration across all tracks and
   preserves the new page's leading rests without rounding up to a bar line. Voices append to tracks

@@ -63,7 +63,7 @@ MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换�
 
 ### OCR 与更新边界
 
-OCR 托管代码位于主程序包，模型和原生运行时位于可选的 `addons/ocr`。主程序通过版本化 manifest 校验资源，并启动 `GenshinPiano.exe --ocr-worker --resources <目录>`。入口在 WPF、音频、更新和单实例初始化前分流，因此工作进程无需启动界面，也不竞争主程序的单实例锁。文件 IPC 返回进度和曲谱；取消时结束工作进程及其推理子进程。识别和资源替换互斥。资源包不包含 .NET，工作进程使用主程序对应的运行时。详见 [OCR 插件](OCR.md)。
+OCR 托管代码位于主程序包，模型和原生运行时位于可选的 `addons/ocr`。主程序通过版本化 manifest 校验资源，并以同目录运行别名启动 `GenshinPiano.Ocr.exe --ocr-worker --resources <目录>`；主界面进程为 `GenshinPiano.exe`。入口在 WPF、音频、更新和单实例初始化前分流，因此工作进程无需启动界面，也不竞争主程序的单实例锁。文件 IPC 返回进度和曲谱；取消时结束工作进程及其推理子进程。识别和资源替换互斥。资源包不包含 .NET，工作进程使用主程序对应的运行时。详见 [OCR 插件](OCR.md)。
 
 AI 辅助识谱通过 `IAiScoreImporter` 将外部模型返回的小节/声部 JSON 转换为同一曲谱模型。文本与文件共用 `AiScoreJsonImporter`，窗口只处理输入、校验展示和导入确认，后续 API 请求可复用该转换层。
 
@@ -144,7 +144,7 @@ See [Practice and rhythm-game guide](PRACTICE.md#english) for controls.
 
 ### OCR and update boundaries
 
-Managed OCR code ships in the application package; optional models and native runtimes reside in `addons/ocr`. The host validates a versioned resource manifest and starts `GenshinPiano.exe --ocr-worker --resources <directory>`. The entry point branches before WPF, audio, updates, and single-instance initialization, so workers require no UI and do not compete for the application's instance lock. File IPC returns progress and scores. Cancellation terminates the worker and its inference subprocesses. Recognition and resource replacement are mutually exclusive. Resources contain no .NET runtime; the worker uses the application's runtime. See [OCR component](OCR.md#english).
+Managed OCR code ships in the application package; optional models and native runtimes reside in `addons/ocr`. The host validates a versioned resource manifest and starts `GenshinPiano.Ocr.exe --ocr-worker --resources <directory>` through a same-directory executable alias; the UI process remains `GenshinPiano.exe`. The entry point branches before WPF, audio, updates, and single-instance initialization, so workers require no UI and do not compete for the application's instance lock. File IPC returns progress and scores. Cancellation terminates the worker and its inference subprocesses. Recognition and resource replacement are mutually exclusive. Resources contain no .NET runtime; the worker uses the application's runtime. See [OCR component](OCR.md#english).
 
 AI-assisted import uses `IAiScoreImporter` to convert external model output, expressed as measures/voices, into the same score model. Text and files share `AiScoreJsonImporter`; the dialog handles input, review, and confirmation. Future API requests can reuse this conversion layer.
 
