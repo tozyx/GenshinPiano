@@ -1,0 +1,80 @@
+name: 问题反馈 / Bug report
+description: 报告崩溃、识别异常或其他软件问题 / Report a problem with GenshinPiano.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先搜索是否已有相同问题，每个 Issue 尽量只描述一个问题。可使用中文或英文填写。
+        Please search existing issues and describe one problem per report. Chinese and English are both welcome.
+
+  - type: input
+    id: app_version
+    attributes:
+      label: 软件版本 / App version
+      description: 可在“关于”窗口查看。源码构建请注明分支或提交号。 / Check About; include the branch or commit for source builds.
+      placeholder: "例如 / e.g. 3.1.1"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 系统与安装方式 / System and installation
+      description: 请填写 Windows 版本，以及自包含版、framework 版或源码构建。 / Include your Windows version and self-contained, framework-dependent, or source build.
+      placeholder: "Windows 11 24H2，自包含版 / self-contained"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 相关功能 / Affected feature
+      options:
+        - 曲谱编辑与文件操作 / Editing and files
+        - 本地试听与音色 / Audition and instruments
+        - 练习与音游 / Practice and rhythm game
+        - 游戏内演奏 / In-game playback
+        - MIDI 导入与导出 / MIDI import and export
+        - OCR 曲谱识别 / OCR recognition
+        - AI 辅助识谱 / AI-assisted import
+        - 更新与插件安装 / Updates and add-on installation
+        - 其他或不确定 / Other or unsure
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 请写明操作顺序和触发条件；偶发问题也请说明。 / Describe the action sequence, conditions, and whether it happens intermittently.
+      placeholder: |
+        1. 打开…… / Open ...
+        2. 点击或拖入…… / Click or drop ...
+        3. 出现…… / Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 实际表现与预期表现 / Actual and expected behavior
+      placeholder: |
+        实际表现 / Actual:
+
+        预期表现 / Expected:
+    validations:
+      required: true
+
+  - type: input
+    id: ocr_details
+    attributes:
+      label: OCR 信息（相关时填写） / OCR details, if applicable
+      description: 请填写资源包或旧插件版本、简谱或五线谱，以及扫描谱或拍照谱。 / Include the resource/add-on version, notation type, and whether the image is scanned or photographed.
+      placeholder: "资源包 / resources 1.0.1，五线谱扫描图 / scanned staff notation"
+
+  - type: textarea
+    id: attachments
+    attributes:
+      label: 日志、截图或样例文件 / Logs, screenshots, or sample files
+      description: |
+        日志位于程序目录的 logs 文件夹。可粘贴相关日志，或拖入截图、谱图；曲谱文件可打包为 ZIP 上传。
+        Logs are in the application's logs folder. Paste relevant output or attach screenshots/score images; score files can be attached as a ZIP.
