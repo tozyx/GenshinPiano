@@ -4,7 +4,7 @@
 
 ## 简体中文
 
-主程序与 OCR 插件使用独立版本，分别下载和安装。GitHub、GitCode 提供同名发布资产，软件选择可用更新源；联网、自动更新和预览版由用户设置控制。
+主程序包含 OCR 识别代码，OCR 模型与原生依赖作为独立版本的可选资源包下载和安装。GitHub、GitCode 提供同名发布资产，软件选择可用更新源；联网、自动更新和预览版由用户设置控制。
 
 ### 手动检查与静默更新
 
@@ -18,7 +18,7 @@ OCR 插件由用户主动下载安装，不随主程序自动更新静默下载�
 
 ### 版本与发布资产
 
-主程序版本来自应用发布包，OCR 版本来自插件文件名和 manifest。OCR 可以附在主程序 Release 中分发，插件版本不必与 Release 标签相同。
+主程序版本来自应用发布包，OCR 资源版本来自包文件名和 manifest 的 `resourceVersion`。资源包可以附在主程序 Release 中分发，版本不必与 Release 标签相同；识别代码的修复随主程序更新。
 
 主程序有自包含和 framework 两种 Windows x64 包。每个 ZIP 均配套校验和与签名：
 
@@ -31,12 +31,14 @@ GenshinPiano-<version>-win-x64-framework.zip
 GenshinPiano-<version>-win-x64-framework.zip.sha256
 GenshinPiano-<version>-win-x64-framework.zip.sig
 
-ocr-addons-<ocr-version>-win-x64.zip
-ocr-addons-<ocr-version>-win-x64.zip.sha256
-ocr-addons-<ocr-version>-win-x64.zip.sig
+ocr-resources-<resource-version>-win-x64.zip
+ocr-resources-<resource-version>-win-x64.zip.sha256
+ocr-resources-<resource-version>-win-x64.zip.sig
 ~~~
 
-主程序 ZIP 包含应用、独立更新器和示例曲谱。OCR ZIP 根目录包含 `addons/ocr`，插件运行时和模型不进入主程序 ZIP。
+主程序 ZIP 包含应用、托管 OCR 代码、独立更新器和示例曲谱。资源 ZIP 根目录包含 `addons/ocr`，其中只有模型、原生依赖、manifest 与许可声明，不携带第二份 .NET 运行时或托管引擎。
+
+新资源包使用组件标识 `addon.ocr.resources.win-x64`，旧完整插件使用 `addon.ocr.win-x64` / `ocr-addons-*`。新客户端仅从在线发布中选择资源包；旧客户端会忽略新文件名前缀，需要先升级主程序。兼容的旧完整插件仍可使用，新客户端允许同版本迁移为资源包，并在成功后移除冗余引擎和 .NET 文件。同类资源不会自动降级。回滚到不支持资源包的旧主程序后，需重新安装与其兼容的旧完整插件。
 
 更新源支持断点下载。GitHub/GitCode 返回不同版本时，在首个有效响应后的短暂等待窗口内比较结果，优先选择已返回的较新兼容版本；另一来源失败或超时则使用可用结果。
 
@@ -64,7 +66,7 @@ GenshinPiano.Update.v1
 
 ### OCR 安装与替换
 
-OCR 下载使用独立缓存。安装器解压到暂存目录，检查 ZIP 路径、manifest 协议、签名元数据中的版本和必需资源，随后替换整个 `addons/ocr`。替换失败时恢复旧组件目录，成功替换会清除旧版本遗留的运行文件。
+OCR 下载使用独立缓存。安装器解压到暂存目录，检查 ZIP 路径、manifest 协议、引擎兼容代次、组件类型、签名元数据中的版本和最低必需资源，随后替换整个 `addons/ocr`。替换失败时恢复旧组件目录，成功替换会清除旧版本遗留的运行文件。手动安装后再次读取本地版本，即使沿用最近的远程检查结果，也会重新判断更新或迁移状态。
 
 识别任务与插件替换互斥，正在识别时不替换引擎。安装成功后刷新主界面和 OCR 窗口中的版本状态。插件使用范围与接口见 [OCR 插件](OCR.md)。
 
@@ -72,7 +74,7 @@ OCR 下载使用独立缓存。安装器解压到暂存目录，检查 ZIP 路�
 
 ## English
 
-The application and OCR add-on have independent versions, downloads, and installation flows. GitHub and GitCode serve assets with matching names, and the application selects an available update source. Network access, automatic updates, and preview releases are controlled by user settings.
+The application contains OCR recognition code. Models and native dependencies are an optional resource package with its own version, download, and installation flow. GitHub and GitCode serve matching asset names. Network access, automatic updates, and preview releases are controlled by user settings.
 
 ### Manual checks and background updates
 
@@ -86,7 +88,7 @@ Disabling automatic updates cancels automatic operations. Disabling network acce
 
 ### Versions and release assets
 
-Application versions come from application packages; OCR versions come from the add-on filename and manifest. An OCR package can be attached to an application Release without matching that Release's tag.
+Application versions come from application packages. OCR resource versions come from the package filename and manifest's `resourceVersion`. Resource packages can be attached to an application Release without matching its tag. Recognition-code fixes ship through application updates.
 
 The application has self-contained and framework-dependent Windows x64 builds. Each ZIP has a checksum and signature sidecar:
 
@@ -99,12 +101,14 @@ GenshinPiano-<version>-win-x64-framework.zip
 GenshinPiano-<version>-win-x64-framework.zip.sha256
 GenshinPiano-<version>-win-x64-framework.zip.sig
 
-ocr-addons-<ocr-version>-win-x64.zip
-ocr-addons-<ocr-version>-win-x64.zip.sha256
-ocr-addons-<ocr-version>-win-x64.zip.sig
+ocr-resources-<resource-version>-win-x64.zip
+ocr-resources-<resource-version>-win-x64.zip.sha256
+ocr-resources-<resource-version>-win-x64.zip.sig
 ~~~
 
-Application ZIPs contain the application, separate updater, and sample scores. The OCR ZIP contains `addons/ocr` at its root. Its runtime and models are excluded from application ZIPs.
+Application ZIPs contain the application, managed OCR code, separate updater, and sample scores. Resource ZIPs contain `addons/ocr` with models, native dependencies, a manifest, and license notices. They contain no second .NET runtime or managed engine.
+
+Resources use component ID `addon.ocr.resources.win-x64`; legacy full add-ons use `addon.ocr.win-x64` and `ocr-addons-*` filenames. New clients select only resource archives from online releases. Old clients ignore the new filename prefix and must update the application first. Compatible legacy full packages still work. New clients allow migration to resources at the same version, removing redundant engine/.NET files after a successful replacement. Resources are not automatically downgraded within the same package type. Rolling back to an application that predates resource support requires reinstalling its compatible legacy full add-on.
 
 Downloads are resumable. When GitHub and GitCode return different versions, the source-selection logic compares responses received within a short grace window after the first valid response and prefers the newer compatible version. If another source fails or times out, it uses the available result.
 
@@ -132,7 +136,7 @@ Updates and rollbacks preserve `config`, `songs`, `logs`, `update-cache`, `addon
 
 ### OCR installation and replacement
 
-OCR downloads use a separate cache. The installer extracts to staging and validates ZIP paths, the manifest protocol, version consistency with signed metadata, and required resources before replacing the complete `addons/ocr` directory. A failed replacement restores the previous component. Successful replacement removes obsolete runtime files.
+OCR downloads use a separate cache. The installer validates ZIP paths, manifest protocol, engine compatibility generation, component type, version consistency with signed metadata, and minimum required resources before replacing the complete `addons/ocr` directory. A failed replacement restores the previous component. Successful replacement removes obsolete runtime files. Local versions are reread after manual installation, so update/migration status is recalculated even when recent remote metadata is reused.
 
 Recognition and runtime replacement are mutually exclusive; the engine is not replaced during recognition. Successful installation refreshes version status in the main window and OCR dialog. See [OCR component](OCR.md#english) for recognition scope and interfaces.
 

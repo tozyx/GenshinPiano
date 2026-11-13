@@ -11,7 +11,7 @@ GenshinPiano 使用 C#/.NET 10 与 WPF，面向 Windows x64。项目以统一曲
 ~~~text
 GenshinPiano.App ──────────> Application ──> Core
         └────────────────> Infrastructure ──> Application / Core
-GenshinPiano.Ocr.Engine ──> Application / Core
+        └────────────────> Ocr.Engine ──> Application / Core
 GenshinPiano.Updater ─────> 独立更新进程
 ~~~
 
@@ -19,7 +19,7 @@ GenshinPiano.Updater ─────> 独立更新进程
 - `Application`：工作区、导入转换、试听时间轴、练习会话、OCR 和更新用例，以及外部能力的接口。
 - `Infrastructure`：JSON、MIDI、MusicXML、旧曲谱格式、Windows 输入、音频输出、OCR 进程和更新源的实现。
 - `App`：窗口、视图模型、绘制控件、配置服务和依赖组装。
-- `Ocr.Engine`：可选识别引擎，在独立进程中处理图片并返回曲谱。
+- `Ocr.Engine`：随主程序发布的托管识别库，由主程序的独立工作进程处理图片；模型与原生依赖单独安装。
 - `Updater`：等待主程序退出后替换程序文件，处理备份、失败恢复和重启。
 
 ### 曲谱与工作区
@@ -63,7 +63,7 @@ MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换�
 
 ### OCR 与更新边界
 
-OCR 模型和原生运行时位于 `addons/ocr`，不嵌入主程序 ZIP。主程序通过版本化 manifest 发现插件，通过文件 IPC 调用引擎，并验证返回曲谱。识别任务和插件替换互斥，避免运行时被正在执行的任务占用。详见 [OCR 插件](OCR.md)。
+OCR 托管代码位于主程序包，模型和原生运行时位于可选的 `addons/ocr`。主程序通过版本化 manifest 校验资源，并启动 `GenshinPiano.exe --ocr-worker --resources <目录>`。入口在 WPF、音频、更新和单实例初始化前分流，因此工作进程无需启动界面，也不竞争主程序的单实例锁。文件 IPC 返回进度和曲谱；取消时结束工作进程及其推理子进程。识别和资源替换互斥。资源包不包含 .NET，工作进程使用主程序对应的运行时。详见 [OCR 插件](OCR.md)。
 
 AI 辅助识谱通过 `IAiScoreImporter` 将外部模型返回的小节/声部 JSON 转换为同一曲谱模型。文本与文件共用 `AiScoreJsonImporter`，窗口只处理输入、校验展示和导入确认，后续 API 请求可复用该转换层。
 
@@ -76,7 +76,7 @@ AI 辅助识谱通过 `IAiScoreImporter` 将外部模型返回的小节/声部 J
 - `config/settings.json`：主题、语言、编辑器、练习、音量和更新偏好。
 - `data/recovery`：未保存曲谱的恢复数据。
 - `logs`：运行日志。
-- `addons/ocr`：可选 OCR 引擎与模型。
+- `addons/ocr`：可选 OCR 模型与原生依赖，兼容保留的旧完整插件。
 - `update-cache`：更新下载、暂存目录和回滚备份。
 
 配置写入采用临时文件替换；缺失或损坏的配置按安全默认值加载。单实例协调使用互斥锁和命名管道，避免多个实例同时写入同一份便携数据，并将后续启动时打开的曲谱转交已有窗口。
@@ -90,7 +90,7 @@ GenshinPiano uses C#/.NET 10 and WPF on Windows x64. A shared score model connec
 ~~~text
 GenshinPiano.App ──────────> Application ──> Core
         └────────────────> Infrastructure ──> Application / Core
-GenshinPiano.Ocr.Engine ──> Application / Core
+        └────────────────> Ocr.Engine ──> Application / Core
 GenshinPiano.Updater ─────> Separate update process
 ~~~
 
@@ -98,7 +98,7 @@ GenshinPiano.Updater ─────> Separate update process
 - `Application` contains the workspace, import/conversion use cases, audition timeline, practice sessions, OCR and update use cases, and interfaces to external capabilities.
 - `Infrastructure` implements JSON, MIDI, MusicXML, legacy score formats, Windows input, audio output, OCR processes, and update sources.
 - `App` provides windows, view models, drawing controls, configuration services, and dependency composition.
-- `Ocr.Engine` is an optional recognition engine that processes images in a separate process and returns a score.
+- `Ocr.Engine` is a managed recognition library shipped with the application and run in its separate worker process. Models and native dependencies are installed separately.
 - `Updater` waits for the main application to exit, replaces application files, and handles backups, recovery, and restart.
 
 ### Scores and the workspace
@@ -144,7 +144,7 @@ See [Practice and rhythm-game guide](PRACTICE.md#english) for controls.
 
 ### OCR and update boundaries
 
-OCR models and native runtimes reside in `addons/ocr` and are excluded from the application ZIP. The host discovers the add-on through a versioned manifest, invokes it through file IPC, and validates its returned score. Recognition and add-on replacement are mutually exclusive so that an active task's runtime cannot be replaced. See [OCR component](OCR.md#english).
+Managed OCR code ships in the application package; optional models and native runtimes reside in `addons/ocr`. The host validates a versioned resource manifest and starts `GenshinPiano.exe --ocr-worker --resources <directory>`. The entry point branches before WPF, audio, updates, and single-instance initialization, so workers require no UI and do not compete for the application's instance lock. File IPC returns progress and scores. Cancellation terminates the worker and its inference subprocesses. Recognition and resource replacement are mutually exclusive. Resources contain no .NET runtime; the worker uses the application's runtime. See [OCR component](OCR.md#english).
 
 AI-assisted import uses `IAiScoreImporter` to convert external model output, expressed as measures/voices, into the same score model. Text and files share `AiScoreJsonImporter`; the dialog handles input, review, and confirmation. Future API requests can reuse this conversion layer.
 
@@ -157,7 +157,7 @@ Portable paths are based on `AppContext.BaseDirectory`:
 - `config/settings.json` stores theme, language, editor, practice, volume, and update preferences.
 - `data/recovery` stores recovery data for unsaved scores.
 - `logs` contains runtime logs.
-- `addons/ocr` contains the optional OCR engine and models.
+- `addons/ocr` contains optional OCR models/native dependencies, or a compatible retained legacy full add-on.
 - `update-cache` contains downloads, staging directories, and rollback backups.
 
 Configuration writes use temporary-file replacement. Missing or damaged configuration falls back to safe defaults. Single-instance coordination uses a mutex and named pipe to prevent concurrent writers to the same portable data and forwards score-opening requests from later launches to the existing window.

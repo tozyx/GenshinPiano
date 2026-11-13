@@ -54,7 +54,7 @@ Switch between vertical-roll and game-key views for follow, timed, and rhythm-ga
 
 ### OCR and themes
 
-The optional OCR add-on recognizes numbered notation and printed staff notation. The interface also supports light and dark themes and can be switched between English and Chinese.
+OCR recognizes numbered notation and printed staff notation. Recognition code ships with the application, models/native dependencies are optional resources, and tasks run in a separate child process. The interface also supports light/dark themes and English/Chinese.
 
 <p align="center">
   <img src="docs/images/ocr-import-en.png" alt="GenshinPiano OCR import window" width="49%" />
@@ -69,7 +69,7 @@ The optional OCR add-on recognizes numbered notation and printed staff notation.
 - Provide a piano roll, a 21-key preview, transposition, and pitch-range mapping
 - Provide game-key, vertical-roll, follow, timed, and rhythm-game practice
 - Provide reliable Windows keyboard playback and recording
-- Provide numbered-notation OCR and printed staff-notation OMR through an optional add-on
+- Provide numbered-notation OCR and printed staff-notation OMR through bundled recognition code and optional resources
 
 ## Solution Structure
 
@@ -77,6 +77,7 @@ The optional OCR add-on recognizes numbered notation and printed staff notation.
 - `src/GenshinPiano.Application`: use cases, ports, and application services
 - `src/GenshinPiano.Infrastructure`: JSON, MIDI, legacy-format, and Windows platform adapters
 - `src/GenshinPiano.App`: WPF desktop application
+- `src/GenshinPiano.Ocr.Engine`: managed recognition library shipped with the application and run in a separate worker process
 - `tests/GenshinPiano.Core.Tests`: core model tests
 - `docs`: user guides, architecture, score format, OCR, and update behavior
 

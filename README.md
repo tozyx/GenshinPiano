@@ -43,7 +43,7 @@
 
 ### OCR 与主题
 
-可选 OCR 附加包支持简谱与印刷五线谱识别；界面同时提供浅色、深色主题以及中英文切换。
+OCR 支持简谱与印刷五线谱识别：识别代码随主程序发布，模型与原生依赖通过可选资源包安装，任务在独立子进程中执行。界面同时提供浅色、深色主题以及中英文切换。
 
 <p align="center">
   <img src="docs/images/ocr-import-zh.png" alt="GenshinPiano OCR 曲谱识别界面" width="49%" />
@@ -58,7 +58,7 @@
 - 提供钢琴卷帘、21 键预览、移调和音域映射
 - 提供游戏按键、垂直卷帘、跟弹、节奏与音游练习
 - 提供可靠的 Windows 按键播放与录入能力
-- 通过独立附加包提供简谱 OCR 与印刷五线谱 OMR
+- 通过内置识别代码与可选资源包提供简谱 OCR 与印刷五线谱 OMR
 
 ## 解决方案结构
 
@@ -66,6 +66,7 @@
 - `src/GenshinPiano.Application`：用例、端口和应用服务
 - `src/GenshinPiano.Infrastructure`：JSON、MIDI、旧格式及 Windows 系统适配器
 - `src/GenshinPiano.App`：WPF 桌面界面
+- `src/GenshinPiano.Ocr.Engine`：随应用发布、由独立工作进程执行的托管识别库
 - `tests/GenshinPiano.Core.Tests`：核心模型测试
 - `docs`：使用指南、架构、曲谱格式、OCR 与更新机制说明
 

@@ -4,16 +4,16 @@
 
 ## 简体中文
 
-OCR 是可选的曲谱识别组件，支持简谱和五线谱两条处理路线。用户在导入窗口明确选择谱面类型；主程序负责展示进度、预览和导入结果，引擎负责将图片转换为统一曲谱。
+OCR 支持简谱和五线谱两条处理路线。识别代码随主程序发布，模型与大型原生依赖通过可选资源包安装。用户在导入窗口明确选择谱面类型；主界面展示进度、预览和导入结果，独立工作进程将图片转换为统一曲谱。
 
 ### 组成与识别流程
 
-插件安装在程序目录的 `addons/ocr`：
+资源包安装在程序目录的 `addons/ocr`：
 
 ~~~text
 addons/ocr/
   manifest.json
-  GPianoOcrEngine.exe
+  native/                 ONNX Runtime 与 SkiaSharp 原生库
   models/                 简谱 OCR 与 OrpheusNet 模型
   staff-omr/smt/          原生 SMT CPU 运行时、GGUF 模型及依赖
 ~~~
@@ -30,25 +30,25 @@ addons/ocr/
 
 布局不能完整覆盖谱表，或重试后仍有明显小节、节奏异常时，引擎返回失败并提示更换图片。结构检查只能发现部分错误，成功识别后仍需试听、检查音高与时值。返回的置信度不是经过校准的准确率。
 
-引擎不依赖系统 Python。简谱依赖插件内的 .NET/ONNX 模型，五线谱依赖插件内的原生运行时与量化模型。
+引擎不依赖系统 Python。简谱使用 ONNX 模型，五线谱使用原生 SMT 运行时与量化模型。资源包不携带 .NET：自包含主程序的工作进程使用随应用打包的运行时，framework 版本使用已安装的 .NET 10 Desktop Runtime x64。
 
 ### 插件发现与兼容
 
-主程序读取 `manifest.json`。当前 manifest 使用 schema 1、IPC 协议 1，包含：
+主程序读取 `manifest.json`。当前资源 manifest 使用 schema 2、IPC 协议 1，包含：
 
-- `engineVersion`：插件的独立版本号。
-- `executable`：相对插件目录的引擎路径。
-- `launchMode`：当前为 `file`。
+- `resourceVersion`：资源包的独立版本号。
+- `engineCompatibilityVersion`：引擎与资源的兼容代次，当前为 1。
+- `smtModelSha256`：SMT 模型的 SHA-256。
 - `staffBackend`：当前为 `smt`。
 - `requiredFiles`：运行所需资源的相对路径列表。
 
-主程序校验协议、路径范围及声明资源的存在性和非空状态。旧 manifest 可省略新增字段；缺少 `launchMode` 的旧引擎通过标准输入输出模式调用。
+主程序校验协议、兼容代次、路径范围和资源存在性/非空状态，并要求内置最低资源列表，不能通过删改 `requiredFiles` 绕过检查。schema 2 不指定可执行文件，工作进程路径由主程序确定。
 
-插件版本、协议版本与主程序版本各自独立。升级主程序保留已安装插件，插件可以单独更新；安装与签名验证见 [更新机制](UPDATES.md)。
+识别代码随主程序更新，资源版本与主程序版本独立。升级主程序保留已安装资源。旧 schema 1 完整插件仍可使用：兼容的 1.0.0 文件模式资源可交给内置工作进程；其他旧插件保留原引擎调用方式。新资源包不会被旧客户端误识别为完整插件。安装与签名验证见 [更新机制](UPDATES.md)。
 
 ### 进程与数据接口
 
-当前文件模式使用 UTF-8 JSON 请求、响应和进度文件。引擎启动器分离实际工作进程，主程序跟踪工作进程和任务生命周期。旧标准流模式将单个 JSON 请求写入 stdin，响应从 stdout 读取，诊断信息写入 stderr。
+主程序启动自身的独立子进程 `GenshinPiano.exe --ocr-worker --resources <资源目录>`，在初始化 WPF、音频、更新服务和单实例锁之前进入识别模式。推理及其原生库均在工作进程内加载，不进入界面进程。文件 IPC 使用 UTF-8 JSON 请求、响应和进度文件，主程序直接跟踪工作进程。旧插件仍支持启动器分离进程及标准流模式；后者通过 stdin 接收请求、stdout 返回响应、stderr 输出诊断。
 
 请求字段：
 
@@ -87,16 +87,16 @@ addons/ocr/
 
 ## English
 
-OCR is an optional score-recognition component with separate numbered-notation and staff-notation pipelines. Users explicitly choose the notation type in the import dialog. The host displays progress and handles preview/import; the engine converts images into the shared score model.
+OCR has separate numbered-notation and staff-notation pipelines. Recognition code ships with the application; models and large native dependencies are installed as an optional resource package. Users explicitly choose the notation type. The UI handles progress, preview, and import; a separate worker process converts images into the shared score model.
 
 ### Components and recognition flow
 
-The add-on is installed under `addons/ocr` beside the application:
+The resource package is installed under `addons/ocr` beside the application:
 
 ~~~text
 addons/ocr/
   manifest.json
-  GPianoOcrEngine.exe
+  native/                 ONNX Runtime and SkiaSharp native libraries
   models/                 Numbered-notation OCR and OrpheusNet models
   staff-omr/smt/          Native SMT CPU runtime, GGUF model, and dependencies
 ~~~
@@ -113,25 +113,25 @@ Staff recognition targets clear, flat piano scans and rendered sheet images. It 
 
 The engine rejects incomplete staff coverage and obvious measure/rhythm anomalies that remain after retries, asking the user to try another image. Structural checks detect only some errors. Successful results still need audition and pitch/duration review. Reported confidence is not a calibrated accuracy score.
 
-The engine does not require system Python. Numbered notation uses the add-on's .NET/ONNX models; staff recognition uses its bundled native runtime and quantized model.
+The engine does not require system Python. Numbered notation uses ONNX models; staff recognition uses the native SMT runtime and quantized model. The resource package contains no .NET runtime. The self-contained worker uses the application's bundled runtime; the framework-dependent worker uses the installed .NET 10 Desktop Runtime x64.
 
 ### Discovery and compatibility
 
-The host reads `manifest.json`. The current manifest uses schema 1 and IPC protocol 1, with these fields:
+The host reads `manifest.json`. Resource manifests use schema 2 and IPC protocol 1, with these fields:
 
-- `engineVersion`: independently managed add-on version.
-- `executable`: engine path relative to the add-on directory.
-- `launchMode`: currently `file`.
+- `resourceVersion`: independently managed resource version.
+- `engineCompatibilityVersion`: engine/resource compatibility generation, currently 1.
+- `smtModelSha256`: SHA-256 of the SMT model.
 - `staffBackend`: currently `smt`.
 - `requiredFiles`: relative paths of required runtime resources.
 
-The host validates the protocol, path boundaries, and the existence/nonzero size of declared resources. Legacy manifests can omit newer fields. Older engines without `launchMode` use standard-input/output mode.
+The host validates the protocol, compatibility generation, path boundaries, and resource existence/nonzero size. A built-in minimum file list prevents a manifest from omitting essential dependencies. Schema 2 specifies no executable: the application selects its trusted worker path.
 
-Add-on, protocol, and application versions are independent. Application updates preserve the installed add-on, which can be updated separately. See [Updates and component management](UPDATES.md#english) for installation and signature verification.
+Recognition code updates with the application; resource and application versions are independent. Application updates preserve installed resources. Legacy schema 1 full packages remain supported: compatible 1.0.0 file-mode resources can use the bundled worker, while other legacy packages retain their original engine invocation. Old clients do not mistake new resource archives for full add-ons. See [Updates and component management](UPDATES.md#english).
 
 ### Processes and data interface
 
-Current file mode uses UTF-8 JSON request/response files and a progress file. The engine launcher detaches the worker, and the host tracks its process and task lifecycle. Legacy stream mode receives one JSON request through stdin, returns a response through stdout, and writes diagnostics to stderr.
+The application starts a separate child process, `GenshinPiano.exe --ocr-worker --resources <directory>`, before initializing WPF, audio, update services, or the single-instance lock. Inference and native libraries load inside that worker rather than the UI process. File IPC uses UTF-8 JSON requests/responses and a progress file, with the host tracking the worker directly. Legacy add-ons retain detached-launcher and stream-mode support; stream mode uses stdin for requests, stdout for responses, and stderr for diagnostics.
 
 Request fields:
 
