@@ -13,13 +13,18 @@ internal static class OcrResourceEnvironment
     private static string? _root;
     private static bool _resolversInstalled;
     public static string Root => _root ?? AppContext.BaseDirectory;
+    public static string WorkRoot { get; private set; } = Path.GetTempPath();
     public static string? SmtModelSha256 { get; private set; }
 
-    public static void Configure(string directory)
+    public static void Configure(string directory, string? workDirectory = null)
     {
         _root = Path.GetFullPath(directory);
+        WorkRoot = workDirectory is null ? Path.GetTempPath() : Path.GetFullPath(workDirectory);
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "manifest.json")));
         var schema = manifest.RootElement.GetProperty("schemaVersion").GetInt32();
+        if (manifest.RootElement.GetProperty("protocolVersion").GetInt32() != OcrProtocol.CurrentVersion)
+            throw new InvalidDataException("The OCR resource package uses an incompatible protocol.");
+        SmtModelSha256 = null;
         if (schema == OcrResourceContract.SchemaVersion)
         {
             if (manifest.RootElement.GetProperty("engineCompatibilityVersion").GetInt32() != OcrResourceContract.EngineCompatibilityVersion)

@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ([string]::IsNullOrWhiteSpace($SmtTrialDirectory)) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-experiment' }
+if ([string]::IsNullOrWhiteSpace($SmtTrialDirectory)) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource' }
 if ([string]::IsNullOrWhiteSpace($MsvcRuntimeDirectory)) { $MsvcRuntimeDirectory = Join-Path $env:WINDIR 'System32' }
 $nativeDestination = [IO.Path]::GetFullPath($DestinationDirectory)
 if ([IO.Path]::GetFileName($nativeDestination.TrimEnd('\')) -ne 'smt') { throw 'DestinationDirectory must be named smt.' }

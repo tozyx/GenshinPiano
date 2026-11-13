@@ -65,7 +65,7 @@ public static class OcrWorkerHost
         {
             var input = await File.ReadAllTextAsync(options.RequestPath);
             var request = DeserializeRequest(input);
-            var result = await AnalyzeAsync(request);
+            var result = await AnalyzeAsync(request, Path.GetDirectoryName(options.ResponsePath));
             await WriteJsonAsync(options.ResponsePath, result);
             return result.Success ? 0 : 1;
         }
@@ -90,9 +90,9 @@ public static class OcrWorkerHost
         return request;
     }
 
-    private static async Task<OcrAnalysisResult> AnalyzeAsync(OcrAnalysisRequest request)
+    private static async Task<OcrAnalysisResult> AnalyzeAsync(OcrAnalysisRequest request, string? workDirectory = null)
     {
-        OcrResourceEnvironment.Configure(_resourceRoot ?? throw new InvalidDataException("The OCR resource directory was not specified."));
+        OcrResourceEnvironment.Configure(_resourceRoot ?? throw new InvalidDataException("The OCR resource directory was not specified."), workDirectory);
         var recognizer = new JianpuRecognizer();
         return await recognizer.RecognizeAsync(request, CancellationToken.None);
     }

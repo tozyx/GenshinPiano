@@ -31,7 +31,7 @@ public static class OcrAddonPackageValidator
             throw new InvalidDataException("OCR package version does not match its signed release metadata.");
         var executable = resources ? string.Empty : ResolveFile(directory,manifest.Executable);
         if (resources && (manifest.EngineCompatibilityVersion != OcrResourceContract.EngineCompatibilityVersion ||
-            manifest.StaffBackend != "smt" || manifest.SmtModelSha256.Length != 64 || !manifest.SmtModelSha256.All(Uri.IsHexDigit)))
+            manifest.StaffBackend != "smt" || manifest.SmtModelSha256 is not { Length: 64 } || !manifest.SmtModelSha256.All(Uri.IsHexDigit)))
             throw new InvalidDataException("The OCR resources are not compatible with this engine.");
         if (manifest.RequiredFiles is null) throw new InvalidDataException("OCR requiredFiles must be an array.");
         if (manifest.StaffBackend=="smt" && manifest.RequiredFiles.Length==0)

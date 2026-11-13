@@ -23,7 +23,7 @@ if (args[0]=="recognize")
     {
         var result=await service.AnalyzeAsync(args[2],args.Length>4?Enum.Parse<OcrNotationHint>(args[4]):OcrNotationHint.Staff,"zh-CN",
             progress:new Progress<OcrProgressUpdate>(p=>stages.Enqueue($"{p.Stage}:{p.Progress:F3}")),cancellationToken:cancellation.Token);
-        await File.WriteAllTextAsync(args[3],JsonSerializer.Serialize(new { elapsedSeconds=watch.Elapsed.TotalSeconds,result,stages=stages.ToArray() },options));
+        await File.WriteAllTextAsync(args[3],JsonSerializer.Serialize(new { elapsedSeconds=watch.Elapsed.TotalSeconds,addon=service.FindInstalledAddon(),result,stages=stages.ToArray() },options));
         Console.WriteLine($"success={result.Success}; notes={result.Score?.Tracks.Sum(t=>t.Notes.Count) ?? 0}; seconds={watch.Elapsed.TotalSeconds:F3}; error={result.ErrorCode}");
         return result.Success?0:3;
     }

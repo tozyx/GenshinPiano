@@ -15,7 +15,8 @@ internal sealed class StaffNotationRecognizer
     {
         if (!File.Exists(request.ImagePath)) return Failure("image_not_found","The source image does not exist.");
         var runtime=Path.Combine(OcrResourceEnvironment.Root,"staff-omr","smt");
-        var work=Path.Combine(Path.GetTempPath(),"GenshinPiano-SMT-"+Guid.NewGuid().ToString("N"));
+        // Keep crops inside the host-owned IPC job so forced cancellation also removes them.
+        var work=Path.Combine(OcrResourceEnvironment.WorkRoot,"GenshinPiano-SMT-"+Guid.NewGuid().ToString("N"));
         string? diagnostics=null;
         Directory.CreateDirectory(work);
         var diagnosticRoot=Environment.GetEnvironmentVariable("GENSHINPIANO_SMT_DIAGNOSTICS");

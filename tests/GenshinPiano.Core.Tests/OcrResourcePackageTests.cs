@@ -91,6 +91,18 @@ public sealed class OcrResourcePackageTests : IDisposable
     }
 
     [Fact]
+    public void NullModelChecksumIsRejectedWithoutBreakingDiscovery()
+    {
+        Resources(Target);
+        var path = Path.Combine(Target, "manifest.json");
+        var manifest = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        manifest["smtModelSha256"] = null;
+        File.WriteAllText(path, manifest.ToJsonString());
+        Assert.Null(Service().FindInstalledAddon());
+        Assert.Throws<InvalidDataException>(() => OcrAddonPackageValidator.Validate(Target));
+    }
+
+    [Fact]
     public void ManifestCannotOmitRequiredRuntimeOrEscapeResourceDirectory()
     {
         Resources(Target, requiredFile: "models/orpheusnet/orpheusnet-middle.onnx");

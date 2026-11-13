@@ -21,7 +21,10 @@ $output = [IO.Path]::GetFullPath($ArtifactsDirectory)
 $target = [IO.Path]::GetFullPath((Join-Path $addonRoot 'ocr'))
 if ([IO.Path]::GetFileName($addonRoot.TrimEnd('\')) -ne 'addons') { throw 'AddonRootDirectory must be named addons.' }
 if ($target -eq $repositoryRoot -or $repositoryRoot.StartsWith($target + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Refusing to replace the workspace.' }
-if (-not $SkipSigning -and -not $SkipArchive -and -not (Test-Path -LiteralPath $PrivateKeyPath -PathType Leaf)) { throw 'A signing key is required for release packaging. Use SkipSigning only for local tests.' }
+if (-not $SkipSigning -and -not $SkipArchive -and
+    ([string]::IsNullOrWhiteSpace($PrivateKeyPath) -or -not (Test-Path -LiteralPath $PrivateKeyPath -PathType Leaf))) {
+    throw 'A signing key is required for release packaging. Use SkipSigning only for local tests.'
+}
 if (-not $SmtTrialDirectory) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource' }
 if (-not $MsvcRuntimeDirectory) { $MsvcRuntimeDirectory = Join-Path $env:WINDIR 'System32' }
 if (-not $BuildArtifactsDirectory) { $BuildArtifactsDirectory = Join-Path $repositoryRoot 'artifacts\ocr-resources-publish' }

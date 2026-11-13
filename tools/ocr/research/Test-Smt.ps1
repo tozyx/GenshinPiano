@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 if ([string]::IsNullOrWhiteSpace($TrialDirectory)) {
-    $TrialDirectory = Join-Path $repositoryRoot 'publish\smt-experiment'
+    $TrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource'
 }
 $trialRoot = [IO.Path]::GetFullPath($TrialDirectory)
 $image = [IO.Path]::GetFullPath($ImagePath)

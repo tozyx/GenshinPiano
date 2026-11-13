@@ -298,6 +298,7 @@ public sealed class ExternalOcrAddonService : IOcrAddonService
             if (process is { HasExited: false })
             {
                 process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None);
             }
 
             throw;
