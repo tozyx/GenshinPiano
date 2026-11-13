@@ -28,6 +28,14 @@ dotnet test tests/GenshinPiano.Core.Tests/GenshinPiano.Core.Tests.csproj
 
 三个 BAT 支持双击运行，会自动定位仓库根目录。第一个参数覆盖发布版本，省略时使用 BAT 内的默认值；应用默认为 `3.1.0`，OCR 默认为 `1.0.0`。
 
+仓库保留三个 BAT 的初始版本，方便在其他电脑克隆后发布。本机修改版本号等设置时，`.gitignore` 不会自动忽略已跟踪文件；在每台新克隆的电脑运行一次以下命令，让本机修改不再显示于工作树状态：
+
+~~~powershell
+git update-index --skip-worktree tools/build-release.bat tools/build-release-framework.bat tools/build-ocr-addon.bat
+~~~
+
+该标记仅在当前克隆中生效。需要重新跟踪脚本修改时，将 `--skip-worktree` 换为 `--no-skip-worktree`。签名私钥仍通过环境变量指定，保存在仓库之外。
+
 应用发布需要 `publish/songs` 中至少有一个曲谱。配置现有签名私钥后，选择发布类型：
 
 ~~~powershell
@@ -155,6 +163,14 @@ Ordinary builds do not require or download OCR models. Build directories (`bin`,
 ### Publishing the application
 
 The three tracked BAT files can be double-clicked and locate the repository root automatically. Their first argument overrides the release version. With no argument they use the defaults defined in the BAT: `3.1.0` for the application and `1.0.0` for OCR.
+
+The repository retains starter copies of all three BAT files for publishing from other computers. `.gitignore` does not hide edits to tracked files. Run the following once in each new clone to keep local version/settings changes out of working-tree status:
+
+~~~powershell
+git update-index --skip-worktree tools/build-release.bat tools/build-release-framework.bat tools/build-ocr-addon.bat
+~~~
+
+This flag applies only to the current clone. Use `--no-skip-worktree` to track local script changes again. Supply the signing-key path through the environment variable and keep the private key outside the repository.
 
 Application packaging requires at least one score under `publish/songs`. Configure the existing signing key, then choose the package type:
 

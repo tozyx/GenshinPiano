@@ -28,6 +28,12 @@ publish/*
 *update-signing-private*.xml
 *update-signing-private*.pem
 
+# Keep tracked starter scripts; ignore local release settings for untracked copies.
+# Tracked copies also need git update-index --skip-worktree (see tools/README.md).
+/tools/build-release.bat
+/tools/build-release-framework.bat
+/tools/build-ocr-addon.bat
+
 # OS-generated files
 Thumbs.db
 Desktop.ini
