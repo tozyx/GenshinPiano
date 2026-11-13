@@ -21,9 +21,7 @@ public partial class OcrImportDialog : Window
     private CancellationTokenSource? _downloadCancellation;
     private CancellationTokenSource? _versionCancellation;
     private bool _closed;
-    private readonly TaskCompletionSource<bool> _completion = new(
-        TaskCreationOptions.RunContinuationsAsynchronously);
-    private bool _accepted;
+    private bool _closeRequested;
 
     public OcrImportDialog(
         IOcrAddonService service,
@@ -66,21 +64,6 @@ public partial class OcrImportDialog : Window
     public bool CanSelectImage => !_closed && _analysisCancellation is null;
 
     private bool IsAddonAvailable => _service.FindInstalledAddon() is not null;
-
-    public Task<bool> ShowAsync(Window owner)
-    {
-        ArgumentNullException.ThrowIfNull(owner);
-        if (IsVisible)
-        {
-            Activate();
-            return _completion.Task;
-        }
-
-        Owner = owner;
-        Show();
-        Activate();
-        return _completion.Task;
-    }
 
     private void UpdateAddonStatus()
     {
@@ -164,6 +147,7 @@ public partial class OcrImportDialog : Window
         {
             var progress = new Progress<double>(value =>
             {
+                if (_closed || _closeRequested) return;
                 AnalysisProgress.Value = value;
                 _taskbarProgress.SetProgress(Math.Max(0.01, value));
                 ResultText.Text = string.Format(GetText("Ocr_AddonDownloading"), value);
@@ -189,6 +173,7 @@ public partial class OcrImportDialog : Window
             _downloadCancellation = null;
             _taskbarProgress.Clear();
             UpdateAddonStatus();
+            CompletePendingClose();
         }
     }
 
@@ -253,6 +238,8 @@ public partial class OcrImportDialog : Window
             return;
         }
 
+        Result = null;
+        ImportButton.Visibility = Visibility.Collapsed;
         SetBusy(true);
         AnalysisProgress.IsIndeterminate = false;
         AnalysisProgress.Value = 0;
@@ -314,12 +301,13 @@ public partial class OcrImportDialog : Window
             AnalysisProgress.Value = Result?.Success == true ? 1 : 0;
             _taskbarProgress.Clear();
             SetBusy(false);
+            CompletePendingClose();
         }
     }
 
     private void NotifyCompletionIfInactive(bool success, string message)
     {
-        if (!_settings.Current.Notifications.NotifyWhenOcrCompletes ||
+        if (_closed || _closeRequested || !_settings.Current.Notifications.NotifyWhenOcrCompletes ||
             IsActive || Owner?.IsActive == true)
         {
             return;
@@ -332,6 +320,7 @@ public partial class OcrImportDialog : Window
 
     private void SetBusy(bool busy)
     {
+        ImportButton.IsEnabled = !busy;
         BrowseImageButton.IsEnabled = !busy;
         AnalyzeButton.IsEnabled = !busy && _downloadCancellation is null && IsAddonAvailable && ImagePath is not null;
         NotationComboBox.IsEnabled = !busy;
@@ -346,6 +335,7 @@ public partial class OcrImportDialog : Window
 
     private void OnOcrProgress(OcrProgressUpdate update)
     {
+        if (_closed || _closeRequested) return;
         AnalysisProgress.Value = update.Progress;
         _taskbarProgress.SetProgress(update.Progress);
         ResultText.Text = GetText(update.Stage switch
@@ -377,12 +367,13 @@ public partial class OcrImportDialog : Window
             return;
         }
 
-        Close();
+        DialogResult = false;
     }
 
     private void ImportButton_OnClick(object sender, RoutedEventArgs e)
     {
-        if (Result?.Success != true || Result.Score is null)
+        if (_analysisCancellation is not null || _downloadCancellation is not null ||
+            Result?.Success != true || Result.Score is null)
         {
             return;
         }
@@ -393,8 +384,7 @@ public partial class OcrImportDialog : Window
             return;
         }
 
-        _accepted = true;
-        Close();
+        DialogResult = true;
     }
 
     private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -405,7 +395,7 @@ public partial class OcrImportDialog : Window
         }
     }
 
-    private void CloseButton_OnClick(object sender, RoutedEventArgs e) => CancelButton_OnClick(sender, e);
+    private void CloseButton_OnClick(object sender, RoutedEventArgs e) => Close();
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
@@ -416,16 +406,33 @@ public partial class OcrImportDialog : Window
         }
 
         e.Cancel = true;
+        _closeRequested = true;
         _analysisCancellation?.Cancel();
         _downloadCancellation?.Cancel();
+    }
+
+    private void CompletePendingClose()
+    {
+        if (_closeRequested && !_closed && _analysisCancellation is null && _downloadCancellation is null)
+        {
+            // Cancellation can complete inline inside Closing. Leave that event before
+            // retrying Close; activation remains entirely managed by WPF's modal loop.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_closed && _analysisCancellation is null && _downloadCancellation is null)
+                    Close();
+            }));
+        }
     }
 
     private void OnClosed(object? sender, EventArgs e)
     {
         _closed = true;
+        _versionCancellation?.Cancel();
+        _analysisCancellation?.Cancel();
+        _downloadCancellation?.Cancel();
         _packageManager.StatusChanged -= PackageManager_OnStatusChanged;
         SaveOptions();
-        _completion.TrySetResult(_accepted);
     }
 
     private void LoadOptions()

@@ -36,7 +36,7 @@
     <system:String x:Key="Ocr_Title">OCR score recognition - beta</system:String>
     <system:String x:Key="Ocr_AddonMissing">Compatible OCR resources are not installed. Extract the resource package to: {0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR add-on ready, engine version {0}</system:String>
-    <system:String x:Key="Ocr_ResourcesReady">OCR resources ready, resource version {0}. The recognition engine updates with the application.</system:String>
+    <system:String x:Key="Ocr_ResourcesReady">OCR resources ready, resource version {0}.</system:String>
     <system:String x:Key="Ocr_LegacyResourcesReady">Using the built-in engine with compatible legacy OCR add-on {0}.</system:String>
     <system:String x:Key="Ocr_ResourceMigrationAvailable">Switch to OCR resources {0}, without another engine or .NET runtime.</system:String>
     <system:String x:Key="Ocr_DownloadAddon">Download add-on</system:String>

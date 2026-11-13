@@ -186,6 +186,8 @@ public partial class MainWindow : Window
         e.Effects = DragDropEffects.Copy;
         if (FileDropSupport.IsSupportedImagePath(path))
         {
+            // Return from the Drop event before entering a modal dispatcher loop.
+            await Dispatcher.Yield(DispatcherPriority.Background);
             await ShowOcrImportAsync(path);
             return;
         }
@@ -603,6 +605,9 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetActiveWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -1202,13 +1207,21 @@ public partial class MainWindow : Window
             app.UserSettingsService,
             app.NotificationService,
             app.TaskbarProgressService,
-            canImport: () => !viewModel.IsPlaying && !_isLocalAuditionPlaying);
+            canImport: () => !viewModel.IsPlaying && !_isLocalAuditionPlaying) { Owner = this };
         if (initialImagePath is not null) dialog.TrySelectImage(initialImagePath);
         _ocrImportDialog = dialog;
-        bool accepted;
+        bool? accepted;
         try
         {
-            accepted = await dialog.ShowAsync(this);
+            if (initialImagePath is not null)
+            {
+                // A file drop does not activate its target. ShowDialog remembers the
+                // thread's active HWND (not Owner) and restores it when the dialog closes.
+                // Establish that return target before WPF captures it.
+                var ownerHandle = new WindowInteropHelper(this).Handle;
+                if (ownerHandle != IntPtr.Zero) SetActiveWindow(ownerHandle);
+            }
+            accepted = dialog.ShowDialog();
         }
         finally
         {
@@ -1218,17 +1231,7 @@ public partial class MainWindow : Window
             }
         }
 
-        // OpenFileDialog is a native owned window. Cancelling it and then closing the non-modal
-        // OCR window can otherwise return foreground activation to an unrelated application.
-        // Let both native and WPF close messages drain before restoring the main window.
-        await Dispatcher.Yield(DispatcherPriority.ApplicationIdle);
-        if (IsLoaded && IsVisible)
-        {
-            Activate();
-            Focus();
-        }
-
-        if (!accepted || dialog.Result?.Score is not { } recognizedScore ||
+        if (accepted != true || dialog.Result?.Score is not { } recognizedScore ||
             dialog.ImagePath is not { } imagePath)
         {
             return;

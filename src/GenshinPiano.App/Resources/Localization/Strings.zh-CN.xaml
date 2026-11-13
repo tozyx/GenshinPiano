@@ -32,11 +32,11 @@
     <system:String x:Key="Menu_Import">导入(_I)</system:String>
     <system:String x:Key="Menu_ImportLegacyBatch">批量转换旧版曲谱…</system:String>
     <system:String x:Key="Menu_ImportMidiBatch">批量转换 MIDI…</system:String>
-    <system:String x:Key="Menu_ImportOcrImage">图片OMR识别…</system:String>
+    <system:String x:Key="Menu_ImportOcrImage">图片OCR识别…</system:String>
     <system:String x:Key="Ocr_Title">OCR 曲谱识别-beta</system:String>
     <system:String x:Key="Ocr_AddonMissing">尚未安装兼容的 OCR 资源包。请将资源包解压到：{0}</system:String>
     <system:String x:Key="Ocr_AddonReady">OCR 附加包已就绪，引擎版本 {0}</system:String>
-    <system:String x:Key="Ocr_ResourcesReady">OCR 资源已就绪，资源版本 {0}；识别引擎随主程序更新。</system:String>
+    <system:String x:Key="Ocr_ResourcesReady">OCR 资源已就绪，资源版本 {0}。</system:String>
     <system:String x:Key="Ocr_LegacyResourcesReady">正在使用内置识别引擎，兼容旧 OCR 附加包 {0}。</system:String>
     <system:String x:Key="Ocr_ResourceMigrationAvailable">可切换为独立 OCR 资源包 {0}，不再重复携带识别程序和 .NET。</system:String>
     <system:String x:Key="Ocr_DownloadAddon">下载附加包</system:String>
