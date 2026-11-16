@@ -61,6 +61,16 @@ OCR recognizes numbered notation and printed staff notation. Recognition code sh
   <img src="docs/images/dark-theme-en.png" alt="GenshinPiano dark theme" width="49%" />
 </p>
 
+### Color schemes
+
+Choose Classic blue, Teal, Purple, Warm orange, or Pink under **Settings → Color scheme**. Each palette works with light and dark themes.
+
+<p align="center">
+  <a href="docs/images/theme-showcase-en.png">
+    <img src="docs/images/theme-showcase-en.png" alt="GenshinPiano poster showcasing five preset color schemes" width="100%" />
+  </a>
+</p>
+
 ## Goals
 
 - Use UTF-8 JSON `.gpiano` files as the editable project format
@@ -124,7 +134,7 @@ The application runs in portable mode. User settings are stored in `config/setti
 - Direct and batch MIDI import plus legacy `.GenshinPiano` conversion
 - Score analysis, 21-key range adjustment, intelligent hold-duration optimization, and short-press generation
 - Experimental score OCR with an explicit numbered/staff selector: numbered notation supports watermark suppression, row/voice analysis, rhythm and tie reconstruction; native CPU SMT handles clear, flat piano scans and rendered sheet images with row recognition and bounded retries. Results can remain on the 88-key roll or be mapped to 21 keys. Photograph correction is unsupported, and unresolved structural anomalies cause recognition to fail
-- Dark/light themes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
+- Dark/light themes, five preset color schemes, Chinese/English UI, portable settings, `.gpiano` file association, and single-instance operation
 - AI-assisted score import: copy a prompt for an external vision model, paste its score JSON or open a JSON file, then validate and confirm import; no OCR add-on required
 - GitHub/GitCode update racing, resumable downloads, RSA signature verification, seamless updates, release notes, and manual rollback
 
