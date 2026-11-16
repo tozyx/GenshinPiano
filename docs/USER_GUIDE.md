@@ -16,6 +16,8 @@
 
 软件采用便携模式，设置、日志、更新缓存和附加组件均保存在程序目录中。不建议放入 `C:\Program Files`。
 
+“设置 → 配色”提供经典蓝、青绿、紫色、暖橙和粉色五套预设，可与“设置 → 主题”中的深色、浅色模式自由组合。切换即时生效并自动保存，旧配置默认使用经典蓝。
+
 ### 文件与曲谱库
 
 - `Ctrl + N`：新建曲谱。
@@ -58,6 +60,7 @@
 - `Shift + 滚轮`：横向滚动。
 - `Ctrl + Shift + 滚轮`：垂直缩放。
 - 底部可调整 BPM、自然延音、音量和本地试听音色。
+- 底部“拍号”可选择或输入起始拍号（如 `3/4`、`6/8`），按 Enter 应用、Esc 取消；修改支持撤销，保留后续拍号变化和音符时间。标尺、小节线及右下角“小节.拍”编号会随曲谱拍号更新；6/8 的拍编号按八分音符计为 1–6，标尺在中途变拍号处标注新拍号。无拍号信息时使用 4/4。
 - 游戏内采样音色在列表中始终显示；它们适用于“21 键”视图，在“88 键”和“曲谱音域”视图中会显示为不可选，悬停可查看说明。切回“21 键”即可使用。
 - “设置 → 卷帘帧率”可选择 30 FPS、60 FPS 或垂直同步。
 
@@ -158,6 +161,10 @@ type and start recognition, then review and confirm import. Images cannot be rep
 recognition. Each drop uses the first supported file; the OCR window only accepts images.
 The main window does not accept file drops during playback or local audition.
 
+**Settings → Color scheme** offers Classic blue, Teal, Purple, Warm orange, and Pink. Each works
+with either Light or Dark mode under **Settings → Theme**. Changes apply immediately and are
+saved automatically. Existing configurations default to Classic blue.
+
 ### Files and score folder
 
 - `Ctrl + N`: new score; `Ctrl + O`: open; `Ctrl + Shift + S`: save as.
@@ -189,6 +196,11 @@ The main window does not accept file drops during playback or local audition.
 - `Ctrl + wheel`: horizontal zoom; `Shift + wheel`: horizontal scroll;
   `Ctrl + Shift + wheel`: vertical zoom.
 - BPM, sustain, volume, instrument, and render frame rate can be adjusted in the editor/settings.
+- The bottom **Meter** field sets the initial time signature, such as `3/4` or `6/8`. Select a
+  preset or type and press Enter; Esc cancels. Changes support undo and preserve later meter
+  changes and note timing. The ruler, bar lines, and bar.beat position follow the score's meters;
+  6/8 counts eighth-note beats 1–6. Later meter changes are labeled on the ruler. Scores without
+  meter information use 4/4.
 - Sampled game instruments always remain in the list. They are selectable in the 21-key view;
   in 88-key and score-range views they are disabled with an explanatory tooltip. Switch back to
   21 keys to use them.

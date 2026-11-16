@@ -47,7 +47,7 @@ MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换�
 
 编辑器的音符操作、试听和浮层按职责拆分；`PracticePage` 的音频和工具栏也分别组织。领域编辑、练习判定与试听时间计算位于 Core/Application，WPF 层负责输入、绘制和页面状态。
 
-主题使用资源字典与语义画刷，界面通过 `DynamicResource` 引用颜色。中英文文案位于本地化资源字典；用户的曲谱标题、作者和音轨名不随界面语言切换。
+主题使用资源字典与语义画刷，界面通过 `DynamicResource` 引用颜色。深浅模式和五套预设配色独立保存；`ThemeService` 通过单一配色资源字典同步应用及 Fluent 控件的强调色。中英文文案位于本地化资源字典；用户的曲谱标题、作者和音轨名不随界面语言切换。
 
 ### 播放、试听与练习
 
@@ -128,7 +128,7 @@ The interface uses MVVM. `PianoRollEditor` handles editing interactions, while `
 
 Note operations, audition, and popups are organized by responsibility. `PracticePage` also separates audio and toolbar behavior. Domain editing, practice judgments, and audition timing live in Core/Application; WPF handles input, rendering, and page state.
 
-Themes use resource dictionaries and semantic brushes referenced through `DynamicResource`. Localized text lives in language resource dictionaries. Changing the UI language does not change user-authored score titles, authors, or track names.
+Themes use resource dictionaries and semantic brushes referenced through `DynamicResource`. Light/dark mode and the five preset color schemes are stored independently. `ThemeService` replaces a single palette dictionary to synchronize app and Fluent control accents. Localized text lives in language resource dictionaries. Changing the UI language does not change user-authored score titles, authors, or track names.
 
 ### Playback, audition, and practice
 
