@@ -126,10 +126,9 @@ public partial class App : System.Windows.Application
         var themeService = ThemeService;
         var localizationService = new LocalizationService();
         var appearance = UserSettingsService.Current.Appearance;
-        if (Enum.TryParse<AppTheme>(appearance.Theme, out var configuredTheme))
-        {
-            themeService.Apply(configuredTheme);
-        }
+        var configuredTheme = Enum.Parse<AppTheme>(appearance.Theme);
+        var configuredColorScheme = Enum.Parse<AppColorScheme>(appearance.ColorScheme);
+        themeService.Apply(configuredTheme, configuredColorScheme);
         if (Enum.TryParse<AppLanguage>(appearance.Language, out var configuredLanguage))
         {
             localizationService.Apply(configuredLanguage);

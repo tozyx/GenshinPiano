@@ -31,11 +31,23 @@ public sealed class PianoRollSurface : Control
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnScoreChanged));
 
+    public static readonly DependencyProperty AlternateRowBrushProperty = DependencyProperty.Register(
+        nameof(AlternateRowBrush), typeof(Brush), typeof(PianoRollSurface),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public static readonly DependencyProperty NoteBrushProperty = DependencyProperty.Register(
         nameof(NoteBrush),
         typeof(Brush),
         typeof(PianoRollSurface),
         new FrameworkPropertyMetadata(Brushes.CornflowerBlue, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty NoteSurfaceBrushProperty = DependencyProperty.Register(
+        nameof(NoteSurfaceBrush), typeof(Brush), typeof(PianoRollSurface),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty SelectedNoteTextBrushProperty = DependencyProperty.Register(
+        nameof(SelectedNoteTextBrush), typeof(Brush), typeof(PianoRollSurface),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty RowHeightProperty = DependencyProperty.Register(
         nameof(RowHeight),
@@ -97,6 +109,9 @@ public sealed class PianoRollSurface : Control
     private Brush? _cachedForeground;
     private Brush? _cachedBorderBrush;
     private Brush? _cachedNoteBrush;
+    private Brush? _cachedNoteSurfaceBrush;
+    private Brush? _cachedSelectedNoteTextBrush;
+    private Brush? _cachedAlternateRowBrush;
     private readonly Dictionary<(Brush Source, double Opacity), Brush> _opacityBrushes = [];
     private readonly Dictionary<(string Label, double Size, Brush Foreground, double Dpi), FormattedText> _noteTexts = [];
     private bool _usePlaybackCache;
@@ -108,6 +123,15 @@ public sealed class PianoRollSurface : Control
     public NoteArticulation DefaultArticulation { get; set; } = NoteArticulation.Natural;
 
     public bool IsEditingEnabled { get; set; } = true;
+
+    public ScoreMeterMap MeterMap { get; private set; } = new(new TimingDefinition());
+
+    public bool SetInitialTimeSignature(int numerator, int denominator)
+    {
+        if (!IsEditingEnabled || !_viewModel.SetInitialTimeSignature(numerator, denominator)) return false;
+        SynchronizeViewModelScore();
+        return true;
+    }
 
     public bool UsePlaybackCache
     {
@@ -155,10 +179,28 @@ public sealed class PianoRollSurface : Control
         set => SetValue(ScoreProperty, value);
     }
 
+    public Brush? AlternateRowBrush
+    {
+        get => (Brush?)GetValue(AlternateRowBrushProperty);
+        set => SetValue(AlternateRowBrushProperty, value);
+    }
+
     public Brush NoteBrush
     {
         get => (Brush)GetValue(NoteBrushProperty);
         set => SetValue(NoteBrushProperty, value);
+    }
+
+    public Brush? NoteSurfaceBrush
+    {
+        get => (Brush?)GetValue(NoteSurfaceBrushProperty);
+        set => SetValue(NoteSurfaceBrushProperty, value);
+    }
+
+    public Brush? SelectedNoteTextBrush
+    {
+        get => (Brush?)GetValue(SelectedNoteTextBrushProperty);
+        set => SetValue(SelectedNoteTextBrushProperty, value);
     }
 
     public double RowHeight
@@ -545,8 +587,9 @@ public sealed class PianoRollSurface : Control
             .Select(note => note.StartTick + Math.Max(note.DurationTick, note.RhythmTick ?? 0))
             .DefaultIfEmpty(0)
             .Max() ?? 0;
-        var minimumTicks = checked((long)ppq * 16);
-        var contentTicks = Math.Max(minimumTicks, lastTick + (long)ppq * 4);
+        lastTick = Math.Max(lastTick, Score?.Timing.TimeSignatures.Select(change => change.Tick).DefaultIfEmpty(0).Max() ?? 0);
+        var minimumTicks = (long)decimal.Ceiling(MeterMap.GetMeasureLength(0) * 4);
+        var contentTicks = Math.Max(minimumTicks, checked(lastTick + (long)decimal.Ceiling(MeterMap.GetMeasureLength(lastTick))));
         return new Size(
             Math.Max(1, TickToX(contentTicks, ppq)),
             RulerHeight + Rows.Count * RowHeight);
@@ -600,7 +643,10 @@ public sealed class PianoRollSurface : Control
             _cachedPitchLayoutMode == PitchLayoutMode &&
             ReferenceEquals(_cachedForeground, Foreground) &&
             ReferenceEquals(_cachedBorderBrush, BorderBrush) &&
-            ReferenceEquals(_cachedNoteBrush, NoteBrush))
+            ReferenceEquals(_cachedNoteBrush, NoteBrush) &&
+            ReferenceEquals(_cachedNoteSurfaceBrush, NoteSurfaceBrush) &&
+            ReferenceEquals(_cachedSelectedNoteTextBrush, SelectedNoteTextBrush) &&
+            ReferenceEquals(_cachedAlternateRowBrush, AlternateRowBrush))
         {
             return;
         }
@@ -658,6 +704,9 @@ public sealed class PianoRollSurface : Control
         _cachedForeground = Foreground;
         _cachedBorderBrush = BorderBrush;
         _cachedNoteBrush = NoteBrush;
+        _cachedNoteSurfaceBrush = NoteSurfaceBrush;
+        _cachedSelectedNoteTextBrush = SelectedNoteTextBrush;
+        _cachedAlternateRowBrush = AlternateRowBrush;
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -1079,7 +1128,7 @@ public sealed class PianoRollSurface : Control
             if (Rows[row].IsBlackKey || (PitchLayoutMode == PianoRollPitchLayoutMode.Genshin21 && row % 2 == 1))
             {
                 drawingContext.DrawRectangle(
-                    WithOpacity(Foreground, 0.09),
+                    AlternateRowBrush ?? WithOpacity(Foreground, 0.09),
                     null,
                     new Rect(0, RulerHeight + row * RowHeight, RenderSize.Width, RowHeight));
             }
@@ -1096,18 +1145,24 @@ public sealed class PianoRollSurface : Control
             ppq));
         var firstGridTick = Math.Max(0, minimumTick - minimumTick % snap);
         var minorPen = new Pen(WithOpacity(BorderBrush, 0.28), 1);
-        var beatPen = new Pen(WithOpacity(BorderBrush, 0.60), 1);
-        var barPen = new Pen(WithOpacity(Foreground, 0.42), 1.2);
-
         for (var tick = firstGridTick; tick <= maximumTick; tick += snap)
         {
             var x = TickToX(tick, ppq);
-            var isBar = tick % (ppq * 4L) == 0;
-            var isBeat = tick % ppq == 0;
-            var pen = isBar
-                ? barPen
-                : isBeat ? beatPen : minorPen;
-            drawingContext.DrawLine(pen, new Point(x, 0), new Point(x, RenderSize.Height));
+            drawingContext.DrawLine(minorPen, new Point(x, 0), new Point(x, RenderSize.Height));
+        }
+        var minimumSpacing = (decimal)(ppq * 4 / PixelsPerBeat);
+        var beatPen = new Pen(WithOpacity(BorderBrush, 0.60), 1);
+        foreach (var line in MeterMap.EnumerateBeats(minimumTick, maximumTick, minimumSpacing))
+        {
+            if (line.IsMeasureStart) continue;
+            var x = (double)line.Tick * PixelsPerBeat / ppq;
+            drawingContext.DrawLine(beatPen, new Point(x, 0), new Point(x, RenderSize.Height));
+        }
+        var barPen = new Pen(WithOpacity(NoteBrush, 0.42), 1.2);
+        foreach (var line in MeterMap.EnumerateMeasures(minimumTick, maximumTick, minimumSpacing))
+        {
+            var x = (double)line.Tick * PixelsPerBeat / ppq;
+            drawingContext.DrawLine(barPen, new Point(x, 0), new Point(x, RenderSize.Height));
         }
 
         var rowPen = new Pen(WithOpacity(BorderBrush, 0.35), 1);
@@ -1200,29 +1255,35 @@ public sealed class PianoRollSurface : Control
         var ppq = score.Timing.Ppq;
         var firstTick = Math.Max(0, XToTick(left, ppq));
         var lastTick = Math.Max(firstTick, XToTick(right, ppq));
-        var measureTicks = ppq * 4L;
         var snap = GetSnapTick(score);
         var firstSnapTick = Math.Max(0, firstTick - firstTick % snap);
         for (var tick = firstSnapTick; tick <= lastTick; tick += snap)
         {
-            var isMeasure = tick % measureTicks == 0;
-            var isBeat = tick % ppq == 0;
-            var height = isMeasure ? 12 : isBeat ? 8 : 4;
-            var opacity = isMeasure ? 0.72 : isBeat ? 0.52 : 0.34;
             var x = TickToX(tick, ppq);
             drawingContext.DrawLine(
-                new Pen(WithOpacity(Foreground, opacity), 1),
+                new Pen(WithOpacity(Foreground, 0.34), 1),
                 new Point(x, top),
-                new Point(x, top + height));
+                new Point(x, top + 4));
         }
-        var firstMeasure = firstTick - firstTick % measureTicks;
-        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        for (var tick = firstMeasure; tick <= lastTick; tick += measureTicks)
+        var minimumSpacing = (decimal)(ppq * 4 / PixelsPerBeat);
+        foreach (var line in MeterMap.EnumerateBeats(firstTick, lastTick, minimumSpacing))
         {
-            var x = TickToX(tick, ppq);
+            if (line.IsMeasureStart) continue;
+            var x = (double)line.Tick * PixelsPerBeat / ppq;
+            drawingContext.DrawLine(new Pen(WithOpacity(Foreground, 0.52), 1), new Point(x, top), new Point(x, top + 8));
+        }
+        foreach (var line in MeterMap.EnumerateMeasures(firstTick, lastTick, minimumSpacing))
+        {
+            var x = (double)line.Tick * PixelsPerBeat / ppq;
+            drawingContext.DrawLine(new Pen(WithOpacity(NoteBrush, 0.72), 1), new Point(x, top), new Point(x, top + 12));
+        }
+        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        foreach (var line in MeterMap.EnumerateMeasures(firstTick, lastTick, (decimal)(ppq * 40 / PixelsPerBeat)))
+        {
+            var x = (double)line.Tick * PixelsPerBeat / ppq;
             drawingContext.DrawText(
                 new FormattedText(
-                    (tick / measureTicks + 1).ToString(),
+                    line.Measure.ToString(),
                     System.Globalization.CultureInfo.CurrentUICulture,
                     FlowDirection.LeftToRight,
                     new Typeface(FontFamily, FontStyle, FontWeight, FontStretch),
@@ -1230,6 +1291,13 @@ public sealed class PianoRollSurface : Control
                     Foreground,
                     pixelsPerDip),
                 new Point(x + 6, top + 14));
+            if (line.IsSignatureChange)
+            {
+                drawingContext.DrawText(new FormattedText($"{line.Numerator}/{line.Denominator}",
+                    System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                    new Typeface(FontFamily, FontStyle, FontWeights.SemiBold, FontStretch), 9, NoteBrush, pixelsPerDip),
+                    new Point(x + 6, top + 1));
+            }
         }
         if (includeHover && !double.IsNaN(_rulerHoverX))
         {
@@ -1253,13 +1321,20 @@ public sealed class PianoRollSurface : Control
         }
 
         var cornerRadius = Math.Min(3, bounds.Height / 4);
+        if (selected && !isCopyPreview)
+        {
+            drawingContext.DrawRoundedRectangle(
+                null, new Pen(CachedOpacityBrush(NoteBrush, 0.18), 4),
+                bounds, cornerRadius, cornerRadius);
+        }
+
         drawingContext.DrawRoundedRectangle(
             isCopyPreview
-                ? CachedOpacityBrush(NoteBrush, 0.42)
-                : selected ? NoteBrush : CachedOpacityBrush(NoteBrush, 0.78),
+                ? CachedOpacityBrush(NoteBrush, 0.18)
+                : selected ? NoteBrush : NoteSurfaceBrush ?? CachedOpacityBrush(NoteBrush, 0.20),
             isCopyPreview
-                ? new Pen(WithOpacity(Foreground, 0.9), 1.2)
-                : selected ? new Pen(Foreground, 1.4) : null,
+                ? new Pen(CachedOpacityBrush(NoteBrush, 0.75), 1) { DashStyle = DashStyles.Dash }
+                : new Pen(CachedOpacityBrush(NoteBrush, 0.95), 1.2),
             bounds,
             cornerRadius,
             cornerRadius);
@@ -1268,7 +1343,8 @@ public sealed class PianoRollSurface : Control
         var noteLabel = PitchLabelFormatter.FormatNoteLabel(note.Pitch, entry.Key, LabelMode);
         var label = isCopyPreview ? $"+ {noteLabel}" : noteLabel;
         var fontSize = Math.Clamp(bounds.Height - 4, 8, 10);
-        var text = CachedNoteText(label, fontSize);
+        var text = CachedNoteText(label, fontSize,
+            selected && !isCopyPreview ? SelectedNoteTextBrush ?? Foreground : NoteBrush);
         var horizontalPadding = bounds.Width < 20 ? 2 : 4;
         if (bounds.Width >= text.WidthIncludingTrailingWhitespace + horizontalPadding * 2)
         {
@@ -1525,10 +1601,10 @@ public sealed class PianoRollSurface : Control
         return brush;
     }
 
-    private FormattedText CachedNoteText(string label, double fontSize)
+    private FormattedText CachedNoteText(string label, double fontSize, Brush foreground)
     {
         var dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
-        var key = (label, fontSize, Foreground, dpi);
+        var key = (label, fontSize, foreground, dpi);
         if (_noteTexts.TryGetValue(key, out var text)) return text;
         text = new FormattedText(
             label,
@@ -1536,7 +1612,7 @@ public sealed class PianoRollSurface : Control
             FlowDirection.LeftToRight,
             new Typeface(FontFamily, FontStyle, FontWeights.SemiBold, FontStretch),
             fontSize,
-            Foreground,
+            foreground,
             dpi);
         _noteTexts[key] = text;
         return text;
@@ -1567,6 +1643,7 @@ public sealed class PianoRollSurface : Control
     private static void OnScoreChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
     {
         var surface = (PianoRollSurface)dependencyObject;
+        surface.MeterMap = new ScoreMeterMap((args.NewValue as ScoreDocument)?.Timing ?? new TimingDefinition());
         surface._playbackScoreDrawing = null;
         surface._playbackRulerDrawing = null;
         surface.RefreshRows();

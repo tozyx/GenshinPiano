@@ -25,7 +25,7 @@ internal static class ResourceDictionarySwitcher
 
         dictionaries[index] = new ResourceDictionary
         {
-            Source = new Uri(newSource, UriKind.Relative),
+            Source = new Uri($"pack://application:,,,/{typeof(ResourceDictionarySwitcher).Assembly.GetName().Name};component/{newSource}", UriKind.Absolute),
         };
     }
 }

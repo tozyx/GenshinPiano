@@ -78,6 +78,17 @@ public sealed class PianoRollViewModel
     public bool AddNote(NoteEvent note) =>
         Score is not null && Commit(ScoreEditor.AddNote(Score, note));
 
+    public bool SetInitialTimeSignature(int numerator, int denominator)
+    {
+        if (Score is null || !ScoreMeterMap.IsValidSignature(numerator, denominator)) return false;
+        var initial = new ScoreMeterMap(Score.Timing).GetSignature(0);
+        if (initial.Numerator == numerator && initial.Denominator == denominator) return false;
+        var signatures = Score.Timing.TimeSignatures.Where(change => change.Tick > 0)
+            .Prepend(new TimeSignatureChange { Numerator = numerator, Denominator = denominator })
+            .OrderBy(change => change.Tick).ToList();
+        return Commit(Score with { Timing = Score.Timing with { TimeSignatures = signatures } });
+    }
+
     public bool AddNotes(IReadOnlyCollection<NoteEvent> notes) =>
         Score is not null && Commit(ScoreEditor.AddNotes(Score, notes));
 

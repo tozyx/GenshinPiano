@@ -619,18 +619,22 @@
                                              RowHeight="{Binding RowHeight, ElementName=Surface}"
                                              PitchLayoutMode="{Binding PitchLayoutMode, ElementName=Surface}"
                                              Background="{DynamicResource PanelBackgroundBrush}"
-                                             Foreground="{DynamicResource PrimaryTextBrush}"
+                                             Foreground="{DynamicResource AccentBrush}"
+                                             AlternateRowBrush="{DynamicResource EditorAlternateRowBrush}"
                                              BorderBrush="{DynamicResource BorderBrush}" />
                     <ToggleButton x:Name="EditorHelpButton"
                                   Panel.ZIndex="1"
                                   Height="{x:Static local:PianoRollSurface.RulerHeight}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Top"
-                                  Content="?"
                                   FontWeight="SemiBold"
                                   Foreground="{DynamicResource AccentBrush}"
                                   Cursor="Hand"
                                   ToolTip="{DynamicResource Editor_Hint}">
+                        <ToggleButton.Content>
+                            <TextBlock Text="?"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                        </ToggleButton.Content>
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
                                 <Grid Background="Transparent">
@@ -666,7 +670,10 @@
                                            Foreground="{DynamicResource PrimaryTextBrush}"
                                            BorderBrush="{DynamicResource BorderBrush}"
                                            LabelMode="{Binding LabelMode, ElementName=KeyboardLabels}"
-                                           NoteBrush="{DynamicResource AccentBrush}" />
+                                           NoteBrush="{DynamicResource AccentBrush}"
+                                           NoteSurfaceBrush="{DynamicResource AccentSurfaceBrush}"
+                                           SelectedNoteTextBrush="{DynamicResource EditorSelectedNoteTextBrush}"
+                                           AlternateRowBrush="{DynamicResource EditorAlternateRowBrush}" />
                     <Grid x:Name="PlaybackCursor"
                             Width="10"
                             HorizontalAlignment="Left"
@@ -744,6 +751,25 @@
                             </TextBox>
                         </Grid>
                     </Grid>
+                    <TextBlock Text="{DynamicResource Editor_TimeSignature}"
+                               VerticalAlignment="Center" Margin="0,0,6,0"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                    <ComboBox x:Name="TimeSignatureBox" Width="76" Height="28" Margin="0,0,12,0"
+                              VerticalAlignment="Center" IsEditable="True" IsTextSearchEnabled="False"
+                              Text="4/4" ToolTip="{DynamicResource Editor_TimeSignatureHint}"
+                              SelectionChanged="TimeSignatureBox_OnSelectionChanged"
+                              LostKeyboardFocus="TimeSignatureBox_OnLostKeyboardFocus"
+                              PreviewKeyDown="TimeSignatureBox_OnPreviewKeyDown">
+                        <ComboBoxItem Content="2/4" />
+                        <ComboBoxItem Content="3/4" />
+                        <ComboBoxItem Content="4/4" />
+                        <ComboBoxItem Content="5/4" />
+                        <ComboBoxItem Content="3/8" />
+                        <ComboBoxItem Content="6/8" />
+                        <ComboBoxItem Content="7/8" />
+                        <ComboBoxItem Content="9/8" />
+                        <ComboBoxItem Content="12/8" />
+                    </ComboBox>
                     <ToggleButton x:Name="NaturalSustainCheckBox"
                                   VerticalAlignment="Center"
                                   Style="{StaticResource TextToggleButtonStyle}"

@@ -69,6 +69,8 @@ public sealed record AppearanceUserSettings
 {
     public string Theme { get; init; } = nameof(AppTheme.Dark);
 
+    public string ColorScheme { get; init; } = nameof(AppColorScheme.Blue);
+
     public string Language { get; init; } = nameof(AppLanguage.SimplifiedChinese);
 }
 
@@ -112,6 +114,8 @@ public interface IUserSettingsService
     void SetNaturalSustain(bool value);
 
     void SetTheme(AppTheme value);
+
+    void SetColorScheme(AppColorScheme value);
 
     void SetLanguage(AppLanguage value);
 
@@ -266,6 +270,16 @@ public sealed class UserSettingsService : IUserSettingsService
         if (Current.Appearance.Theme != name)
         {
             Update(Current with { Appearance = Current.Appearance with { Theme = name } });
+        }
+    }
+
+    public void SetColorScheme(AppColorScheme value)
+    {
+        if (!Enum.IsDefined(value)) throw new ArgumentOutOfRangeException(nameof(value));
+        var name = value.ToString();
+        if (Current.Appearance.ColorScheme != name)
+        {
+            Update(Current with { Appearance = Current.Appearance with { ColorScheme = name } });
         }
     }
 
@@ -501,9 +515,12 @@ public sealed class UserSettingsService : IUserSettingsService
             },
             Appearance = appearance with
             {
-                Theme = Enum.TryParse<AppTheme>(appearance.Theme, out var theme)
+                Theme = Enum.TryParse<AppTheme>(appearance.Theme, out var theme) && Enum.IsDefined(theme)
                     ? theme.ToString()
                     : appearanceDefaults.Theme,
+                ColorScheme = Enum.TryParse<AppColorScheme>(appearance.ColorScheme, out var colorScheme) && Enum.IsDefined(colorScheme)
+                    ? colorScheme.ToString()
+                    : appearanceDefaults.ColorScheme,
                 Language = Enum.TryParse<AppLanguage>(appearance.Language, out var language)
                     ? language.ToString()
                     : appearanceDefaults.Language,

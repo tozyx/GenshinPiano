@@ -472,10 +472,14 @@ public partial class PianoRollEditor : UserControl
     private static void OnScoreChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
     {
         var editor = (PianoRollEditor)dependencyObject;
+        editor._meterMap = new ScoreMeterMap((e.NewValue as ScoreDocument)?.Timing ?? new TimingDefinition());
+        editor.SyncTimeSignature();
         if (e.NewValue is ScoreDocument score && editor.BpmTextBox is not null)
         {
             var bpm = score.Timing.TempoMap.OrderBy(change => change.Tick).FirstOrDefault()?.Bpm ?? 120;
             editor.BpmTextBox.Text = bpm.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+            var tick = Math.Max(0, editor.Surface.PlaybackTick);
+            editor.UpdateAuditionPosition(tick, GenshinPiano.Core.Playback.ScorePlaybackPlanner.TickToTime(tick, score.Timing));
         }
         editor.UpdateHiddenNotesIndicator();
     }

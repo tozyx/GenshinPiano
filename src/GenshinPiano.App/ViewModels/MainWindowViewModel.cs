@@ -73,6 +73,11 @@ public sealed class MainWindowViewModel : ObservableObject
         SaveAsCommand = new AsyncRelayCommand(SaveAsAsync);
         UseDarkThemeCommand = new RelayCommand(() => ApplyTheme(AppTheme.Dark));
         UseLightThemeCommand = new RelayCommand(() => ApplyTheme(AppTheme.Light));
+        UseBlueColorSchemeCommand = new RelayCommand(() => ApplyColorScheme(AppColorScheme.Blue));
+        UseTealColorSchemeCommand = new RelayCommand(() => ApplyColorScheme(AppColorScheme.Teal));
+        UsePurpleColorSchemeCommand = new RelayCommand(() => ApplyColorScheme(AppColorScheme.Purple));
+        UseOrangeColorSchemeCommand = new RelayCommand(() => ApplyColorScheme(AppColorScheme.Orange));
+        UsePinkColorSchemeCommand = new RelayCommand(() => ApplyColorScheme(AppColorScheme.Pink));
         UseChineseCommand = new RelayCommand(() => ApplyLanguage(AppLanguage.SimplifiedChinese));
         UseEnglishCommand = new RelayCommand(() => ApplyLanguage(AppLanguage.English));
         TogglePlaybackCommand = new RelayCommand(TogglePlayback);
@@ -129,6 +134,16 @@ public sealed class MainWindowViewModel : ObservableObject
     public bool IsDarkTheme => _themeService.CurrentTheme == AppTheme.Dark;
 
     public bool IsLightTheme => _themeService.CurrentTheme == AppTheme.Light;
+
+    public bool IsBlueColorScheme => _themeService.CurrentColorScheme == AppColorScheme.Blue;
+
+    public bool IsTealColorScheme => _themeService.CurrentColorScheme == AppColorScheme.Teal;
+
+    public bool IsPurpleColorScheme => _themeService.CurrentColorScheme == AppColorScheme.Purple;
+
+    public bool IsOrangeColorScheme => _themeService.CurrentColorScheme == AppColorScheme.Orange;
+
+    public bool IsPinkColorScheme => _themeService.CurrentColorScheme == AppColorScheme.Pink;
 
     public bool IsChinese => _localizationService.CurrentLanguage == AppLanguage.SimplifiedChinese;
 
@@ -223,6 +238,16 @@ public sealed class MainWindowViewModel : ObservableObject
     public RelayCommand UseDarkThemeCommand { get; }
 
     public RelayCommand UseLightThemeCommand { get; }
+
+    public RelayCommand UseBlueColorSchemeCommand { get; }
+
+    public RelayCommand UseTealColorSchemeCommand { get; }
+
+    public RelayCommand UsePurpleColorSchemeCommand { get; }
+
+    public RelayCommand UseOrangeColorSchemeCommand { get; }
+
+    public RelayCommand UsePinkColorSchemeCommand { get; }
 
     public RelayCommand UseChineseCommand { get; }
 
@@ -948,6 +973,14 @@ public sealed class MainWindowViewModel : ObservableObject
         SetStatus("Status_ThemeChanged", _localizationService.GetString(themeNameKey));
     }
 
+    private void ApplyColorScheme(AppColorScheme colorScheme)
+    {
+        if (_themeService.CurrentColorScheme == colorScheme) return;
+        _themeService.ApplyColorScheme(colorScheme);
+        _userSettingsService.SetColorScheme(colorScheme);
+        SetStatus("Status_ColorSchemeChanged", _localizationService.GetString($"Menu_ColorScheme{colorScheme}"));
+    }
+
     private void ApplyLanguage(AppLanguage language)
     {
         if (_localizationService.CurrentLanguage == language)
@@ -964,6 +997,11 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsDarkTheme));
         OnPropertyChanged(nameof(IsLightTheme));
+        OnPropertyChanged(nameof(IsBlueColorScheme));
+        OnPropertyChanged(nameof(IsTealColorScheme));
+        OnPropertyChanged(nameof(IsPurpleColorScheme));
+        OnPropertyChanged(nameof(IsOrangeColorScheme));
+        OnPropertyChanged(nameof(IsPinkColorScheme));
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)

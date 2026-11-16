@@ -102,6 +102,14 @@
     <system:String x:Key="Menu_Theme">主题</system:String>
     <system:String x:Key="Menu_ThemeDark">深色</system:String>
     <system:String x:Key="Menu_ThemeLight">浅色</system:String>
+    <system:String x:Key="Editor_TimeSignature">拍号</system:String>
+    <system:String x:Key="Editor_TimeSignatureHint">起始拍号，如 3/4、6/8。可选择或输入后按 Enter；Esc 取消。分子为 1–99，分母为 1、2、4、8、16、32、64。仅调整起始拍号，保留后续拍号变化和音符时间；无效输入会恢复原值。</system:String>
+    <system:String x:Key="Menu_ColorScheme">配色</system:String>
+    <system:String x:Key="Menu_ColorSchemeBlue">经典蓝</system:String>
+    <system:String x:Key="Menu_ColorSchemeTeal">青绿</system:String>
+    <system:String x:Key="Menu_ColorSchemePurple">紫色</system:String>
+    <system:String x:Key="Menu_ColorSchemeOrange">暖橙</system:String>
+    <system:String x:Key="Menu_ColorSchemePink">粉色</system:String>
     <system:String x:Key="Menu_Language">语言</system:String>
     <system:String x:Key="Menu_LanguageChinese">简体中文</system:String>
     <system:String x:Key="Menu_LanguageEnglish">English</system:String>
@@ -290,6 +298,7 @@
     <system:String x:Key="MidiImport_SelectTrack">请至少选择一个音轨</system:String>
     <system:String x:Key="Audition_SelectionLoop">循环试听选中的音符</system:String>
     <system:String x:Key="Status_ThemeChanged">已切换为{0}主题</system:String>
+    <system:String x:Key="Status_ColorSchemeChanged">已切换为{0}配色</system:String>
     <system:String x:Key="Status_LanguageChanged">界面语言已切换</system:String>
     <system:String x:Key="Status_PlayWaitingForTarget">已准备播放，请切换到原神窗口</system:String>
     <system:String x:Key="Status_PlayCountdown">原神窗口已聚焦，{0} 秒后开始演奏</system:String>

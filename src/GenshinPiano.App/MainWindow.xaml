@@ -441,6 +441,24 @@
                               IsCheckable="True"
                               IsChecked="{Binding IsLightTheme, Mode=OneWay}" />
                 </MenuItem>
+                <MenuItem Header="{DynamicResource Menu_ColorScheme}"
+                          SubmenuOpened="MenuItem_OnSubmenuOpened">
+                    <MenuItem Header="{DynamicResource Menu_ColorSchemeBlue}"
+                              Command="{Binding UseBlueColorSchemeCommand}"
+                              IsCheckable="True" IsChecked="{Binding IsBlueColorScheme, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_ColorSchemeTeal}"
+                              Command="{Binding UseTealColorSchemeCommand}"
+                              IsCheckable="True" IsChecked="{Binding IsTealColorScheme, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_ColorSchemePurple}"
+                              Command="{Binding UsePurpleColorSchemeCommand}"
+                              IsCheckable="True" IsChecked="{Binding IsPurpleColorScheme, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_ColorSchemeOrange}"
+                              Command="{Binding UseOrangeColorSchemeCommand}"
+                              IsCheckable="True" IsChecked="{Binding IsOrangeColorScheme, Mode=OneWay}" />
+                    <MenuItem Header="{DynamicResource Menu_ColorSchemePink}"
+                              Command="{Binding UsePinkColorSchemeCommand}"
+                              IsCheckable="True" IsChecked="{Binding IsPinkColorScheme, Mode=OneWay}" />
+                </MenuItem>
                 <MenuItem Header="{DynamicResource Menu_Language}"
                           SubmenuOpened="MenuItem_OnSubmenuOpened">
                     <MenuItem Header="{DynamicResource Menu_LanguageChinese}"

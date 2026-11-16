@@ -330,6 +330,7 @@ public partial class PianoRollEditor
         Surface.UsePlaybackCache = isPlaying;
         BpmTextBox.IsEnabled = !isPlaying;
         BpmDisplayButton.IsEnabled = !isPlaying;
+        TimeSignatureBox.IsEnabled = !isPlaying;
         AuditionInstrumentComboBox.IsEnabled = !isPlaying;
         NaturalSustainCheckBox.IsEnabled = !isPlaying;
         SelectionLoopToggle.IsEnabled = !isPlaying;
@@ -446,12 +447,10 @@ public partial class PianoRollEditor
 
     private void UpdateAuditionPosition(long tick, TimeSpan position)
     {
-        var ppq = Score?.Timing.Ppq ?? 480;
-        var bar = tick / (ppq * 4L) + 1;
-        var beat = tick % (ppq * 4L) / ppq + 1;
+        var meterPosition = _meterMap.GetPosition(tick);
         var totalMinutes = (long)position.TotalMinutes;
         AuditionPositionText.Text =
-            $"{bar}.{beat}  {totalMinutes:00}:{position.Seconds:00}.{position.Milliseconds:000}";
+            $"{meterPosition.Measure}.{meterPosition.Beat}  {totalMinutes:00}:{position.Seconds:00}.{position.Milliseconds:000}";
     }
 
     private void UpdatePlaybackCursor(long tick)

@@ -22,6 +22,7 @@ public partial class PracticePage : UserControl
     private bool _restoringPracticeSettings = true;
     private int _navigationVersion;
     private bool _positioning;
+    private IThemeService? _themeService;
 
     public PracticePage()
     {
@@ -44,6 +45,12 @@ public partial class PracticePage : UserControl
         Loaded += (_, _) =>
         {
             Attach();
+            if (_themeService is null && System.Windows.Application.Current is App app)
+            {
+                _themeService = app.ThemeService;
+                _themeService.ThemeChanged += OnThemeChanged;
+            }
+            Surface.InvalidateVisual();
             if (IsVisible)
             {
                 InitializeSelectionIndicators();
@@ -62,6 +69,11 @@ public partial class PracticePage : UserControl
         };
         Unloaded += (_, _) =>
         {
+            if (_themeService is not null)
+            {
+                _themeService.ThemeChanged -= OnThemeChanged;
+                _themeService = null;
+            }
             CancelPracticeVolumeClose();
             PausePractice();
         };
@@ -124,6 +136,8 @@ public partial class PracticePage : UserControl
     {
         if (e.PropertyName == nameof(MainWindowViewModel.CurrentScore)) Reload();
     }
+
+    private void OnThemeChanged(object? sender, EventArgs e) => Surface.InvalidateVisual();
 
     private void Reload()
     {

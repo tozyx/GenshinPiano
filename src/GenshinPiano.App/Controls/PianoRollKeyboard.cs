@@ -21,6 +21,10 @@ public sealed class PianoRollKeyboard : Control
 
     private IReadOnlyList<PianoRollPitchRow> Rows => _rows;
 
+    public static readonly DependencyProperty AlternateRowBrushProperty = DependencyProperty.Register(
+        nameof(AlternateRowBrush), typeof(Brush), typeof(PianoRollKeyboard),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
         nameof(Score),
         typeof(ScoreDocument),
@@ -53,6 +57,12 @@ public sealed class PianoRollKeyboard : Control
             PianoRollPitchLayoutMode.Genshin21,
             FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender,
             OnLayoutSourceChanged));
+
+    public Brush? AlternateRowBrush
+    {
+        get => (Brush?)GetValue(AlternateRowBrushProperty);
+        set => SetValue(AlternateRowBrushProperty, value);
+    }
 
     public double RowHeight
     {
@@ -110,7 +120,7 @@ public sealed class PianoRollKeyboard : Control
             if (Rows[row].IsBlackKey || (PitchLayoutMode == PianoRollPitchLayoutMode.Genshin21 && row % 2 == 1))
             {
                 drawingContext.DrawRectangle(
-                    WithOpacity(Foreground, 0.09),
+                    AlternateRowBrush ?? WithOpacity(Foreground, 0.09),
                     null,
                     new Rect(0, y, RenderSize.Width, RowHeight));
             }

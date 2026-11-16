@@ -6,6 +6,8 @@
 
     <SolidColorBrush x:Key="AccentBrush" Color="#7EB6FF" />
     <SolidColorBrush x:Key="AccentSurfaceBrush" Color="#253D59" />
+    <SolidColorBrush x:Key="EditorAlternateRowBrush" Color="#F4F6F9" Opacity="0.09" />
+    <SolidColorBrush x:Key="EditorSelectedNoteTextBrush" Color="#181C23" />
     <SolidColorBrush x:Key="StopIconBrush" Color="#D98282" />
     <SolidColorBrush x:Key="PracticeCursorBrush" Color="#F2B36B" />
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="#20252D" />
