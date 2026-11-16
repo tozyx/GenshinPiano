@@ -10,6 +10,7 @@ public partial class PracticePage
 {
     private readonly HashSet<ComboBox> _expandingPracticeOptions = [];
     private bool _expandingPracticeVolume;
+    private bool _practiceVolumeExpanded;
     private bool _isDraggingPracticeVolume;
     private CancellationTokenSource? _practiceVolumeCloseCts;
 
@@ -114,13 +115,16 @@ public partial class PracticePage
     private void PracticeVolumeOption_OnMouseEnter(object sender, MouseEventArgs e)
     {
         CancelPracticeVolumeClose();
-        if (!_expandingPracticeVolume && PracticeVolumeReveal.ActualWidth < 169)
+        if (!_practiceVolumeExpanded)
             AnimatePracticeVolume(true);
+        // Expansion can move the control away from the pointer without another
+        // enter/leave pair. Check once even if no later mouse event arrives.
+        SchedulePracticeVolumeClose();
     }
 
     private void PracticeVolumeOption_OnMouseLeave(object sender, MouseEventArgs e)
     {
-        if (_expandingPracticeVolume || _isDraggingPracticeVolume || PracticeVolumeSlider.IsMouseCaptureWithin)
+        if (_isDraggingPracticeVolume || PracticeVolumeSlider.IsMouseCaptureWithin)
             return;
         SchedulePracticeVolumeClose();
     }
@@ -149,8 +153,7 @@ public partial class PracticePage
         try
         {
             await Task.Delay(240, cancellation.Token);
-            if (!IsPointerNear(PracticeVolumeOption, 8) &&
-                !IsPointerNear(PracticeVolumeSlider, 8) &&
+            if (!PracticeVolumeOption.IsMouseOver && !PracticeVolumeSlider.IsMouseOver &&
                 !_isDraggingPracticeVolume && !PracticeVolumeSlider.IsMouseCaptureWithin)
             {
                 AnimatePracticeVolume(false);
@@ -167,22 +170,11 @@ public partial class PracticePage
         }
     }
 
-    private static bool IsPointerNear(FrameworkElement element, double tolerance)
-    {
-        var point = Mouse.GetPosition(element);
-        return point.X >= -tolerance && point.Y >= -tolerance &&
-               point.X <= element.ActualWidth + tolerance &&
-               point.Y <= element.ActualHeight + tolerance;
-    }
-
     private void AnimatePracticeVolume(bool expanded)
     {
-        if (expanded)
-        {
-            PracticeVolumeReveal.IsHitTestVisible = true;
-            _expandingPracticeVolume = true;
-        }
-        else PracticeVolumeReveal.IsHitTestVisible = false;
+        _practiceVolumeExpanded = expanded;
+        _expandingPracticeVolume = expanded;
+        PracticeVolumeReveal.IsHitTestVisible = expanded;
 
         var duration = TimeSpan.FromMilliseconds(170);
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -193,7 +185,7 @@ public partial class PracticePage
             widthAnimation.Completed += (_, _) =>
             {
                 _expandingPracticeVolume = false;
-                if (!IsPointerNear(PracticeVolumeOption, 8) && !IsPointerNear(PracticeVolumeSlider, 8))
+                if (!PracticeVolumeOption.IsMouseOver && !PracticeVolumeSlider.IsMouseOver)
                     SchedulePracticeVolumeClose();
             };
         }
@@ -243,6 +235,13 @@ public partial class PracticePage
         e.Handled = true;
     }
 
+    private void PracticeVolumeSlider_OnLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingPracticeVolume) return;
+        _isDraggingPracticeVolume = false;
+        SchedulePracticeVolumeClose();
+    }
+
     private void UpdatePracticeVolumeFromPointer(MouseEventArgs e)
     {
         const double trackMargin = 6;
@@ -255,8 +254,9 @@ public partial class PracticePage
     {
         _isDraggingPracticeVolume = false;
         if (PracticeVolumeSlider.IsMouseCaptured) PracticeVolumeSlider.ReleaseMouseCapture();
-        if (!IsPointerNear(PracticeVolumeOption, 8) && !IsPointerNear(PracticeVolumeSlider, 8))
-            SchedulePracticeVolumeClose();
+        // Capture changes can update IsMouseOver after this handler returns.
+        // Always defer the hover check until that update has completed.
+        SchedulePracticeVolumeClose();
         Surface.Focus();
     }
 

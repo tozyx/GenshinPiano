@@ -97,7 +97,7 @@
                                     </Grid>
                                 </StackPanel>
                             </Border>
-                            <Border x:Name="PracticeVolumeOption" Padding="4,0" ClipToBounds="True"
+                            <Border x:Name="PracticeVolumeOption" Padding="4,0" Background="Transparent" ClipToBounds="True"
                                     MouseEnter="PracticeVolumeOption_OnMouseEnter"
                                     MouseLeave="PracticeVolumeOption_OnMouseLeave">
                                 <StackPanel Orientation="Horizontal">
@@ -126,6 +126,7 @@
                                                     PreviewMouseLeftButtonDown="PracticeVolumeSlider_OnPreviewMouseLeftButtonDown"
                                                     PreviewMouseMove="PracticeVolumeSlider_OnPreviewMouseMove"
                                                     PreviewMouseLeftButtonUp="PracticeVolumeSlider_OnPreviewMouseLeftButtonUp"
+                                                    LostMouseCapture="PracticeVolumeSlider_OnLostMouseCapture"
                                                     ValueChanged="PracticeVolumeSlider_OnValueChanged" />
                                         </Grid>
                                     </Grid>
