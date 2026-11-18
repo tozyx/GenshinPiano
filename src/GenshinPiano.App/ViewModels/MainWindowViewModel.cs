@@ -40,6 +40,7 @@ public sealed class MainWindowViewModel : ObservableObject
     private string _scoreFolderSearch = string.Empty;
     private string? _currentSourcePath;
     private IReadOnlyList<ScoreFolderFile> _allScoreFolderFiles = [];
+    private int _scoreFolderRefreshVersion;
 
     public MainWindowViewModel(
         ScoreWorkspace workspace,
@@ -205,6 +206,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<ScoreFolderFile> ScoreFolderFiles { get; } = [];
 
+    public ScoreFolderFile? CurrentScoreFolderFile => ScoreFolderFiles.FirstOrDefault(file =>
+        string.Equals(file.Path, CurrentSourcePath, StringComparison.OrdinalIgnoreCase));
+
     public string ScoreFolder => _scoreFolder;
 
     public string ScoreFolderName => ScoreFolder.Length == 0
@@ -226,7 +230,10 @@ public sealed class MainWindowViewModel : ObservableObject
     public string? CurrentSourcePath
     {
         get => _currentSourcePath;
-        private set => SetProperty(ref _currentSourcePath, value);
+        private set
+        {
+            if (SetProperty(ref _currentSourcePath, value)) OnPropertyChanged(nameof(CurrentScoreFolderFile));
+        }
     }
 
     public AsyncRelayCommand NewCommand { get; }
@@ -467,34 +474,64 @@ public sealed class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _scoreFolder = Path.GetFullPath(dialog.FolderName);
+        await SetScoreFolderAsync(dialog.FolderName);
+    }
+
+    public async Task SetScoreFolderAsync(string folder)
+    {
+        var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        var changed = !string.Equals(_scoreFolder, normalized, StringComparison.OrdinalIgnoreCase);
+        _scoreFolder = normalized;
         _lastBrowseDirectory = _scoreFolder;
         _userSettingsService.SetScoreFolder(_scoreFolder);
         OnPropertyChanged(nameof(ScoreFolder));
         OnPropertyChanged(nameof(ScoreFolderName));
         RefreshScoreFolderCommand.NotifyCanExecuteChanged();
+        if (changed)
+        {
+            // Do not leave the previous folder's items clickable while the new scan is running.
+            _allScoreFolderFiles = [];
+            ApplyScoreFolderFilter();
+        }
         await RefreshScoreFolderAsync();
     }
 
-    private async Task RefreshScoreFolderAsync()
+    public async Task RefreshScoreFolderAsync()
     {
-        if (!Directory.Exists(ScoreFolder))
+        var version = ++_scoreFolderRefreshVersion;
+        var folder = ScoreFolder;
+        if (!Directory.Exists(folder))
         {
             _allScoreFolderFiles = [];
             ApplyScoreFolderFilter();
             return;
         }
 
-        var folder = ScoreFolder;
-        _allScoreFolderFiles = await Task.Run(() => Directory
-            .EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)
-            .Where(IsSupportedScorePath)
-            .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(path => new ScoreFolderFile(
-                path,
-                Path.GetFileNameWithoutExtension(path),
-                Path.GetExtension(path).TrimStart('.').ToUpperInvariant()))
-            .ToArray());
+        ScoreFolderFile[] files;
+        try
+        {
+            files = await Task.Run(() => Directory
+                .EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly)
+                .Where(IsSupportedScorePath)
+                .OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase)
+                .Select(path => new ScoreFolderFile(
+                    path,
+                    Path.GetFileNameWithoutExtension(path),
+                    Path.GetExtension(path).TrimStart('.').ToUpperInvariant()))
+                .ToArray());
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            if (version != _scoreFolderRefreshVersion) return;
+            AppLogger.Warning($"Could not refresh score folder '{folder}': {exception.Message}");
+            _allScoreFolderFiles = [];
+            ApplyScoreFolderFilter();
+            SetStatus("Status_OpenFailed", exception.Message);
+            return;
+        }
+        // A slower scan from an earlier refresh/folder must not overwrite the current library.
+        if (version != _scoreFolderRefreshVersion) return;
+        _allScoreFolderFiles = files;
         ApplyScoreFolderFilter();
     }
 
@@ -589,14 +626,23 @@ public sealed class MainWindowViewModel : ObservableObject
     private void ApplyScoreFolderFilter()
     {
         var query = ScoreFolderSearch.Trim();
-        var files = query.Length == 0
+        var files = (query.Length == 0
             ? _allScoreFolderFiles
-            : _allScoreFolderFiles.Where(file => ScoreFolderFileMatchesSearch(file, query));
-        ScoreFolderFiles.Clear();
-        foreach (var file in files)
+            : _allScoreFolderFiles.Where(file => ScoreFolderFileMatchesSearch(file, query))).ToArray();
+        // Keep unchanged items and their containers so selection, focus and scroll survive refresh.
+        var retained = files.ToHashSet();
+        for (var index = ScoreFolderFiles.Count - 1; index >= 0; index--)
         {
-            ScoreFolderFiles.Add(file);
+            if (!retained.Contains(ScoreFolderFiles[index])) ScoreFolderFiles.RemoveAt(index);
         }
+        for (var index = 0; index < files.Length; index++)
+        {
+            if (index < ScoreFolderFiles.Count && ScoreFolderFiles[index] == files[index]) continue;
+            var existing = ScoreFolderFiles.IndexOf(files[index]);
+            if (existing >= 0) ScoreFolderFiles.Move(existing, index);
+            else ScoreFolderFiles.Insert(index, files[index]);
+        }
+        OnPropertyChanged(nameof(CurrentScoreFolderFile));
     }
 
     private bool ScoreFolderFileMatchesSearch(ScoreFolderFile file, string query)

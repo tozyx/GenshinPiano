@@ -237,14 +237,14 @@ public partial class MainWindow : Window
                 dialog.ShowDialog();
                 if (dialog.Choice == UnsavedChangesChoice.Cancel)
                 {
-                    WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+                    WorkspaceFileList.SetCurrentValue(Selector.SelectedItemProperty, viewModel.CurrentScoreFolderFile);
                     return;
                 }
 
                 if (dialog.Choice == UnsavedChangesChoice.Save &&
                     !await viewModel.SavePendingChangesAsync())
                 {
-                    WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+                    WorkspaceFileList.SetCurrentValue(Selector.SelectedItemProperty, viewModel.CurrentScoreFolderFile);
                     return;
                 }
 
@@ -255,7 +255,7 @@ public partial class MainWindow : Window
             }
 
             await viewModel.OpenPathAsync(file.Path);
-            WorkspaceFileList.SelectedValue = viewModel.CurrentSourcePath;
+            WorkspaceFileList.SetCurrentValue(Selector.SelectedItemProperty, viewModel.CurrentScoreFolderFile);
         }
         finally
         {
@@ -381,7 +381,7 @@ public partial class MainWindow : Window
         if (scrollViewer is null)
         {
             WorkspaceFileList.ScrollIntoView(currentFile);
-            WorkspaceFileList.SelectedItem = currentFile;
+            WorkspaceFileList.SetCurrentValue(Selector.SelectedItemProperty, currentFile);
             WorkspaceFileList.Focus();
             return;
         }
@@ -417,7 +417,7 @@ public partial class MainWindow : Window
         };
         animation.Completed += (_, _) =>
         {
-            WorkspaceFileList.SelectedItem = currentFile;
+            WorkspaceFileList.SetCurrentValue(Selector.SelectedItemProperty, currentFile);
             WorkspaceFileList.Focus();
         };
         scrollViewer.BeginAnimation(AnimatedVerticalOffsetProperty, animation);
