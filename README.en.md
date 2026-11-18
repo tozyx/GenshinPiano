@@ -99,7 +99,7 @@ Choose Classic blue, Teal, Purple, Warm orange, or Pink under **Settings → Col
 
 ## How to build
 
-For environment setup, building, publishing, and maintenance tools, see:
+For building and running from source, plus creating your own ZIP with or without the .NET runtime locally or through GitHub Actions (no private key needed), see:
 
 [Build and maintenance tools](tools/README.md#english)
 
