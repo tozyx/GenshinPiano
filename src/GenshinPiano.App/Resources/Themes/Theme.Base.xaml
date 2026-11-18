@@ -6,6 +6,10 @@
         <Setter Property="controls:ComboBoxPopupBehavior.UseFadeAnimation" Value="True" />
     </Style>
 
+    <Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="controls:TextBoxClearButtonBehavior.Compact" Value="True" />
+    </Style>
+
         <Style x:Key="SharedAuditionHorizontalVolumeSliderStyle" TargetType="Slider">
             <Setter Property="Height" Value="28" />
             <Setter Property="Template">

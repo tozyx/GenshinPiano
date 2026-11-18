@@ -422,6 +422,8 @@
                 <MenuItem Header="{DynamicResource Menu_ImportMidiBatch}"
                           Click="ImportMidiBatchMenuItem_OnClick" />
                 <Separator />
+                <MenuItem Header="{DynamicResource TextImport_Title}"
+                          Click="ImportTextScoreMenuItem_OnClick" />
                 <MenuItem Header="{DynamicResource Menu_ImportOcrImage}"
                           Click="ImportOcrImageMenuItem_OnClick" />
                 <MenuItem Header="{DynamicResource AiImport_Title}"

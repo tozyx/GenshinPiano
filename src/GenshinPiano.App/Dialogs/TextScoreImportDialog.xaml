@@ -1,0 +1,91 @@
+<Window x:Class="GenshinPiano.App.Dialogs.TextScoreImportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource TextImport_Title}" Width="860" Height="700" MinWidth="740" MinHeight="600"
+        WindowStyle="None" ResizeMode="CanResizeWithGrip" AllowsTransparency="True"
+        Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}"
+        FontFamily="{DynamicResource AppFontFamily}" ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+    <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1" CornerRadius="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Border Background="{DynamicResource SidebarBackgroundBrush}" CornerRadius="9,9,0,0"
+                    MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                <Grid>
+                    <TextBlock Margin="18,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{DynamicResource TextImport_Title}" />
+                    <Button Width="44" Height="38" HorizontalAlignment="Right" Padding="0" Background="Transparent"
+                            BorderThickness="0" Content="✕" Click="Cancel_OnClick" />
+                </Grid>
+            </Border>
+            <StackPanel Grid.Row="1" Margin="16,10,16,6">
+                <TextBlock Text="{DynamicResource TextImport_Instructions}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" />
+                <WrapPanel x:Name="OptionsPanel" Margin="0,8,0,0">
+                    <StackPanel Margin="0,0,12,6">
+                        <TextBlock Text="{DynamicResource TextImport_Profile}" />
+                        <ComboBox x:Name="ProfileBox" Width="180" Height="32" Margin="0,4,0,0" SelectionChanged="SourceOption_OnChanged" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,6">
+                        <TextBlock Text="{DynamicResource TextImport_Notation}" />
+                        <ComboBox x:Name="NotationBox" Width="125" Height="32" Margin="0,4,0,0" SelectionChanged="SourceOption_OnChanged" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,6">
+                        <TextBlock Text="{DynamicResource TextImport_ScoreTitle}" />
+                        <TextBox x:Name="ScoreTitleBox" Width="175" Height="32" Margin="0,4,0,0" MaxLength="256" TextChanged="Timing_OnChanged" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,6">
+                        <TextBlock Text="BPM" />
+                        <TextBox x:Name="BpmBox" Width="65" Height="32" Margin="0,4,0,0" Text="120" TextChanged="Timing_OnChanged" />
+                    </StackPanel>
+                    <CheckBox x:Name="SpacesBox" Margin="0,22,0,6" VerticalAlignment="Center"
+                              Checked="Timing_OnChanged" Unchecked="Timing_OnChanged"
+                              Content="{DynamicResource TextImport_Spaces}" ToolTip="{DynamicResource TextImport_SpacesHelp}" />
+                </WrapPanel>
+                <TextBlock x:Name="ProfileHelpText" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,3,0,8" />
+                <WrapPanel>
+                    <Button x:Name="PasteButton" Padding="14,7" Margin="0,0,8,0" Style="{StaticResource AppButtonStyle}"
+                            Content="{DynamicResource TextImport_Paste}" Click="Paste_OnClick" />
+                    <Button x:Name="FileButton" Padding="14,7" Style="{StaticResource AppButtonStyle}"
+                            Content="{DynamicResource TextImport_Open}" Click="File_OnClick" />
+                </WrapPanel>
+            </StackPanel>
+            <Grid Grid.Row="2" Margin="16,0,16,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="80" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="78" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBox x:Name="SourceBox" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap" FontFamily="Consolas"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="10" MaxLength="500000"
+                         AutomationProperties.Name="{DynamicResource TextImport_Source}" TextChanged="Source_OnChanged" />
+                <TextBlock Grid.Row="1" Text="{DynamicResource TextImport_SectionsHelp}" TextWrapping="Wrap" Margin="0,8,0,5"
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
+                <ScrollViewer Grid.Row="2" MaxHeight="110" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="SectionsPanel" />
+                </ScrollViewer>
+                <TextBlock x:Name="SummaryText" Grid.Row="3" TextWrapping="Wrap" Margin="0,8,0,5" Text="{DynamicResource TextImport_Ready}" />
+                <TextBox x:Name="ReportBox" Grid.Row="4" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Padding="8"
+                         AutomationProperties.Name="{DynamicResource AiImport_Review}" />
+                <CheckBox x:Name="ReviewBox" Grid.Row="5" Margin="0,8,0,0" Checked="Review_OnChanged" Unchecked="Review_OnChanged">
+                    <TextBlock Text="{DynamicResource TextImport_Acknowledge}" TextWrapping="Wrap" />
+                </CheckBox>
+            </Grid>
+            <WrapPanel Grid.Row="3" HorizontalAlignment="Right" Margin="16,0,16,14">
+                <Button Padding="14,8" Style="{StaticResource AppButtonStyle}" Content="{DynamicResource Action_Cancel}" IsCancel="True" Click="Cancel_OnClick" />
+                <Button x:Name="AnalyzeButton" Margin="8,0,0,0" Padding="14,8" Style="{StaticResource AppButtonStyle}"
+                        Content="{DynamicResource TextImport_Analyze}" Click="Analyze_OnClick" />
+                <Button x:Name="PreviewButton" Margin="8,0,0,0" Padding="14,8" Style="{StaticResource AppButtonStyle}"
+                        Content="{DynamicResource TextImport_Preview}" Click="Preview_OnClick" IsEnabled="False" />
+                <Button x:Name="ImportButton" Margin="8,0,0,0" Padding="14,8" Style="{StaticResource PrimaryButtonStyle}"
+                        Content="{DynamicResource Action_Import}" Click="Import_OnClick" IsEnabled="False" />
+            </WrapPanel>
+        </Grid>
+    </Border>
+</Window>

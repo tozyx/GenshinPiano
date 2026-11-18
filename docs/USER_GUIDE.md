@@ -121,6 +121,16 @@ OCR 打开期间主界面暂时不可操作，可以切换到其他软件。点�
 
 “设置 → 通知 → OCR 完成时通知”可以控制软件未聚焦时的 Windows 通知。
 
+### 键盘／数字文本谱
+
+打开“导入 → 键盘／数字文本谱”，粘贴谱文或选择 UTF-8 TXT 文件。默认自动匹配指尖、是星璃啦、与君歌一曲、旋律透明四种规则，并区分字母和数字按键表示。点击“分析段落”，只有一种语法完整匹配时自动继续；有多种候选时显示理由和排版建议，需要选择 UP 主再分析。也可直接手动选择规则。同一作者的不同谱例仍应核对原文说明，匹配规则不代表确认作者身份。
+
+点击“分析段落”，逐段确认组长、拍号、行宽和行尾分隔符。组长 `4` 表示四分音符，`8` 表示八分音符；行宽只是排版分组数，不会自动改变拍号或补齐短行。指尖谱中六组一行的段落尤其需要确认。没有段落标题的谱文按一个段落处理。
+
+默认均分组内起音；“空白块作休止”可把组内连续空格视为一个休止槽，组首、组尾空格仍只作排版。快速连弹和琶音使用估算节奏。点击“校验并预览”，检查音符数量和提示，勾选确认后导入 21 键卷帘。修改原文或设置后必须重新校验。替换前检查当前未保存修改，结果另存为 `.gpiano`，不会覆盖原始 TXT。
+
+这里只接受游戏数字按键谱，不接受普通数字简谱、混合的两份谱文或旧版“按键 + 时值”文件。独立的段落标题和带明确前缀的说明可保留，预览会提示跳过的文字；谱行内的说明及未知符号仍会报错并指出原文行列。详见 [键盘文本谱](keyboard-text-notation.md)。
+
 ### AI 辅助识谱
 
 在“导入 → AI 辅助识谱”中复制提示词，与谱图一起发给大模型。将返回的 JSON 文本粘贴到窗口，或选择 JSON 文件，点击“解析并检查”。核对音符数量和提示后导入，结果保留原音高并进入 88 键卷帘。
@@ -267,6 +277,16 @@ not request elevation automatically.
   correction is unsupported; incomplete layouts and unresolved structural anomalies are rejected.
   Always review and audition imported results. The dialog displays add-on version status and offers
   installation/updates. See [OCR component](OCR.md#english) for its scope and interface.
+
+### Keyboard / numeric text scores
+
+Choose **Import → Keyboard / numeric text score**, paste notation or open a UTF-8 TXT, and analyze sections. Automatic detection checks the entire source against Zhijian, Xingli, Yujun, and Touming conventions and detects letter/numeric notation. A unique grammar match continues automatically. Multiple matches show candidates and layout suggestions and require manual selection. You can also select a convention directly. Check the sheet's legend: matching a convention does not identify its creator or establish meter/tempo.
+
+Choose **Analyze sections**, then review each section's group length, meter, expected row width, and trailing separator handling. Group `4` means a quarter note and `8` an eighth note. Width describes layout; it does not infer meter, pad rows, or truncate them. Six-group rows in Zhijian sheets require particular attention. Without section headings, the source is treated as one section.
+
+Attack events divide each group equally by default. **Whitespace as rests** optionally assigns one rest slot to each internal whitespace run, ignoring leading/trailing padding. Rapid sequences and arpeggios use estimated timing. **Validate and preview**, review counts and warnings, acknowledge the settings, and import into the 21-key roll. Any text or setting change invalidates the preview. Existing unsaved changes are checked; save the result as `.gpiano` without overwriting the source TXT.
+
+This imports game-key numbers, not conventional numbered notation, combined notation versions, or legacy key-and-duration files. Standalone section headings and explicitly prefixed explanatory lines may remain; the preview reports skipped text. Inline prose and unsupported symbols still produce errors with line/column locations. See [Keyboard text notation](keyboard-text-notation.md#english).
 
 ### AI-assisted score import
 

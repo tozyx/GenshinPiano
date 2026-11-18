@@ -143,6 +143,37 @@ public sealed class NewScoreCommandTests
         finally { Directory.Delete(directory, true); }
     }
 
+    [Fact]
+    public void ImportedTextScore_IsDirtyAndDoesNotOverwriteItsSourceOrPreviousProject()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "GPiano-TextImport-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var serializer = new RecordingSerializer();
+            var workspace = new ScoreWorkspace(serializer, "Original");
+            workspace.RestoreScore(ScoreDocument.CreateEmpty("Old"), Path.Combine(directory, "old.gpiano"));
+            var choice = UnsavedChangesChoice.Cancel;
+            var viewModel = new MainWindowViewModel(workspace, new ThemeService(), new TestLocalization(),
+                new UserSettingsService(Path.Combine(directory, "settings.json")), null!, null!, null!,
+                new ScoreRecoveryService(serializer), null!, () => choice);
+            var score = new GenshinPiano.Infrastructure.TextScores.TextScoreImporter().Parse("(AD)/G/Q/G",
+                new() { Profile = GenshinPiano.Application.TextScores.TextScoreProfile.Zhijian }).Score;
+            viewModel.ImportTextScore(score);
+            Assert.Same(score, workspace.CurrentScore);
+            Assert.True(workspace.IsDirty);
+            Assert.Null(workspace.CurrentPath);
+            Assert.Null(viewModel.CurrentSourcePath);
+            Assert.Null(serializer.SavedPath);
+            viewModel.NewCommand.Execute(null); // Cancel must retain the newly imported score.
+            Assert.Same(score, workspace.CurrentScore);
+            choice = UnsavedChangesChoice.DontSave;
+            viewModel.NewCommand.Execute(null); // Cancel pending autosave without opening UI.
+            Assert.False(workspace.IsDirty);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
     private sealed class TestLocalization : ILocalizationService
     {
         public AppLanguage CurrentLanguage => AppLanguage.SimplifiedChinese;

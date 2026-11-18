@@ -39,6 +39,8 @@ MIDI ─────> 导入转换 ────────┤
 
 MIDI 导入由 `DryWetMidiScoreImporter` 处理；旧版 `.GenshinPiano` 转换保留相对路径并默认跳过已有输出。`MusicXmlScoreImporter` 提供 MusicXML 的时序、声部、和弦与连音转换。当前五线谱 OCR 的 SMT 输出直接转换为曲谱，不经过 MusicXML。
 
+键盘／数字文本谱由 `ITextScoreImporter` / `TextScoreImporter` 处理。检测器逐一校验整份谱文，唯一语法匹配时自动选择；多种匹配只给出候选与排版建议，交由用户确认。解析器保留分组、空组和原文位置，按逐段确认的节奏生成 `ScoreDocument`；窗口管理原文、段落设置和预览失效，不依赖 OCR 或模型请求。导入结果标记为未保存的新曲谱。
+
 文件字段和兼容规则见 [曲谱格式](gpiano-format.md)。
 
 ### 编辑器与界面
@@ -119,6 +121,8 @@ Image ───────> OCR add-on ─────────────�
 ~~~
 
 `DryWetMidiScoreImporter` handles MIDI import. Legacy `.GenshinPiano` conversion preserves relative paths and skips existing output by default. `MusicXmlScoreImporter` converts MusicXML timing, voices, chords, and ties. The current SMT staff-recognition pipeline converts its output directly into the score model without going through MusicXML.
+
+`ITextScoreImporter` / `TextScoreImporter` handles keyboard and numeric game-key text sheets. Detection validates the entire source against each convention: a unique match resolves automatically, while shared syntax yields candidates and layout suggestions for user selection. The parser preserves groups, empty positions, and source locations, then creates `ScoreDocument` using section timing confirmed by the user. The dialog manages input, settings, and preview invalidation without OCR or model requests. Imported results become new unsaved scores.
 
 See [Score format](gpiano-format.md#english) for fields and compatibility rules.
 

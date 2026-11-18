@@ -311,6 +311,12 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     public void ImportAiScore(ScoreDocument score)
+        => ImportTextOrAiScore(score, "AiImport_Imported");
+
+    public void ImportTextScore(ScoreDocument score)
+        => ImportTextOrAiScore(score, "TextImport_Imported");
+
+    private void ImportTextOrAiScore(ScoreDocument score, string statusKey)
     {
         ArgumentNullException.ThrowIfNull(score);
         CancelAutosave();
@@ -319,7 +325,7 @@ public sealed class MainWindowViewModel : ObservableObject
         CurrentSourcePath = null;
         RefreshFromWorkspace();
         ScheduleAutosave();
-        SetStatus("AiImport_Imported", score.Tracks.Sum(track => track.Notes.Count));
+        SetStatus(statusKey, score.Tracks.Sum(track => track.Notes.Count));
     }
 
     private async Task<bool> ConfirmPendingChangesAsync()

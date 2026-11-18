@@ -14,6 +14,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\samples\keyboard-text\指尖-*.txt"
+          Link="TestData\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\src\GenshinPiano.App\Resources\Localization\Strings.*.xaml"
           Link="TestData\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

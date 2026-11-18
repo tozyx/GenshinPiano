@@ -15,6 +15,7 @@ GenshinPiano 是面向 Windows 的曲谱编辑、游戏演奏与练习工具。�
 
 - [系统架构](architecture.md)：各模块的职责、数据流和进程边界。
 - [曲谱格式](gpiano-format.md)：音高、时间、音符时长及文件兼容规则。
+- [键盘文本谱](keyboard-text-notation.md)：B 站常见字母谱、数字按键谱的写法、来源和样例。
 - [曲谱识别](OCR.md)：OCR 插件、大模型识谱 JSON 导入、支持范围和接口。
 - [更新机制](UPDATES.md)：版本检查、独立插件更新、签名验证与回滚。
 
@@ -33,6 +34,7 @@ GenshinPiano is a Windows tool for score editing, in-game playback, and practice
 
 - [System architecture](architecture.md#english): module responsibilities, data flow, and process boundaries.
 - [Score format](gpiano-format.md#english): pitches, timing, note durations, and file compatibility.
+- [Keyboard text notation](keyboard-text-notation.md#english): Bilibili key and numeric sheets, notation differences, sources, and a sample.
 - [Score recognition](OCR.md#english): OCR, AI score JSON import, supported input, and interfaces.
 - [Updates and component management](UPDATES.md#english): version checks, independent add-on updates, signature verification, and rollback.
 
