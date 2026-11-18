@@ -1,0 +1,3 @@
+# Keep model/runtime source assets in Git; ignore only local extraction/results.
+/native/
+/results/

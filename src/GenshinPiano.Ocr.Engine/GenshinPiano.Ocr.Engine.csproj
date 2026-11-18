@@ -18,4 +18,8 @@
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.3" />
     <PackageReference Include="RapidOcrNet" Version="2.0.0" ExcludeAssets="build;buildTransitive" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Source/downloaded assets are deployed only by the OCR resource publisher. -->
+    <None Update="models\**\*" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+  </ItemGroup>
 </Project>

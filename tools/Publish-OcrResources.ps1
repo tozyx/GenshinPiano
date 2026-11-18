@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory = $true)][string]$AddonRootDirectory,
     [Parameter(Mandatory = $true)][string]$ArtifactsDirectory,
     [string]$PrivateKeyPath,
-    [string]$SmtTrialDirectory,
+    [Alias('SmtTrialDirectory')][string]$SmtResourceDirectory,
     [string]$MsvcRuntimeDirectory,
     [string]$BuildArtifactsDirectory,
     [string]$Version,
@@ -25,7 +25,7 @@ if (-not $SkipSigning -and -not $SkipArchive -and
     ([string]::IsNullOrWhiteSpace($PrivateKeyPath) -or -not (Test-Path -LiteralPath $PrivateKeyPath -PathType Leaf))) {
     throw 'A signing key is required for release packaging. Use SkipSigning only for local tests.'
 }
-if (-not $SmtTrialDirectory) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource' }
+if (-not $SmtResourceDirectory) { $SmtResourceDirectory = Join-Path $engineDirectory 'models\smt-resource' }
 if (-not $MsvcRuntimeDirectory) { $MsvcRuntimeDirectory = Join-Path $env:WINDIR 'System32' }
 if (-not $BuildArtifactsDirectory) { $BuildArtifactsDirectory = Join-Path $repositoryRoot 'artifacts\ocr-resources-publish' }
 $buildArtifacts = [IO.Path]::GetFullPath($BuildArtifactsDirectory)
@@ -34,6 +34,13 @@ if (-not $Version) { $Version = [string]$manifest.resourceVersion }
 if ($Version -cnotmatch '\A[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?\z') { throw 'Resource version must be major.minor.patch with an optional prerelease suffix.' }
 if ($manifest.schemaVersion -ne 2 -or $manifest.engineCompatibilityVersion -ne 1) { throw 'Unsupported source resource manifest.' }
 $manifest.resourceVersion = $Version
+
+# Fail before replacing a working resource deployment if downloaded assets are missing or invalid.
+& (Join-Path $PSScriptRoot 'Publish-OcrSmtRuntime.ps1') -DestinationDirectory (Join-Path $target 'staff-omr\smt') -SmtResourceDirectory $SmtResourceDirectory -MsvcRuntimeDirectory $MsvcRuntimeDirectory -ValidateOnly
+foreach ($name in @('orpheusnet-srcnn-x3.onnx','orpheusnet-middle.onnx','orpheusnet-metadata.onnx')) {
+    $path = Join-Path $engineDirectory "models\orpheusnet\$name"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -eq 0) { throw "Missing OrpheusNet model: $path" }
+}
 
 # Restore packages for their native libraries/models; never publish another .NET runtime.
 & dotnet restore $projectPath --artifacts-path $buildArtifacts -p:NuGetAudit=false
@@ -52,6 +59,21 @@ $onnx = Find-Package 'Microsoft.ML.OnnxRuntime'
 $skia = Find-Package 'SkiaSharp.NativeAssets.Win32'
 $rapid = Find-Package 'RapidOcrNet'
 
+$copies = @()
+foreach ($name in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
+    $copies += @{ Source = Join-Path $onnx "runtimes\win-x64\native\$name"; Relative = "native\$name" }
+}
+$copies += @{ Source = Join-Path $skia 'runtimes\win-x64\native\libSkiaSharp.dll'; Relative = 'native\libSkiaSharp.dll' }
+foreach ($name in @('ch_PP-OCRv5_mobile_det.onnx','ch_ppocr_mobile_v2.0_cls_infer.onnx','latin_PP-OCRv5_rec_mobile_infer.onnx','ppocrv5_latin_dict.txt')) {
+    $copies += @{ Source = Join-Path $rapid "models\v5\$name"; Relative = "models\v5\$name" }
+}
+foreach ($name in @('orpheusnet-srcnn-x3.onnx','orpheusnet-middle.onnx','orpheusnet-metadata.onnx')) {
+    $copies += @{ Source = Join-Path $engineDirectory "models\orpheusnet\$name"; Relative = "models\orpheusnet\$name" }
+}
+foreach ($copy in $copies) {
+    if (-not (Test-Path -LiteralPath $copy.Source -PathType Leaf) -or (Get-Item -LiteralPath $copy.Source).Length -eq 0) { throw "Missing OCR source resource: $($copy.Source)" }
+}
+
 # Only replace the verified, immediate 'ocr' child of the requested addons directory.
 if ([IO.Path]::GetDirectoryName($target) -ne $addonRoot.TrimEnd('\')) { throw 'Unexpected OCR destination.' }
 if (Test-Path -LiteralPath $target) {
@@ -63,17 +85,10 @@ $native = Join-Path $target 'native'
 $v5 = Join-Path $target 'models\v5'
 $orpheus = Join-Path $target 'models\orpheusnet'
 New-Item -ItemType Directory -Path $native, $v5, $orpheus, $output -Force | Out-Null
-foreach ($name in @('onnxruntime.dll', 'onnxruntime_providers_shared.dll')) {
-    Copy-Item -LiteralPath (Join-Path $onnx "runtimes\win-x64\native\$name") -Destination $native
+foreach ($copy in $copies) {
+    Copy-Item -LiteralPath $copy.Source -Destination (Join-Path $target $copy.Relative)
 }
-Copy-Item -LiteralPath (Join-Path $skia 'runtimes\win-x64\native\libSkiaSharp.dll') -Destination $native
-foreach ($name in @('ch_PP-OCRv5_mobile_det.onnx','ch_ppocr_mobile_v2.0_cls_infer.onnx','latin_PP-OCRv5_rec_mobile_infer.onnx','ppocrv5_latin_dict.txt')) {
-    Copy-Item -LiteralPath (Join-Path $rapid "models\v5\$name") -Destination $v5
-}
-foreach ($name in @('orpheusnet-srcnn-x3.onnx','orpheusnet-middle.onnx','orpheusnet-metadata.onnx')) {
-    Copy-Item -LiteralPath (Join-Path $engineDirectory "models\orpheusnet\$name") -Destination $orpheus
-}
-& (Join-Path $PSScriptRoot 'Publish-OcrSmtRuntime.ps1') -DestinationDirectory (Join-Path $target 'staff-omr\smt') -SmtTrialDirectory $SmtTrialDirectory -MsvcRuntimeDirectory $MsvcRuntimeDirectory
+& (Join-Path $PSScriptRoot 'Publish-OcrSmtRuntime.ps1') -DestinationDirectory (Join-Path $target 'staff-omr\smt') -SmtResourceDirectory $SmtResourceDirectory -MsvcRuntimeDirectory $MsvcRuntimeDirectory
 foreach ($required in $manifest.requiredFiles) {
     $file = Join-Path $target $required
     if (-not (Test-Path -LiteralPath $file -PathType Leaf) -or (Get-Item -LiteralPath $file).Length -eq 0) { throw "Missing OCR resource: $required" }

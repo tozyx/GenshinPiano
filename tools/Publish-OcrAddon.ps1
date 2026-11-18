@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory = $true)][string]$AddonRootDirectory,
     [Parameter(Mandatory = $true)][string]$ArtifactsDirectory,
     [string]$PrivateKeyPath,
-    [string]$SmtTrialDirectory,
+    [Alias('SmtTrialDirectory')][string]$SmtResourceDirectory,
     [string]$MsvcRuntimeDirectory,
     [string]$BuildArtifactsDirectory,
     [string]$Version,

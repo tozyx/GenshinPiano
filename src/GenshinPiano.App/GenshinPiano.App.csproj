@@ -30,12 +30,14 @@
   </ItemGroup>
   <Target Name="ExcludeOptionalOcrNativeBuildAssets" AfterTargets="ResolvePackageAssets">
     <ItemGroup>
-      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(Filename)' == 'onnxruntime' Or '%(Filename)' == 'onnxruntime_providers_shared' Or '%(Filename)' == 'libSkiaSharp'" />
+      <!-- Keep managed APIs in the host; all platform-native OCR binaries belong to resources. -->
+      <NativeCopyLocalItems Remove="@(NativeCopyLocalItems)" Condition="'%(NativeCopyLocalItems.NuGetPackageId)' == 'Microsoft.ML.OnnxRuntime' Or $([System.String]::Copy('%(NativeCopyLocalItems.NuGetPackageId)').StartsWith('SkiaSharp.NativeAssets.'))" />
+      <RuntimeTargetsCopyLocalItems Remove="@(RuntimeTargetsCopyLocalItems)" Condition="'%(RuntimeTargetsCopyLocalItems.AssetType)' == 'native' And ('%(RuntimeTargetsCopyLocalItems.NuGetPackageId)' == 'Microsoft.ML.OnnxRuntime' Or $([System.String]::Copy('%(RuntimeTargetsCopyLocalItems.NuGetPackageId)').StartsWith('SkiaSharp.NativeAssets.')))" />
     </ItemGroup>
   </Target>
   <Target Name="ExcludeOptionalOcrPublishAssets" AfterTargets="ComputeFilesToPublish" BeforeTargets="GenerateSingleFileBundle">
     <ItemGroup>
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'onnxruntime' Or '%(Filename)' == 'onnxruntime_providers_shared' Or '%(Filename)' == 'libSkiaSharp'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.AssetType)' == 'native' And ('%(ResolvedFileToPublish.NuGetPackageId)' == 'Microsoft.ML.OnnxRuntime' Or $([System.String]::Copy('%(ResolvedFileToPublish.NuGetPackageId)').StartsWith('SkiaSharp.NativeAssets.')))" />
     </ItemGroup>
   </Target>
 </Project>

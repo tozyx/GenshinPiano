@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-param([string]$SmtTrialDirectory, [string]$MsvcRuntimeDirectory)
+param([Alias('SmtTrialDirectory')][string]$SmtResourceDirectory, [string]$MsvcRuntimeDirectory)
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $arguments = @{
@@ -9,6 +9,6 @@ $arguments = @{
     SkipSigning = $true
     SkipArchive = $true
 }
-if ($SmtTrialDirectory) { $arguments.SmtTrialDirectory = $SmtTrialDirectory }
+if ($SmtResourceDirectory) { $arguments.SmtResourceDirectory = $SmtResourceDirectory }
 if ($MsvcRuntimeDirectory) { $arguments.MsvcRuntimeDirectory = $MsvcRuntimeDirectory }
 & (Join-Path $PSScriptRoot 'Publish-OcrResources.ps1') @arguments

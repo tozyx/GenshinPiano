@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\..'))
 if ([string]::IsNullOrWhiteSpace($TrialDirectory)) {
-    $TrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource'
+    $TrialDirectory = Join-Path $repositoryRoot 'src\GenshinPiano.Ocr.Engine\models\smt-resource'
 }
 $trialRoot = [IO.Path]::GetFullPath($TrialDirectory)
 $image = [IO.Path]::GetFullPath($ImagePath)
@@ -44,17 +44,9 @@ foreach ($artifact in $artifacts) {
     }
 }
 
-# Re-extract the verified CPU package, including its matching DLLs and notices.
-$nativeRoot = Join-Path $trialRoot 'native'
-Expand-Archive -LiteralPath $archivePath -DestinationPath $nativeRoot -Force
-$executable = Join-Path $nativeRoot 'crispembed.exe'
-if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-    throw 'The verified archive does not contain crispembed.exe.'
-}
-
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
     $runId = (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
-    $OutputDirectory = Join-Path $trialRoot "results\$runId"
+    $OutputDirectory = Join-Path $repositoryRoot "artifacts\smt-research\$runId"
 }
 $outputRoot = [IO.Path]::GetFullPath($OutputDirectory)
 # Every run owns a new directory, so evidence from an earlier run is never overwritten.
@@ -62,6 +54,14 @@ if (Test-Path -LiteralPath $outputRoot) {
     throw "OutputDirectory already exists; choose a new directory: $outputRoot"
 }
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
+
+# Keep extracted tools and inference evidence out of the source asset directory.
+$nativeRoot = Join-Path $outputRoot 'native'
+Expand-Archive -LiteralPath $archivePath -DestinationPath $nativeRoot -Force
+$executable = Join-Path $nativeRoot 'crispembed.exe'
+if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+    throw 'The verified archive does not contain crispembed.exe.'
+}
 
 $startInfo = [Diagnostics.ProcessStartInfo]::new()
 $startInfo.FileName = $executable

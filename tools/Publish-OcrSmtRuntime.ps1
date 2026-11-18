@@ -1,22 +1,45 @@
 #Requires -Version 5.1
 param(
     [Parameter(Mandatory = $true)][string]$DestinationDirectory,
-    [string]$SmtTrialDirectory,
-    [string]$MsvcRuntimeDirectory
+    [Alias('SmtTrialDirectory')][string]$SmtResourceDirectory,
+    [string]$MsvcRuntimeDirectory,
+    [switch]$ValidateOnly
 )
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if ([string]::IsNullOrWhiteSpace($SmtTrialDirectory)) { $SmtTrialDirectory = Join-Path $repositoryRoot 'publish\smt-resource' }
+if ([string]::IsNullOrWhiteSpace($SmtResourceDirectory)) { $SmtResourceDirectory = Join-Path $repositoryRoot 'src\GenshinPiano.Ocr.Engine\models\smt-resource' }
+# Older tracked starter BATs explicitly pass this former default. Preserve them without
+# changing the user's ignored local signing/version settings; other overrides stay strict.
+$legacySource = Join-Path $repositoryRoot 'publish\smt-resource'
+if ([IO.Path]::GetFullPath($SmtResourceDirectory).TrimEnd('\') -eq $legacySource -and -not (Test-Path -LiteralPath $legacySource)) {
+    $SmtResourceDirectory = Join-Path $repositoryRoot 'src\GenshinPiano.Ocr.Engine\models\smt-resource'
+}
 if ([string]::IsNullOrWhiteSpace($MsvcRuntimeDirectory)) { $MsvcRuntimeDirectory = Join-Path $env:WINDIR 'System32' }
 $nativeDestination = [IO.Path]::GetFullPath($DestinationDirectory)
 if ([IO.Path]::GetFileName($nativeDestination.TrimEnd('\')) -ne 'smt') { throw 'DestinationDirectory must be named smt.' }
-$nativeArchive = Join-Path $SmtTrialDirectory 'crispembed-windows-x86_64.zip'
+$nativeArchive = Join-Path $SmtResourceDirectory 'crispembed-windows-x86_64.zip'
 $modelName = 'smt-grandstaff-q8_0.gguf'
-$modelPath = Join-Path $SmtTrialDirectory $modelName
-if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf)) { $modelPath = Join-Path (Join-Path $SmtTrialDirectory 'models') $modelName }
+$modelPath = Join-Path $SmtResourceDirectory $modelName
+if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf)) { $modelPath = Join-Path (Join-Path $SmtResourceDirectory 'models') $modelName }
+foreach ($path in @($nativeArchive, $modelPath)) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing SMT resource: $path. See src/GenshinPiano.Ocr.Engine/models/README.md." }
+}
 if ((Get-FileHash -LiteralPath $nativeArchive -Algorithm SHA256).Hash -ne 'e82337bcdefb1d54b0d97c26fc7e64ff35847d1db285e5062d6674df91ce6017') { throw 'SMT CPU archive SHA-256 mismatch.' }
 if ((Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash -ne 'f6612885a8d7015bef5ab7f045a37a0f667575f4b65b324a353cf348d6edc752') { throw 'SMT model SHA-256 mismatch.' }
+# Validate all external inputs before changing any output directory.
+foreach ($name in @('msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')) {
+    $source = Join-Path $MsvcRuntimeDirectory $name
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing x64 VC runtime DLL: $source" }
+    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($source))
+    try {
+        $reader.BaseStream.Position = 0x3c
+        $header = $reader.ReadInt32()
+        $reader.BaseStream.Position = $header + 4
+        if ($reader.ReadUInt16() -ne 0x8664) { throw "Expected x64 runtime DLL: $name" }
+    } finally { $reader.Dispose() }
+}
+if ($ValidateOnly) { return }
 New-Item -ItemType Directory -Path $nativeDestination -Force | Out-Null
 $nativeFiles = @('crispembed.exe','crispembed.dll','ggml.dll','ggml-base.dll','ggml-cpu.dll')
 $archive = [IO.Compression.ZipFile]::OpenRead($nativeArchive)
@@ -32,13 +55,6 @@ Copy-Item -LiteralPath $modelPath -Destination (Join-Path $nativeDestination $mo
 # App-local x64 VC runtime avoids requiring a separate redistributable install.
 foreach ($name in @('msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')) {
     $source = Join-Path $MsvcRuntimeDirectory $name
-    $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($source))
-    try {
-        $reader.BaseStream.Position = 0x3c
-        $header = $reader.ReadInt32()
-        $reader.BaseStream.Position = $header + 4
-        if ($reader.ReadUInt16() -ne 0x8664) { throw "Expected x64 runtime DLL: $name" }
-    } finally { $reader.Dispose() }
     Copy-Item -LiteralPath $source -Destination (Join-Path $nativeDestination $name) -Force
 }
 [ordered]@{
