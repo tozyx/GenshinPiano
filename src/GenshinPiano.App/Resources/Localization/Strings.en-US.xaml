@@ -205,10 +205,12 @@
     <system:String x:Key="Editor_HelpCreateTitle">Create and select</system:String>
     <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• Click empty space: create a note at the New note length and audition it
 • Click a note: select and drag
+• Double-click a note: delete that note (undo available)
 • Ctrl + click: add to or remove from the selection
 • Drag empty space: box-select; Ctrl + box-select: add to the selection
 • Ctrl + A: select all; Ctrl + Shift + ← / →: select notes before / after the cursor
 • Right-click empty space: clear the selection
+• Double-right-click empty space: restore the last manually chosen new-note length
 • ← / →: move by one snap-grid step; Shift + ← / →: move by one beat
 • Ctrl + drag a note: copy
 • Delete / Backspace: delete; Ctrl + Z / Ctrl + Y: undo / redo</system:String>

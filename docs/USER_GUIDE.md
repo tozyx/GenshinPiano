@@ -33,6 +33,7 @@
 
 - 单击空白网格：按“新建长度”创建音符并试听对应音高。
 - 单击音符：选择并拖动；`Ctrl + 单击`追加或取消选择。
+- 左键双击音符：仅删除该音符，可用 `Ctrl + Z` 撤销。
 - 从空白处拖动：框选；`Ctrl + 框选`追加选择。
 - `Ctrl + A`：全选音符。
 - `Ctrl + Shift + ← / →`：选择播放游标之前 / 游标及之后的音符。
@@ -40,6 +41,7 @@
 - `Ctrl + 拖动音符`：复制选中音符。
 - `Delete / Backspace`：删除；`Ctrl + Z / Ctrl + Y`：撤销 / 重做。
 - 右键空白处：取消全部选择。
+- 右键双击空白处：恢复上次在“新建长度”中手动选择的值；选中或调整音符时的自动长度变化不会覆盖该值。尚未手动选择时，恢复本次启动时载入的长度（默认为 1/16）。
 
 “吸附网格”决定创建和移动的位置步进；“新建长度”决定新音符的节拍长度。新建长度会继承最近创建、调整或选中的音符长度。
 
@@ -178,11 +180,13 @@ saved automatically. Existing configurations default to Classic blue.
 ### Piano-roll editing
 
 - Click empty grid space to create and audition a note; click and drag a note to select and move it.
+- Double-click a note to delete only that note; `Ctrl + Z` undoes deletion.
 - `Ctrl + click` and `Ctrl + marquee` add to the selection; `Ctrl + A` selects all notes.
 - `Ctrl + Shift + Left/Right` selects notes before or at/after the playback cursor.
 - `Left/Right` nudges selected notes by the snap grid; add `Shift` to move one beat.
 - `Ctrl + drag` copies notes. `Delete` / `Backspace` removes them.
 - `Ctrl + Z` / `Ctrl + Y` undo and redo. Right-click empty space to clear selection.
+- Double-right-click empty space to restore the last length manually chosen in **New note**. Automatic changes from selecting or resizing notes do not replace it. Before any manual choice, this restores the length loaded at startup (1/16 by default).
 - Drag a note's right edge to change its rhythmic length. Right-click a note for rhythmic value and
   key-hold ratio.
 - `[` / `]` changes selected-note length, or changes the snap grid when no note is selected.

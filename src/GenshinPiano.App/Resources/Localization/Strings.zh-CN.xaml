@@ -205,10 +205,12 @@
     <system:String x:Key="Editor_HelpCreateTitle">创建与选择</system:String>
     <system:String x:Key="Editor_HelpCreateBody" xml:space="preserve">• 单击空白处：按“新建长度”创建音符并试听音高
 • 单击音符：选择并拖动
+• 左键双击音符：删除该音符，可撤销
 • Ctrl + 单击：追加或取消选择
 • 拖动空白处：框选；Ctrl + 框选：追加选择
 • Ctrl + A：全选；Ctrl + Shift + ← / →：选择游标前 / 后的音符
 • 右键空白处：取消全部选择
+• 右键双击空白处：恢复上次手动选择的新建长度
 • ← / →：按吸附网格整体平移；Shift + ← / →：整体移动一拍
 • Ctrl + 拖动音符：复制
 • Delete / Backspace：删除；Ctrl + Z / Ctrl + Y：撤销 / 重做</system:String>

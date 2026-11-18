@@ -88,6 +88,9 @@ public sealed class PianoRollSurface : Control
     private bool _dragHasMoved;
     private bool _clickedWasSelected;
     private Guid? _clickedNoteId;
+    private Guid? _doubleClickNoteId;
+    private bool _rightPressWasEmpty;
+    private bool _restoreNewNoteLengthOnRightUp;
     private DragMode _dragMode;
     private bool _internalScoreChange;
     private double _pixelsPerBeat = 112;
@@ -162,6 +165,8 @@ public sealed class PianoRollSurface : Control
     public event EventHandler<NoteCreatedEventArgs>? NoteCreated;
 
     public event EventHandler<NoteRhythmPreviewChangedEventArgs>? NoteRhythmPreviewChanged;
+
+    public event EventHandler? NewNoteLengthRestoreRequested;
 
     public event EventHandler? ZoomChanged;
 
@@ -714,6 +719,7 @@ public sealed class PianoRollSurface : Control
         base.OnMouseLeftButtonDown(e);
         Focus();
         var point = e.GetPosition(this);
+        _rightPressWasEmpty = _restoreNewNoteLengthOnRightUp = false;
         if (Score is null)
         {
             return;
@@ -721,6 +727,7 @@ public sealed class PianoRollSurface : Control
 
         if (IsOverRuler(point.Y))
         {
+            _doubleClickNoteId = null;
             SetPlaybackCursorFromX(point.X);
             _isDraggingPlaybackCursor = true;
             _playbackCursorMouseDownX = point.X;
@@ -731,6 +738,13 @@ public sealed class PianoRollSurface : Control
         }
 
         if (!IsEditingEnabled)
+        {
+            _doubleClickNoteId = null;
+            e.Handled = true;
+            return;
+        }
+
+        if (TryDeleteDoubleClickedNote(point, e.ClickCount, Keyboard.Modifiers))
         {
             e.Handled = true;
             return;
@@ -790,25 +804,68 @@ public sealed class PianoRollSurface : Control
         e.Handled = true;
     }
 
+    private bool TryDeleteDoubleClickedNote(Point point, int clickCount, ModifierKeys modifiers)
+    {
+        var previous = _doubleClickNoteId;
+        _doubleClickNoteId = null;
+        if (!IsEditingEnabled || Score is null || IsOverRuler(point.Y)) return false;
+        var hit = HitTestNote(point);
+        if (clickCount == 1 && modifiers == ModifierKeys.None)
+        {
+            _doubleClickNoteId = hit?.Note.Id;
+            return false;
+        }
+        // A double-click on empty space must not delete the note just created by its first click.
+        if (clickCount != 2 || modifiers != ModifierKeys.None || hit is not { } noteHit ||
+            previous != noteHit.Note.Id || !_viewModel.Selection.Contains(noteHit.Note.Id)) return false;
+        if (_viewModel.DeleteNote(noteHit.Note.Id)) SynchronizeViewModelScore();
+        RaiseSelectionChanged();
+        return true;
+    }
+
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+    {
+        base.OnMouseRightButtonDown(e);
+        HandleRightButtonDown(e.GetPosition(this), e.ClickCount, Keyboard.Modifiers);
+    }
+
+    private void HandleRightButtonDown(Point point, int clickCount, ModifierKeys modifiers)
+    {
+        _doubleClickNoteId = null;
+        var wasEmpty = _rightPressWasEmpty;
+        _rightPressWasEmpty = IsEditingEnabled && Score is not null && !IsOverRuler(point.Y) &&
+            point.X >= 0 && point.Y >= RulerHeight && HitTestNote(point) is null;
+        _restoreNewNoteLengthOnRightUp = _rightPressWasEmpty && wasEmpty && clickCount == 2 && modifiers == ModifierKeys.None;
+    }
+
     protected override void OnMouseRightButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseRightButtonUp(e);
         if (!IsEditingEnabled)
         {
+            _restoreNewNoteLengthOnRightUp = false;
             e.Handled = true;
             return;
         }
 
         Focus();
+        HandleRightButtonUp(e.GetPosition(this));
+        e.Handled = true;
+    }
 
-        var point = e.GetPosition(this);
+    private void HandleRightButtonUp(Point point)
+    {
+        var restoreLength = _restoreNewNoteLengthOnRightUp;
+        _restoreNewNoteLengthOnRightUp = false;
+        if (!IsEditingEnabled) return;
         var hit = !IsOverRuler(point.Y) && Score is not null
             ? HitTestNote(point)
             : null;
         if (hit is null)
         {
             ClearSelection();
-            e.Handled = true;
+            if (restoreLength && Score is not null && !IsOverRuler(point.Y) && point.X >= 0 && point.Y >= RulerHeight)
+                NewNoteLengthRestoreRequested?.Invoke(this, EventArgs.Empty);
             return;
         }
 
@@ -827,7 +884,6 @@ public sealed class PianoRollSurface : Control
                 hit.Value.Note,
                 new Point(hit.Value.Bounds.X, hit.Value.Bounds.Bottom + 4)));
         InvalidateVisual();
-        e.Handled = true;
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -1041,6 +1097,7 @@ public sealed class PianoRollSurface : Control
             RaiseSelectionChanged();
         }
 
+        if (_dragHasMoved) _doubleClickNoteId = null;
         _dragOriginals = [];
         _dragPreviews = [];
         _selectionRect = null;
@@ -1067,6 +1124,8 @@ public sealed class PianoRollSurface : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+        _doubleClickNoteId = null;
+        _rightPressWasEmpty = _restoreNewNoteLengthOnRightUp = false;
         if (!IsEditingEnabled)
         {
             return;
@@ -1658,6 +1717,8 @@ public sealed class PianoRollSurface : Control
         var selectionChanged = false;
         if (!surface._internalScoreChange)
         {
+            surface._doubleClickNoteId = null;
+            surface._rightPressWasEmpty = surface._restoreNewNoteLengthOnRightUp = false;
             selectionChanged = surface._viewModel.LoadScore(args.NewValue as ScoreDocument);
         }
         else if (args.NewValue is ScoreDocument internalScore)

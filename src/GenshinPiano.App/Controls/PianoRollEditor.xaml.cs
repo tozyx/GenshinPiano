@@ -20,6 +20,7 @@ public partial class PianoRollEditor : UserControl
     private double _themeHorizontalOffset;
     private double _themeVerticalOffset;
     private ComboBoxItem? _customNewNoteLengthItem;
+    private double _preferredNewNoteLengthFactor = 0.25;
 
     public PianoRollViewModel EditorViewModel { get; } = new();
 
@@ -41,6 +42,7 @@ public partial class PianoRollEditor : UserControl
         Surface.PlaybackSeekRequested += Surface_OnPlaybackSeekRequested;
         Surface.NoteCreated += Surface_OnNoteCreated;
         Surface.NoteRhythmPreviewChanged += Surface_OnNoteRhythmPreviewChanged;
+        Surface.NewNoteLengthRestoreRequested += Surface_OnNewNoteLengthRestoreRequested;
         Surface.ZoomChanged += Surface_OnZoomChanged;
         Loaded += PianoRollEditor_OnLoaded;
         Unloaded += PianoRollEditor_OnUnloaded;
@@ -215,6 +217,7 @@ public partial class PianoRollEditor : UserControl
         }
 
         Surface.NewNoteLengthFactor = factor;
+        _preferredNewNoteLengthFactor = factor;
         if (!_loadingSettings && !_updatingNewNoteLength)
         {
             _settingsService?.SetNewNoteLengthFactor(factor);
@@ -223,6 +226,9 @@ public partial class PianoRollEditor : UserControl
 
     private void SetNewNoteLength(long rhythmTick, int ppq) =>
         SetNewNoteLength(rhythmTick / (double)Math.Max(1, ppq), commit: true);
+
+    private void Surface_OnNewNoteLengthRestoreRequested(object? sender, EventArgs e) =>
+        SetNewNoteLength(_preferredNewNoteLengthFactor);
 
     private void SetNewNoteLength(double factor) => SetNewNoteLength(factor, commit: true);
 
@@ -412,6 +418,7 @@ public partial class PianoRollEditor : UserControl
             Surface.SnapDivision = editor.SnapDivision;
 
             SetNewNoteLength(editor.NewNoteLengthFactor);
+            _preferredNewNoteLengthFactor = editor.NewNoteLengthFactor;
 
             if (Enum.TryParse<NoteArticulation>(editor.DefaultArticulation, out var articulation))
             {

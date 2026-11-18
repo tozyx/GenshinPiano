@@ -107,6 +107,9 @@ public sealed class PianoRollViewModel
         return Commit(ScoreEditor.DeleteNotes(Score, selectedIds));
     }
 
+    public bool DeleteNote(Guid id) => Score is not null &&
+        Commit(ScoreEditor.DeleteNotes(Score, [id]));
+
     public bool SetSelectedArticulation(NoteArticulation articulation)
     {
         var notes = GetSelectedNotes();
