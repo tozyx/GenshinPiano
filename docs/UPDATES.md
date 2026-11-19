@@ -14,6 +14,8 @@
 
 OCR 插件由用户主动下载安装，不随主程序自动更新静默下载。OCR 窗口显示当前、可更新或未知状态，并与主界面共享检查结果；打开窗口时可复用最近五分钟内的检查信息。
 
+OCR 版本检查只读取发布列表，不下载 ZIP、`.sha256` 或 `.sig`。用户确认安装或更新后，才获取校验和与签名；同一发布资产的格式有效校验信息在内存中缓存五分钟，资产标识或更新时间变化时重新获取，失败和取消不缓存。双源校验信息一致后才合并下载地址，下载后仍验证实际 SHA-256 和内置公钥签名。安装前重新读取本地版本，已手动安装相同或更高资源版本时直接跳过。
+
 关闭自动更新会取消自动操作。关闭联网还会取消手动网络操作；已安装插件的本地识别不需要联网。
 
 ### 版本与发布资产
@@ -83,6 +85,8 @@ Manual **Check for updates** retrieves application and OCR metadata in parallel,
 Automatic updates retain background application downloads and installation on exit/restart. A manual check, closing the overview, or choosing OCR does not cancel an active background application download. Selecting the same application update waits for and reuses the verified result. An older selection cannot replace a newer prepared update.
 
 OCR installation and downloads are user initiated, not silently bundled with automatic application updates. The OCR dialog displays current, update-available, or unknown status and shares check results with the main window. Opening the dialog can reuse metadata checked within the last five minutes.
+
+OCR version checks read release listings only, without downloading ZIPs, `.sha256`, or `.sig` files. Verification files are fetched after the user chooses to install/update. Syntactically valid verification metadata is cached in memory for five minutes per release asset; changed asset IDs or timestamps invalidate it, and failures/cancellation are not cached. Mirrors are combined only when verification metadata matches. Downloads still require SHA-256 and embedded-public-key signature verification. The installer rereads the local version and skips installation if matching or newer resources were installed manually.
 
 Disabling automatic updates cancels automatic operations. Disabling network access also cancels manual network operations. Local recognition with an installed add-on requires no network access.
 

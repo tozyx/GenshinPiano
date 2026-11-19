@@ -23,7 +23,8 @@ public sealed class OcrAddonPackageManager(
     IUpdatePackageDownloader downloader,
     IUpdatePackageVerifier verifier,
     IOcrAddonService addonService,
-    string installRoot)
+    string installRoot,
+    IUpdatePackageMetadataResolver? metadataResolver = null)
 {
     private readonly SemaphoreSlim _operationLock = new(1, 1);
     private readonly object _runtimeLock = new();
@@ -128,6 +129,11 @@ public sealed class OcrAddonPackageManager(
             {
                 _lastCheck = check with { InstalledVersion = installed.EngineVersion };
                 return new OcrAddonInstallResult(false, installed.EngineVersion, manifest.SourceName);
+            }
+            if (package.VerificationSources is { Count: > 0 })
+            {
+                package = await (metadataResolver ?? throw new InvalidOperationException("OCR verification metadata resolver is missing."))
+                    .ResolveAsync(package, cancellationToken);
             }
             var downloaded = await downloader.DownloadAsync(package, progress, cancellationToken);
             if (!await verifier.VerifyAsync(package, downloaded, cancellationToken))

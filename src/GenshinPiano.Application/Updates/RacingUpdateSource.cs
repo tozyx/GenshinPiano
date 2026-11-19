@@ -43,9 +43,12 @@ public sealed class RacingUpdateSource(
         var selected = newest[0];
         var manifest = MergeEquivalentMirrors(selected, newest);
         var downloadUrlCount = manifest.Packages
-            .SelectMany(package => package.GetDownloadUris()).Count();
+            .Sum(package => package.VerificationSources?.Count ?? package.GetDownloadUris().Count);
+        var verificationPending = manifest.Packages.Any(package => package.VerificationSources is { Count: > 0 });
         diagnostic?.Invoke(
-            newest.Length > 1
+            verificationPending
+                ? $"Update discovery found {newestVersion}; {downloadUrlCount} candidate URL(s) require verification metadata before download."
+                : newest.Length > 1
                 ? $"Update discovery found {newestVersion} on {newest.Length} source(s); " +
                   $"{downloadUrlCount} equivalent package URL(s) are eligible for download racing."
                 : $"Update discovery selected {selected.SourceName} {newestVersion}; " +
@@ -62,6 +65,15 @@ public sealed class RacingUpdateSource(
 
         var mergedPackages = primary.Packages.Select(package =>
         {
+            if (package.VerificationSources is { Count: > 0 } verificationSources)
+            {
+                // Matching names/versions are candidates, not proof of equivalent package contents.
+                var candidates = newest.Skip(1)
+                    .SelectMany(attempt => attempt.Manifest!.Packages)
+                    .Where(candidate => PackageIdentitiesMatch(package, candidate))
+                    .SelectMany(candidate => candidate.VerificationSources ?? []);
+                return package with { VerificationSources = verificationSources.Concat(candidates).Distinct().ToArray() };
+            }
             var mirrors = newest.Skip(1)
                 .SelectMany(attempt => attempt.Manifest!.Packages)
                 .Where(candidate => PackagesAreEquivalent(package, candidate))
@@ -78,11 +90,15 @@ public sealed class RacingUpdateSource(
         };
     }
 
-    private static bool PackagesAreEquivalent(UpdatePackage left, UpdatePackage right) =>
+    private static bool PackageIdentitiesMatch(UpdatePackage left, UpdatePackage right) =>
         left.Id == right.Id &&
         left.Kind == right.Kind &&
         left.Version.CompareTo(right.Version) == 0 &&
-        string.Equals(left.FileName, right.FileName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.FileName, right.FileName, StringComparison.OrdinalIgnoreCase);
+
+    private static bool PackagesAreEquivalent(UpdatePackage left, UpdatePackage right) =>
+        left.VerificationSources is not { Count: > 0 } && right.VerificationSources is not { Count: > 0 } &&
+        PackageIdentitiesMatch(left, right) &&
         string.Equals(left.Sha256, right.Sha256, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(left.Signature, right.Signature, StringComparison.Ordinal);
 

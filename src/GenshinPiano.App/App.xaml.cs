@@ -189,10 +189,10 @@ public partial class App : System.Windows.Application
         [
             new OcrAddonReleaseSource(
                 _updateMetadataHttpClient, "GitCode",
-                new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true),
+                new Uri("https://api.gitcode.com/api/v5/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true, deferVerification: true),
             new OcrAddonReleaseSource(
                 _updateMetadataHttpClient, "GitHub",
-                new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true),
+                new Uri("https://api.github.com/repos/tozyx/GenshinPiano/releases"), resourcesOnly: true, deferVerification: true),
         ], diagnostic: AppLogger.Info);
         OcrAddonPackageManager = new OcrAddonPackageManager(
             ocrSource,
@@ -201,7 +201,8 @@ public partial class App : System.Windows.Application
                 Path.Combine(AppContext.BaseDirectory, "update-cache", "downloads", "ocr")),
             signedPackageVerifier,
             OcrAddonService,
-            Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar));
+            Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar),
+            new OcrPackageMetadataResolver(_updateMetadataHttpClient));
         IUpdateSource updateSource;
         IUpdateSource inspectionSource;
         IUpdatePackageDownloader updateDownloader;

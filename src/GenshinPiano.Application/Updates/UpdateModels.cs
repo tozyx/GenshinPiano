@@ -18,6 +18,14 @@ public enum UpdatePackageKind
     OptionalComponent,
 }
 
+/// <summary>Unverified release assets; download mirrors are trusted only after resolving these files.</summary>
+public sealed record UpdateVerificationSource(
+    Uri DownloadUri,
+    long Size,
+    Uri ChecksumUri,
+    Uri SignatureUri,
+    string Revision);
+
 public sealed record UpdatePackage(
     string Id,
     UpdatePackageKind Kind,
@@ -28,7 +36,8 @@ public sealed record UpdatePackage(
     Uri DownloadUri,
     bool Optional = false,
     string? Signature = null,
-    IReadOnlyList<Uri>? MirrorDownloadUris = null)
+    IReadOnlyList<Uri>? MirrorDownloadUris = null,
+    IReadOnlyList<UpdateVerificationSource>? VerificationSources = null)
 {
     public IReadOnlyList<Uri> GetDownloadUris() =>
         MirrorDownloadUris is { Count: > 0 }
@@ -75,6 +84,11 @@ public interface IUpdatePackageDownloader
         UpdatePackage package,
         IProgress<double> progress,
         CancellationToken cancellationToken);
+}
+
+public interface IUpdatePackageMetadataResolver
+{
+    Task<UpdatePackage> ResolveAsync(UpdatePackage package, CancellationToken cancellationToken);
 }
 
 public interface IUpdatePackageVerifier

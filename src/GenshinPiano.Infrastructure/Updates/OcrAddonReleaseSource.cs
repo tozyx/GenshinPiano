@@ -11,8 +11,10 @@ public sealed partial class OcrAddonReleaseSource(
     HttpClient httpClient,
     string sourceName,
     Uri releasesEndpoint,
-    bool resourcesOnly = false) : IUpdateSource, INamedUpdateSource
+    bool resourcesOnly = false,
+    bool deferVerification = false) : IUpdateSource, INamedUpdateSource
 {
+    private readonly OcrPackageMetadataResolver _metadataResolver = new(httpClient);
     public string SourceName => sourceName;
 
     public async Task<UpdateManifest?> GetLatestAsync(string channel, CancellationToken cancellationToken)
@@ -54,25 +56,15 @@ public sealed partial class OcrAddonReleaseSource(
     {
         var selected = packages.OrderByDescending(item => item.Version).FirstOrDefault();
         if (selected.Zip is null) return null;
-        var checksum = await DownloadTextAsync(selected.Sha.Uri, cancellationToken);
-        checksum = checksum.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)[0].ToUpperInvariant();
-        if (checksum.Length != 64 || !checksum.All(Uri.IsHexDigit))
-            throw new InvalidDataException($"{sourceName} returned an invalid OCR package checksum.");
-        var signature = await DownloadTextAsync(selected.Sig.Uri, cancellationToken);
-        try { _ = Convert.FromBase64String(signature); }
-        catch (FormatException exception)
-        {
-            throw new InvalidDataException($"{sourceName} returned an invalid OCR package signature.", exception);
-        }
-
-        return new UpdateManifest(1, channel, selected.Version, DateTimeOffset.UtcNow,
-        [
-            new UpdatePackage(
-                resourcesOnly ? OcrResourceContract.PackageId : OcrResourceContract.LegacyPackageId,
-                UpdatePackageKind.OptionalComponent, selected.Version,
-                selected.Zip.Name, selected.Zip.Size, checksum, selected.Zip.Uri,
-                Optional: true, Signature: signature),
-        ], sourceName);
+        var package = new UpdatePackage(
+            resourcesOnly ? OcrResourceContract.PackageId : OcrResourceContract.LegacyPackageId,
+            UpdatePackageKind.OptionalComponent, selected.Version,
+            selected.Zip.Name, selected.Zip.Size, string.Empty, selected.Zip.Uri,
+            Optional: true, VerificationSources:
+            [new(selected.Zip.Uri, selected.Zip.Size, selected.Sha.Uri, selected.Sig.Uri,
+                $"{selected.Zip.Revision}\n{selected.Sha.Revision}\n{selected.Sig.Revision}")]);
+        if (!deferVerification) package = await _metadataResolver.ResolveAsync(package, cancellationToken);
+        return new UpdateManifest(1, channel, selected.Version, DateTimeOffset.UtcNow, [package], sourceName);
     }
 
     private IEnumerable<(SemanticVersion Version, ReleaseAsset Zip, ReleaseAsset Sha, ReleaseAsset Sig)>
@@ -93,15 +85,6 @@ public sealed partial class OcrAddonReleaseSource(
         }
     }
 
-    private async Task<string> DownloadTextAsync(Uri uri, CancellationToken cancellationToken)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.UserAgent.ParseAdd("GenshinPiano-OcrAddon/3.0");
-        using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
-    }
-
     private static IReadOnlyList<ReleaseAsset> ParseAssets(JsonElement release)
     {
         if (!release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
@@ -113,7 +96,8 @@ public sealed partial class OcrAddonReleaseSource(
             var size = asset.TryGetProperty("size", out var value) && value.TryGetInt64(out var parsed)
                 ? Math.Max(0, parsed) : 0;
             return Uri.TryCreate(url, UriKind.Absolute, out var uri) && name.Length > 0
-                ? new ReleaseAsset(name, uri, size) : null;
+                ? new ReleaseAsset(name, uri, size, string.Join("|", new[] { "id", "updated_at", "digest" }
+                    .Select(key => asset.TryGetProperty(key, out var revision) ? revision.ToString() : string.Empty))) : null;
         }).Where(asset => asset is not null).Cast<ReleaseAsset>().ToArray();
     }
 
@@ -132,5 +116,5 @@ public sealed partial class OcrAddonReleaseSource(
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ResourcePackageNameRegex();
 
-    private sealed record ReleaseAsset(string Name, Uri Uri, long Size);
+    private sealed record ReleaseAsset(string Name, Uri Uri, long Size, string Revision = "");
 }

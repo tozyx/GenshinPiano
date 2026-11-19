@@ -14,6 +14,8 @@ public sealed class ResumableUpdatePackageDownloader(
         IProgress<double> progress,
         CancellationToken cancellationToken)
     {
+        if (package.VerificationSources is { Count: > 0 })
+            throw new InvalidDataException("Resolve package verification metadata before downloading.");
         Directory.CreateDirectory(cacheDirectory);
         var partialPath = Path.Combine(cacheDirectory, package.FileName + ".partial");
         if (await IsCompletedCacheAsync(partialPath, package, cancellationToken))
